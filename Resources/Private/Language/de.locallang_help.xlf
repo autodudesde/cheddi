@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0" xmlns:t3="http://typo3.org/schemas/xliff">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-08-08T00:00:00Z" product-name="cheddi">
+        <header/>
+        <body>
+            <trans-unit id="cheddi.help.title"><source>How ChEddi works</source><target>Wie ChEddi arbeitet</target></trans-unit>
+
+            <trans-unit id="cheddi.help.what.title"><source>What ChEddi is</source><target>Was ChEddi ist</target></trans-unit>
+            <trans-unit id="cheddi.help.what.p1"><source>ChEddi is an assistant inside your TYPO3 backend. It works with your permissions and only sees what you are allowed to see.</source><target>ChEddi ist ein Assistent in deinem TYPO3-Backend. Er arbeitet mit deinen Rechten und sieht nur, was du auch sehen darfst.</target></trans-unit>
+            <trans-unit id="cheddi.help.what.i1"><source>Find, read and explain pages, content elements and files</source><target>Seiten, Inhaltselemente und Dateien finden, lesen und erklären</target></trans-unit>
+            <trans-unit id="cheddi.help.what.i2"><source>Create and change content, page trees and metadata</source><target>Inhalte, Seitenbäume und Metadaten anlegen und ändern</target></trans-unit>
+            <trans-unit id="cheddi.help.what.i3"><source>Translate pages and content into the languages of this site</source><target>Seiten und Inhalte in die Sprachen dieser Website übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.help.what.i4"><source>Create and update content from a document you attach, for example a PDF</source><target>Inhalte aus einem angehängten Dokument erstellen und aktualisieren, zum Beispiel aus einem PDF</target></trans-unit>
+            <trans-unit id="cheddi.help.what.i5"><source>…and many more use cases</source><target>…und viele weitere Anwendungsfälle</target></trans-unit>
+
+            <trans-unit id="cheddi.help.flow.title"><source>How a task runs</source><target>Wie ein Auftrag abläuft</target></trans-unit>
+            <trans-unit id="cheddi.help.flow.p1"><source>You describe the goal, ChEddi works through it step by step.</source><target>Du beschreibst das Ziel, ChEddi arbeitet es Schritt für Schritt ab.</target></trans-unit>
+            <trans-unit id="cheddi.help.flow.i1"><source>It looks up the records your request refers to</source><target>Er sucht die Datensätze, um die es in deiner Anfrage geht</target></trans-unit>
+            <trans-unit id="cheddi.help.flow.i2"><source>It shows a preview with the old and the new value</source><target>Er zeigt eine Vorschau mit dem alten und dem neuen Wert</target></trans-unit>
+            <trans-unit id="cheddi.help.flow.i3"><source>You confirm, and only then is anything written</source><target>Du bestätigst, und erst danach wird geschrieben</target></trans-unit>
+            <trans-unit id="cheddi.help.flow.i4"><source>Nothing is saved until you confirm, so you can stop at any point</source><target>Ohne deine Bestätigung wird nichts gespeichert, du kannst jederzeit abbrechen</target></trans-unit>
+
+            <trans-unit id="cheddi.help.naming.title"><source>Tell it which page you mean</source><target>Sag ihm, welche Seite du meinst</target></trans-unit>
+            <trans-unit id="cheddi.help.naming.p1"><source>ChEddi cannot see your screen. Words like "this page" or "here" do not identify anything.</source><target>ChEddi sieht deinen Bildschirm nicht. Formulierungen wie "diese Seite" oder "hier" identifizieren nichts.</target></trans-unit>
+            <trans-unit id="cheddi.help.naming.p2"><source>Name the page by its title or its slug. If the name matches more than one page, ChEddi asks instead of guessing.</source><target>Benenne die Seite über ihren Titel oder ihren Slug. Passt der Name auf mehrere Seiten, fragt ChEddi nach, statt zu raten.</target></trans-unit>
+
+            <trans-unit id="cheddi.help.write.title"><source>Live or draft</source><target>Live oder Entwurf</target></trans-unit>
+            <trans-unit id="cheddi.help.write.p1"><source>Currently active in this installation: {mode}</source><target>In dieser Installation aktiv: {mode}</target></trans-unit>
+            <trans-unit id="cheddi.help.write.i1"><source>Live: every confirmed change is immediately visible on the website</source><target>Live: jede bestätigte Änderung ist sofort auf der Website sichtbar</target></trans-unit>
+            <trans-unit id="cheddi.help.write.i2"><source>Draft: changes go to your workspace first and stay invisible to visitors</source><target>Entwurf: Änderungen landen zuerst in deinem Workspace und bleiben für Besucher unsichtbar</target></trans-unit>
+            <trans-unit id="cheddi.help.write.p2"><source>Drafts are collected per conversation. Open them from the actions menu under "Changes of this conversation" and publish or discard them there.</source><target>Entwürfe werden pro Konversation gesammelt. Über das Aktionsmenü unter "Änderungen dieser Konversation" kannst du sie ansehen und dort veröffentlichen oder verwerfen.</target></trans-unit>
+            <trans-unit id="cheddi.help.write.modeLive"><source>Live</source><target>Live</target></trans-unit>
+            <trans-unit id="cheddi.help.write.modeWorkspace"><source>Draft</source><target>Entwurf</target></trans-unit>
+
+            <trans-unit id="cheddi.help.privacy.title"><source>Data protection</source><target>Datenschutz</target></trans-unit>
+            <trans-unit id="cheddi.help.privacy.i1"><source>GDPR mode restricts the choice to the model hosted in the EU. Switch it off and the other models become selectable again.</source><target>Der DSGVO-Modus beschränkt die Auswahl auf das in der EU gehostete Modell. Schaltest du ihn aus, sind die übrigen Modelle wieder wählbar.</target></trans-unit>
+            <trans-unit id="cheddi.help.privacy.i2"><source>Web research sends your search query to an external provider. It needs a backend group permission and is currently not available in GDPR mode.</source><target>Die Web-Recherche schickt deine Suchanfrage an einen externen Anbieter. Sie setzt ein Gruppenrecht voraus und steht im DSGVO-Modus derzeit nicht zur Verfügung.</target></trans-unit>
+            <trans-unit id="cheddi.help.privacy.i3"><source>Attachments are read on the server and their text is sent to the model together with your message.</source><target>Anhänge werden auf dem Server ausgelesen, ihr Text geht zusammen mit deiner Nachricht an das Modell.</target></trans-unit>
+            <trans-unit id="cheddi.help.privacy.i4"><source>Never write passwords, API keys or personal data of third parties into the chat.</source><target>Schreibe niemals Passwörter, API-Schlüssel oder personenbezogene Daten Dritter in den Chat.</target></trans-unit>
+
+            <trans-unit id="cheddi.help.credits.title"><source>Models and credits</source><target>Modelle und Credits</target></trans-unit>
+            <trans-unit id="cheddi.help.credits.i1"><source>The model is fixed as soon as the conversation has its first answer. Use "New conversation" to switch.</source><target>Das Modell steht ab der ersten Antwort der Konversation fest. Über "Neue Konversation" wechselst du es.</target></trans-unit>
+            <trans-unit id="cheddi.help.credits.i2"><source>Continuing a conversation costs less than starting a new one.</source><target>Ein fortgesetztes Gespräch kostet weniger als ein neues.</target></trans-unit>
+            <trans-unit id="cheddi.help.credits.i3"><source>One conversation per topic is cheaper than one long conversation about everything.</source><target>Eine Konversation je Thema ist günstiger als eine lange Konversation über alles.</target></trans-unit>
+
+            <trans-unit id="cheddi.help.attachments.title"><source>Attachments</source><target>Anhänge</target></trans-unit>
+            <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document. ChEddi extracts its text and works with that.</source><target>Über die Büroklammer hängst du ein Dokument an. ChEddi liest den Text heraus und arbeitet damit.</target></trans-unit>
+            <trans-unit id="cheddi.help.attachments.i1"><source>Text based documents work best, images are not analysed here</source><target>Textbasierte Dokumente funktionieren am besten, Bilder werden hier nicht ausgewertet</target></trans-unit>
+            <trans-unit id="cheddi.help.attachments.i2"><source>An attachment is removed together with its conversation, unless it has meanwhile been placed on a page</source><target>Ein Anhang wird zusammen mit seiner Konversation gelöscht, sofern er nicht inzwischen auf einer Seite verwendet wird</target></trans-unit>
+
+            <trans-unit id="cheddi.help.limits.title"><source>Limits and tips</source><target>Grenzen und Tipps</target></trans-unit>
+            <trans-unit id="cheddi.help.limits.i1"><source>One goal per message. Several unrelated instructions at once make the result harder to check.</source><target>Ein Ziel pro Nachricht. Mehrere unabhängige Anweisungen auf einmal machen das Ergebnis schwerer prüfbar.</target></trans-unit>
+            <trans-unit id="cheddi.help.limits.i2"><source>Some bulk runs are covered by the AI Suite backend module itself: metadata and translation for whole page trees or file folders. Those belong there rather than in the chat.</source><target>Manche Massenläufe deckt das AI-Suite-Backend-Modul selbst ab: Metadaten und Übersetzung für ganze Seitenbäume oder Dateiordner. Die gehören dorthin statt in den Chat.</target></trans-unit>
+            <trans-unit id="cheddi.help.limits.i3"><source>If ChEddi claims it has no tools available, start a new conversation.</source><target>Behauptet ChEddi, ihm stünden keine Werkzeuge zur Verfügung, starte eine neue Konversation.</target></trans-unit>
+            <trans-unit id="cheddi.help.limits.i4"><source>Conversations are deleted after {days} days without activity.</source><target>Konversationen werden nach {days} Tagen ohne Aktivität gelöscht.</target></trans-unit>
+        </body>
+    </file>
+</xliff>

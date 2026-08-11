@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0" xmlns:t3="http://typo3.org/schemas/xliff">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-06-28T00:00:00Z" product-name="cheddi">
+        <header/>
+        <body>
+            <trans-unit id="cheddi.ui.drawerLabel"><source>ChEddi</source><target>ChEddi</target></trans-unit>
+            <trans-unit id="cheddi.ui.resize"><source>Resize drawer</source><target>Fenster anpassen</target></trans-unit>
+            <trans-unit id="cheddi.ui.resizeComposer"><source>Resize input field</source><target>Eingabefeld anpassen</target></trans-unit>
+            <trans-unit id="cheddi.ui.actionsMenu"><source>Actions menu</source><target>Aktionen-Menü</target></trans-unit>
+            <trans-unit id="cheddi.ui.bubbleOpen"><source>Open ChEddi</source><target>ChEddi öffnen</target></trans-unit>
+            <trans-unit id="cheddi.ui.modelSelect"><source>Select ChEddi model</source><target>ChEddi-Modell wählen</target></trans-unit>
+            <trans-unit id="cheddi.ui.creditsRemaining"><source>Remaining credits</source><target>Verbleibende Credits</target></trans-unit>
+            <trans-unit id="cheddi.ui.newConversation"><source>New conversation</source><target>Neue Konversation</target></trans-unit>
+            <trans-unit id="cheddi.ui.conversationsMenu"><source>Conversations …</source><target>Konversationen …</target></trans-unit>
+            <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source><target>Konversationen</target></trans-unit>
+            <trans-unit id="cheddi.ui.panelClose"><source>Close panel</source><target>Panel schließen</target></trans-unit>
+            <trans-unit id="cheddi.ui.minimize"><source>Minimize</source><target>Minimieren</target></trans-unit>
+            <trans-unit id="cheddi.ui.close"><source>Close</source><target>Schließen</target></trans-unit>
+            <trans-unit id="cheddi.ui.textareaPlaceholder"><source>Type a question or instruction…</source><target>Frage oder Anweisung tippen…</target></trans-unit>
+            <trans-unit id="cheddi.ui.send"><source>Send</source><target>Senden</target></trans-unit>
+            <trans-unit id="cheddi.ui.cancel"><source>Cancel</source><target>Abbrechen</target></trans-unit>
+            <trans-unit id="cheddi.ui.locked"><source>Locked</source><target>Gesperrt</target></trans-unit>
+
+
+            <trans-unit id="cheddi.thinking.default"><source>ChEddi is thinking</source><target>ChEddi denkt nach</target></trans-unit>
+            <trans-unit id="cheddi.thinking.moment"><source>One moment …</source><target>Einen Moment …</target></trans-unit>
+            <trans-unit id="cheddi.thinking.almost"><source>Almost done …</source><target>Fast fertig …</target></trans-unit>
+            <trans-unit id="cheddi.thinking.intent.translate"><source>ChEddi is translating</source><target>ChEddi übersetzt</target></trans-unit>
+            <trans-unit id="cheddi.thinking.intent.metadata"><source>ChEddi is creating metadata</source><target>ChEddi erstellt Metadaten</target></trans-unit>
+            <trans-unit id="cheddi.thinking.intent.write"><source>ChEddi is writing content</source><target>ChEddi schreibt Inhalte</target></trans-unit>
+            <trans-unit id="cheddi.thinking.intent.media"><source>ChEddi is handling media</source><target>ChEddi kümmert sich um Medien</target></trans-unit>
+            <trans-unit id="cheddi.thinking.intent.edit"><source>ChEddi is editing content</source><target>ChEddi bearbeitet Inhalte</target></trans-unit>
+            <trans-unit id="cheddi.thinking.step"><source>{base} · step {step}</source><target>{base} · Schritt {step}</target></trans-unit>
+
+            <trans-unit id="cheddi.error.chatModelTemporarilyUnavailable"><source>The chat model is currently unavailable. Please try again later.</source><target>Das Chat-Modell ist gerade nicht verfügbar. Bitte versuche es später erneut.</target></trans-unit>
+            <trans-unit id="cheddi.error.requestLimitReached"><source>Your credit balance is used up. Please top up credits.</source><target>Dein Credit-Guthaben ist aufgebraucht. Bitte lade Credits auf.</target></trans-unit>
+            <trans-unit id="cheddi.error.notEnoughRequests"><source>Not enough credits for this request. Please top up credits.</source><target>Nicht genügend Credits für diese Anfrage. Bitte lade Credits auf.</target></trans-unit>
+            <trans-unit id="cheddi.error.aiModelInstanceNotFound"><source>The selected model is not available. Please choose a different model.</source><target>Das gewählte Modell ist nicht verfügbar. Bitte wähle ein anderes Modell.</target></trans-unit>
+            <trans-unit id="cheddi.error.gdprModelBlocked"><source>Only the GDPR-compliant model is allowed in this system. Please select the GDPR model.</source><target>In diesem System ist nur das DSGVO-konforme Modell erlaubt. Bitte wähle das DSGVO-Modell.</target></trans-unit>
+            <trans-unit id="cheddi.error.chatUnavailableForPlan"><source>ChEddi is not yet available for your plan. Please contact your provider.</source><target>ChEddi ist für deinen Tarif noch nicht verfügbar. Bitte wende dich an deinen Anbieter.</target></trans-unit>
+            <trans-unit id="cheddi.error.missingAiModelApiKey"><source>Your plan runs on your own provider keys, and the key for this model is missing. Please add it in the extension configuration under "Bring Your Own Keys".</source><target>Dein Tarif läuft auf deinen eigenen Provider-Schlüsseln, und der Schlüssel für dieses Modell fehlt. Bitte hinterlege ihn in der Erweiterungskonfiguration unter „Bring your own keys“.</target></trans-unit>
+            <trans-unit id="cheddi.error.chatRequestMalformed"><source>ChEddi built an invalid request for this model. That is an error on our side, not a model outage, and it is not charged. Please report it to us.</source><target>ChEddi hat für dieses Modell eine ungültige Anfrage gebaut. Das ist ein Fehler auf unserer Seite und keine Modell-Störung; berechnet wird er nicht. Bitte melde ihn uns.</target></trans-unit>
+            <trans-unit id="cheddi.error.serverUnreachable"><source>The server aborted the request. This is usually a server-side error. Please check the TYPO3 log.</source><target>Der Server hat die Anfrage abgebrochen. Das ist meist ein serverseitiger Fehler. Bitte prüfe das TYPO3-Log.</target></trans-unit>
+            <trans-unit id="cheddi.error.serverError"><source>The server did not return a valid response. Please check the TYPO3 log.</source><target>Der Server hat keine gültige Antwort geliefert. Bitte prüfe das TYPO3-Log.</target></trans-unit>
+            <trans-unit id="cheddi.error.noOpenTurn"><source>This conversation has nothing left to continue. Please ask a new question.</source><target>In dieser Konversation gibt es nichts fortzusetzen. Bitte stelle eine neue Frage.</target></trans-unit>
+            <trans-unit id="cheddi.error.rateLimited"><source>Too many requests in a short time. Please wait a moment and try again.</source><target>Zu viele Anfragen in kurzer Zeit. Bitte warte einen Moment und versuche es erneut.</target></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyMissing"><source>No AI Suite API key is configured. Please enter your key in the extension configuration. If you don't have a key yet, you can get one at https://www.autodudes.de</source><target>Es ist kein AI Suite API-Schlüssel konfiguriert. Bitte hinterlege deinen Schlüssel in der Erweiterungskonfiguration. Falls du noch keinen Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.</target></trans-unit>
+            <trans-unit id="cheddi.error.unknown"><source>Unknown error.</source><target>Unbekannter Fehler.</target></trans-unit>
+
+            <trans-unit id="cheddi.notice.modelUnavailable"><source>Note: Your previously selected chat model is no longer available. Please pick a model above. This may be because data-protection (GDPR) mode was activated, which only allows the compliant models.</source><target>Hinweis: Dein zuvor gewähltes Chat-Modell ist nicht (mehr) verfügbar. Bitte wähle oben ein Modell aus. Möglicherweise wurde der DSGVO-Modus aktiviert, der nur die datenschutzkonformen Modelle zulässt.</target></trans-unit>
+            <trans-unit id="cheddi.notice.selectModelFirst"><source>Please select a chat model above first.</source><target>Bitte wähle zuerst oben ein Chat-Modell aus.</target></trans-unit>
+            <trans-unit id="cheddi.notice.selectModelPlaceholder"><source>Select a model …</source><target>Bitte Modell wählen …</target></trans-unit>
+            <trans-unit id="cheddi.notice.noModels"><source>No chat model is enabled. Please contact your administrator.</source><target>Kein Chat-Modell freigeschaltet. Bitte an die Administration wenden.</target></trans-unit>
+            <trans-unit id="cheddi.notice.apiKeyMissing.title"><source>Please enter your AI Suite API key in the extension configuration.</source><target>Bitte hinterlege deinen AI Suite API-Schlüssel in der Erweiterungskonfiguration.</target></trans-unit>
+            <trans-unit id="cheddi.notice.apiKeyMissing.message"><source>If you don't have an API key yet, you can get one at https://www.autodudes.de</source><target>Wenn du noch keinen API-Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.modelLocked"><source>The model is fixed per conversation. Start a new conversation to change it. Credits are charged per answer, and continuing a conversation costs less than starting a new one.</source><target>Das Modell ist pro Konversation festgelegt. Starte eine neue Konversation, um es zu wechseln. Credits fallen pro Antwort an, und ein fortgesetztes Gespräch kostet weniger als ein neues.</target></trans-unit>
+            <trans-unit id="cheddi.notice.activeModel"><source>This conversation runs on {model}. Start a new conversation to change it.</source><target>Diese Konversation läuft auf {model}. Starte eine neue Konversation, um zu wechseln.</target></trans-unit>
+            <trans-unit id="cheddi.notice.toolCapReached"><source>Maximum number of automatic tool calls reached. Please ask a new question.</source><target>Maximale Anzahl automatischer Tool-Calls erreicht. Bitte neue Frage stellen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.toolCapReachedAbort"><source>Tool-call limit reached, the turn was aborted. Please ask a new question.</source><target>Tool-Aufruf-Limit erreicht, der Turn wurde abgebrochen. Bitte neue Frage stellen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.toolCapSoftWarning"><source>{used} of {limit} allowed tool calls used in this sequence. The turn is aborted at {limit}.</source><target>{used} von {limit} erlaubten Tool-Aufrufen in dieser Sequenz verwendet. Bei {limit} wird der Turn abgebrochen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.turnAborted"><source>Turn aborted{reason}.</source><target>Turn abgebrochen{reason}.</target></trans-unit>
+            <trans-unit id="cheddi.notice.requestAborted"><source>Request aborted.</source><target>Anfrage abgebrochen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.creditsExhausted"><source>Credits used up, please top up.</source><target>Credits aufgebraucht, bitte aufladen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.creditsExhaustedAborted"><source>Conversation aborted: credits used up.</source><target>Konversation abgebrochen: Credits aufgebraucht.</target></trans-unit>
+            <trans-unit id="cheddi.notice.navHeading"><source>Edit</source><target>Bearbeiten</target></trans-unit>
+            <trans-unit id="cheddi.notice.navLinkDefault"><source>Open in the backend</source><target>Im Backend öffnen</target></trans-unit>
+            <trans-unit id="cheddi.notice.navMore"><source>+{count} more</source><target>+{count} weitere</target></trans-unit>
+            <trans-unit id="cheddi.sources.heading"><source>Sources</source><target>Quellen</target></trans-unit>
+            <trans-unit id="cheddi.sources.showContent"><source>Show the content that was read</source><target>Gelesenen Inhalt anzeigen</target></trans-unit>
+            <trans-unit id="cheddi.notice.lowBalance"><source>Your balance is almost used up, please top up credits, otherwise ChEddi will soon be unable to continue.</source><target>Dein Guthaben ist fast aufgebraucht, bitte lade Credits auf, sonst kann ChEddi bald nicht weiterarbeiten.</target></trans-unit>
+            <trans-unit id="cheddi.notice.lowBalanceRemaining"><source>{count} credits left, please top up in time.</source><target>Noch {count} Credits, bitte rechtzeitig aufladen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.unexpectedStatus"><source>Unexpected status: {status}</source><target>Unerwarteter Status: {status}</target></trans-unit>
+
+            <trans-unit id="cheddi.history.toolStatus"><source>Tool: {status}</source><target>Tool: {status}</target></trans-unit>
+            <trans-unit id="cheddi.time.justNow"><source>just now</source><target>gerade eben</target></trans-unit>
+            <trans-unit id="cheddi.time.minutesAgo"><source>{count} min ago</source><target>vor {count} min</target></trans-unit>
+            <trans-unit id="cheddi.time.hoursAgo"><source>{count} h ago</source><target>vor {count} h</target></trans-unit>
+            <trans-unit id="cheddi.time.daysAgo"><source>{count} days ago</source><target>vor {count} Tagen</target></trans-unit>
+
+            <trans-unit id="cheddi.orientation.summary"><source>How ChEddi works here</source><target>So arbeitet ChEddi hier</target></trans-unit>
+            <trans-unit id="cheddi.orientation.gdprOn"><source>Data protection: GDPR mode active, only the compliant model is offered</source><target>Datenschutz: DSGVO-Modus aktiv, es wird nur das datenschutzkonforme Modell angeboten</target></trans-unit>
+            <trans-unit id="cheddi.orientation.gdprOff"><source>Data protection: GDPR mode off</source><target>Datenschutz: DSGVO-Modus aus</target></trans-unit>
+            <trans-unit id="cheddi.orientation.writeLive"><source>Write mode: live, changes apply directly to the live site</source><target>Schreibmodus: live, Änderungen wirken direkt auf der Live-Seite</target></trans-unit>
+            <trans-unit id="cheddi.orientation.writeWorkspace"><source>Write mode: draft, changes go to a workspace and not live</source><target>Schreibmodus: Entwurf, Änderungen landen im Workspace und nicht live</target></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOn"><source>Web research: on, search queries leave this installation</source><target>Web-Recherche: an, Suchanfragen verlassen diese Installation</target></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff"><source>Web research: off, ChEddi only works with content from this installation</source><target>Web-Recherche: aus, ChEddi arbeitet nur mit Inhalten dieser Installation</target></trans-unit>
+            <trans-unit id="cheddi.orientation.confirmation"><source>Every change is shown to you as a preview and only written after you confirm it.</source><target>Jede Änderung wird dir vorher als Vorschau gezeigt und erst nach deiner Bestätigung geschrieben.</target></trans-unit>
+            <trans-unit id="cheddi.orientation.retention"><source>Conversations are deleted after {days} days without activity.</source><target>Konversationen werden nach {days} Tagen ohne Aktivität gelöscht.</target></trans-unit>
+            <trans-unit id="cheddi.orientation.more"><source>How ChEddi works in detail …</source><target>Wie ChEddi arbeitet …</target></trans-unit>
+            <trans-unit id="cheddi.help.modalTitle"><source>How ChEddi works</source><target>Wie ChEddi arbeitet</target></trans-unit>
+            <trans-unit id="cheddi.help.close"><source>Close</source><target>Schließen</target></trans-unit>
+            <trans-unit id="cheddi.help.loadFailed"><source>The help text could not be loaded.</source><target>Der Hilfetext konnte nicht geladen werden.</target></trans-unit>
+
+            <!-- Compact operating context handed to the LLM (label + value) -->
+            <trans-unit id="cheddi.orientation.compact.gdpr"><source>GDPR mode</source><target>DSGVO-Modus</target></trans-unit>
+            <trans-unit id="cheddi.orientation.compact.active"><source>active</source><target>aktiv</target></trans-unit>
+            <trans-unit id="cheddi.orientation.compact.inactive"><source>inactive</source><target>inaktiv</target></trans-unit>
+            <trans-unit id="cheddi.orientation.compact.writeMode"><source>Write mode</source><target>Schreibmodus</target></trans-unit>
+            <trans-unit id="cheddi.orientation.compact.writeLive"><source>live</source><target>live</target></trans-unit>
+            <trans-unit id="cheddi.orientation.compact.writeWorkspace"><source>workspace</source><target>Workspace</target></trans-unit>
+            <trans-unit id="cheddi.model.rate"><source>{rate} Credits/million tokens</source><target>{rate} Credits/Mio. Tokens</target></trans-unit>
+            <trans-unit id="cheddi.model.gdprBadge"><source>GDPR-compliant</source><target>DSGVO-konform</target></trans-unit>
+            <trans-unit id="cheddi.credits.exhaustedPlaceholder"><source>Credits used up, please top up</source><target>Credits aufgebraucht, bitte aufladen</target></trans-unit>
+
+            <trans-unit id="cheddi.sessions.empty"><source>No conversations yet.</source><target>Noch keine Konversationen vorhanden.</target></trans-unit>
+            <trans-unit id="cheddi.sessions.backToChat"><source>← Back to current chat</source><target>← Zurück zum aktuellen Chat</target></trans-unit>
+            <trans-unit id="cheddi.sessions.startNew"><source>+ New conversation</source><target>+ Neue Konversation</target></trans-unit>
+            <trans-unit id="cheddi.sessions.delete"><source>Delete</source><target>Löschen</target></trans-unit>
+            <trans-unit id="cheddi.sessions.deleteLabel"><source>Delete conversation</source><target>Konversation löschen</target></trans-unit>
+            <trans-unit id="cheddi.sessions.untitled"><source>(untitled)</source><target>(ohne Titel)</target></trans-unit>
+
+            <trans-unit id="cheddi.summary.collapsed"><source>── Earlier messages summarised ──</source><target>── Frühere Nachrichten zusammengefasst ──</target></trans-unit>
+            <trans-unit id="cheddi.summary.collapsedCount"><source>── {count} earlier messages summarised ──</source><target>── {count} frühere Nachrichten zusammengefasst ──</target></trans-unit>
+
+            <trans-unit id="cheddi.confirm.introOne"><source>One tool call needs your confirmation:</source><target>Ein Tool-Aufruf braucht Deine Bestätigung:</target></trans-unit>
+            <trans-unit id="cheddi.confirm.introMany"><source>{count} tool calls need your confirmation:</source><target>{count} Tool-Aufrufe brauchen Deine Bestätigung:</target></trans-unit>
+            <trans-unit id="cheddi.confirm.targetWorkspace"><source>These changes go to a draft (workspace) and not live.</source><target>Diese Änderungen landen im Entwurf (Workspace) und nicht live.</target></trans-unit>
+            <trans-unit id="cheddi.confirm.targetLive"><source>These changes apply directly to the live site.</source><target>Diese Änderungen wirken direkt auf der Live-Seite.</target></trans-unit>
+            <trans-unit id="cheddi.confirm.targetAuto"><source>These changes go to a draft (if one exists), otherwise live.</source><target>Diese Änderungen landen im Entwurf (falls vorhanden), sonst live.</target></trans-unit>
+            <trans-unit id="cheddi.confirm.declineAll"><source>Decline all</source><target>Alle ablehnen</target></trans-unit>
+            <trans-unit id="cheddi.confirm.destructiveBadge"><source>⚠️ hard to undo</source><target>⚠️ schwer umkehrbar</target></trans-unit>
+            <trans-unit id="cheddi.confirm.blockedInvalid"><source>This tool call contains invalid records and cannot be executed. Decline it so the assistant can correct it.</source><target>Dieser Tool-Aufruf enthält ungültige Datensätze und kann nicht ausgeführt werden. Lehne ihn ab, damit der Assistent ihn korrigiert.</target></trans-unit>
+            <trans-unit id="cheddi.confirm.blockedInvalidHint"><source>Invalid records in the payload</source><target>Ungültige Datensätze im Payload</target></trans-unit>
+            <trans-unit id="cheddi.confirm.technicalDetails"><source>Technical details</source><target>Technische Details</target></trans-unit>
+            <trans-unit id="cheddi.confirm.execute"><source>Execute</source><target>Ausführen</target></trans-unit>
+            <trans-unit id="cheddi.confirm.executeDestructive"><source>Execute permanently</source><target>Endgültig ausführen</target></trans-unit>
+            <trans-unit id="cheddi.confirm.executeDestructiveArmed"><source>Really execute permanently?</source><target>Wirklich endgültig ausführen?</target></trans-unit>
+            <trans-unit id="cheddi.confirm.decline"><source>Decline</source><target>Ablehnen</target></trans-unit>
+
+            <trans-unit id="cheddi.preview.action.create"><source>New</source><target>Neu</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.update"><source>Change</source><target>Änderung</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.delete"><source>Delete</source><target>Löschen</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.copy"><source>Copy</source><target>Kopieren</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.move"><source>Move</source><target>Verschieben</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.localize"><source>Translate</source><target>Übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.skipped"><source>Skipped</source><target>Übersprungen</target></trans-unit>
+            <trans-unit id="cheddi.preview.action.invalid"><source>Invalid</source><target>Ungültig</target></trans-unit>
+            <trans-unit id="cheddi.preview.page"><source>Page: {page}</source><target>Seite: {page}</target></trans-unit>
+            <trans-unit id="cheddi.preview.position"><source>Position: {position}</source><target>Position: {position}</target></trans-unit>
+            <trans-unit id="cheddi.preview.unchanged"><source>unchanged</source><target>unverändert</target></trans-unit>
+            <trans-unit id="cheddi.preview.becomes"><source>becomes</source><target>wird zu</target></trans-unit>
+            <trans-unit id="cheddi.preview.empty"><source>(empty)</source><target>(leer)</target></trans-unit>
+            <trans-unit id="cheddi.preview.moreFields"><source>+ {count} more field(s)</source><target>+ {count} weitere Felder</target></trans-unit>
+            <trans-unit id="cheddi.preview.moreRecords"><source>+ {count} more record(s), see the technical details</source><target>+ {count} weitere Datensätze, siehe technische Details</target></trans-unit>
+            <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source><target>{count} neue Seiten</target></trans-unit>
+            <trans-unit id="cheddi.preview.pageTree.under"><source>Below: {parent}</source><target>Unterhalb von: {parent}</target></trans-unit>
+            <trans-unit id="cheddi.preview.translations"><source>+ one translation each in: {languages}</source><target>+ je eine Übersetzung in: {languages}</target></trans-unit>
+
+
+            <trans-unit id="cheddi.tool.fallback"><source>Action</source><target>Aktion</target></trans-unit>
+            <trans-unit id="cheddi.tool.readPageTree"><source>Read page tree</source><target>Seitenbaum lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readPageContent"><source>Read page content</source><target>Seiteninhalt lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readRenderedPage"><source>Read rendered page</source><target>Gerenderte Seite lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readEditorialGuidelines"><source>Read editorial guidelines</source><target>Redaktionsrichtlinien lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readContentTree"><source>Read content tree</source><target>Inhaltsbaum lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.searchContent"><source>Search content</source><target>Inhalte durchsuchen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readFileInfo"><source>Read file information</source><target>Dateiinformationen lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.listFiles"><source>List files</source><target>Dateien auflisten</target></trans-unit>
+            <trans-unit id="cheddi.tool.listStaleContent"><source>Find outdated content</source><target>Veraltete Inhalte finden</target></trans-unit>
+            <trans-unit id="cheddi.tool.readRecords"><source>Read records</source><target>Datensätze lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.compareWithLive"><source>Compare with live version</source><target>Mit Live-Version vergleichen</target></trans-unit>
+            <trans-unit id="cheddi.tool.listTables"><source>Read tables</source><target>Tabellen lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readRecordSchema"><source>Read field schema</source><target>Feldstruktur lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.listPageTypes"><source>Read page types</source><target>Seitentypen lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.listContentTypes"><source>Read content element types</source><target>Inhaltselement-Typen lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readFlexFormSchema"><source>Read configuration</source><target>Konfiguration lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readServerInfo"><source>Read server info</source><target>Server-Info lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readChildren"><source>Read child records</source><target>Unterdatensätze lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readTaskStatus"><source>Check task status</source><target>Aufgabenstatus prüfen</target></trans-unit>
+            <trans-unit id="cheddi.tool.readTaskResults"><source>Read task result</source><target>Aufgabenergebnis lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.applyTaskResults"><source>Apply task result</source><target>Aufgabenergebnis anwenden</target></trans-unit>
+            <trans-unit id="cheddi.tool.previewRecords"><source>Create preview</source><target>Vorschau erstellen</target></trans-unit>
+            <trans-unit id="cheddi.tool.writeRecords"><source>Save content</source><target>Inhalte speichern</target></trans-unit>
+            <trans-unit id="cheddi.tool.replaceText"><source>Replace text</source><target>Text ersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.patchText"><source>Edit text</source><target>Text bearbeiten</target></trans-unit>
+            <trans-unit id="cheddi.tool.bulkReplaceText"><source>Replace text in bulk</source><target>Text mehrfach ersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.copyRecords"><source>Copy records</source><target>Datensätze kopieren</target></trans-unit>
+            <trans-unit id="cheddi.tool.moveRecords"><source>Move records</source><target>Datensätze verschieben</target></trans-unit>
+            <trans-unit id="cheddi.tool.localizeRecord"><source>Create translation</source><target>Übersetzung anlegen</target></trans-unit>
+            <trans-unit id="cheddi.tool.savePageTree"><source>Save page tree</source><target>Seitenbaum speichern</target></trans-unit>
+            <trans-unit id="cheddi.tool.copyMediaReference"><source>Copy media reference</source><target>Medienverweis kopieren</target></trans-unit>
+            <trans-unit id="cheddi.tool.replaceMediaReference"><source>Replace media reference</source><target>Medienverweis ersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.uploadMedia"><source>Upload media</source><target>Medien hochladen</target></trans-unit>
+            <trans-unit id="cheddi.tool.deleteRecords"><source>Delete records</source><target>Datensätze löschen</target></trans-unit>
+            <trans-unit id="cheddi.tool.generateFileMetadata"><source>Generate file metadata</source><target>Datei-Metadaten erzeugen</target></trans-unit>
+            <trans-unit id="cheddi.tool.generateImage"><source>Generate image</source><target>Bild erzeugen</target></trans-unit>
+            <trans-unit id="cheddi.tool.translatePage"><source>Translate page</source><target>Seite übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.translateRecord"><source>Translate record</source><target>Datensatz übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.translateFileMetadata"><source>Translate file metadata</source><target>Datei-Metadaten übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchGenerateMetadata"><source>Batch: Generate SEO metadata</source><target>Stapel: SEO-Metadaten erzeugen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchGenerateFileMetadata"><source>Batch: Generate file metadata</source><target>Stapel: Datei-Metadaten erzeugen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchGenerateFolderMetadata"><source>Batch: Generate folder metadata</source><target>Stapel: Ordner-Metadaten erzeugen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchTranslatePage"><source>Batch: Translate pages</source><target>Stapel: Seiten übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchTranslateFileMetadata"><source>Batch: Translate file metadata</source><target>Stapel: Datei-Metadaten übersetzen</target></trans-unit>
+            <trans-unit id="cheddi.tool.batchTranslateFolderMetadata"><source>Batch: Translate folder metadata</source><target>Stapel: Ordner-Metadaten übersetzen</target></trans-unit>
+
+            <trans-unit id="cheddi.attachment.add"><source>Attach a document</source><target>Dokument anhängen</target></trans-unit>
+            <trans-unit id="cheddi.attachment.remove"><source>Remove attachment</source><target>Anhang entfernen</target></trans-unit>
+            <trans-unit id="cheddi.attachment.uploading"><source>Uploading …</source><target>Wird hochgeladen …</target></trans-unit>
+            <trans-unit id="cheddi.attachment.uploadFailed"><source>Could not upload "{name}".</source><target>„{name}“ konnte nicht hochgeladen werden.</target></trans-unit>
+            <trans-unit id="cheddi.attachment.tooMany"><source>You can attach at most {count} files.</source><target>Du kannst höchstens {count} Dateien anhängen.</target></trans-unit>
+            <trans-unit id="cheddi.attachment.oversize"><source>Too large to read</source><target>Zu groß zum Auslesen</target></trans-unit>
+            <trans-unit id="cheddi.attachment.libraryMissing"><source>This format cannot be read on this installation</source><target>Dieses Format kann in dieser Installation nicht gelesen werden</target></trans-unit>
+            <trans-unit id="cheddi.attachment.notFound"><source>File not found</source><target>Datei nicht gefunden</target></trans-unit>
+            <trans-unit id="cheddi.attachment.metadataOnly"><source>Text cannot be read from this file</source><target>Aus dieser Datei kann kein Text gelesen werden</target></trans-unit>
+
+            <trans-unit id="cheddi.review.menu"><source>Changes of this conversation …</source><target>Änderungen dieser Unterhaltung …</target></trans-unit>
+            <trans-unit id="cheddi.review.title"><source>Changes of this conversation</source><target>Änderungen dieser Unterhaltung</target></trans-unit>
+            <trans-unit id="cheddi.review.intro"><source>These records were changed in your draft workspace. Publish them to make them live, or discard them to undo them.</source><target>Diese Inhalte wurden in deinem Entwurf geändert. Veröffentliche sie, um sie live zu schalten, oder verwirf sie, um sie rückgängig zu machen.</target></trans-unit>
+            <trans-unit id="cheddi.review.empty"><source>This conversation has not changed any records yet.</source><target>Diese Unterhaltung hat noch keine Inhalte geändert.</target></trans-unit>
+            <trans-unit id="cheddi.review.unavailable"><source>Draft workspaces are not available, so changes cannot be reviewed here.</source><target>Entwürfe sind nicht verfügbar, daher können Änderungen hier nicht geprüft werden.</target></trans-unit>
+            <trans-unit id="cheddi.review.loadFailed"><source>The changes of this conversation could not be loaded.</source><target>Die Änderungen dieser Unterhaltung konnten nicht geladen werden.</target></trans-unit>
+            <trans-unit id="cheddi.review.publish"><source>Publish</source><target>Veröffentlichen</target></trans-unit>
+            <trans-unit id="cheddi.review.discard"><source>Discard</source><target>Verwerfen</target></trans-unit>
+            <trans-unit id="cheddi.review.publishAll"><source>Publish all</source><target>Alle veröffentlichen</target></trans-unit>
+            <trans-unit id="cheddi.review.discardAll"><source>Discard all</source><target>Alle verwerfen</target></trans-unit>
+            <trans-unit id="cheddi.review.close"><source>Close</source><target>Schließen</target></trans-unit>
+            <trans-unit id="cheddi.review.openModule"><source>Open in the Workspaces module</source><target>Im Workspace-Modul öffnen</target></trans-unit>
+            <trans-unit id="cheddi.review.confirmDiscardTitle"><source>Discard changes?</source><target>Änderungen verwerfen?</target></trans-unit>
+            <trans-unit id="cheddi.review.confirmDiscardText"><source>The selected changes are removed from the draft. This cannot be undone.</source><target>Die gewählten Änderungen werden aus dem Entwurf entfernt. Das lässt sich nicht rückgängig machen.</target></trans-unit>
+            <trans-unit id="cheddi.review.published"><source>Published {count} change(s).</source><target>{count} Änderung(en) veröffentlicht.</target></trans-unit>
+            <trans-unit id="cheddi.review.discarded"><source>Discarded {count} change(s).</source><target>{count} Änderung(en) verworfen.</target></trans-unit>
+            <trans-unit id="cheddi.review.partialFailure"><source>{count} change(s) could not be processed.</source><target>{count} Änderung(en) konnten nicht verarbeitet werden.</target></trans-unit>
+            <trans-unit id="cheddi.review.changedFields"><source>Changed: {fields}</source><target>Geändert: {fields}</target></trans-unit>
+            <trans-unit id="cheddi.review.statusAdded"><source>New</source><target>Neu</target></trans-unit>
+            <trans-unit id="cheddi.review.statusModified"><source>Changed</source><target>Geändert</target></trans-unit>
+            <trans-unit id="cheddi.review.statusDeleted"><source>Deleted</source><target>Gelöscht</target></trans-unit>
+
+            <trans-unit id="cheddi.statistics.heading"><source>ChEddi Chat Assistant</source><target>ChEddi Chat-Assistent</target></trans-unit>
+            <trans-unit id="cheddi.statistics.emptyTitle"><source>ChEddi usage</source><target>ChEddi-Nutzung</target></trans-unit>
+            <trans-unit id="cheddi.statistics.emptyText"><source>No ChEddi usage recorded for the selected month.</source><target>Für den gewählten Monat ist keine ChEddi-Nutzung erfasst.</target></trans-unit>
+            <trans-unit id="cheddi.statistics.byModelTitle"><source>Credits by model</source><target>Credits nach Modell</target></trans-unit>
+            <trans-unit id="cheddi.statistics.creditsLabel"><source>Credits</source><target>Credits</target></trans-unit>
+        </body>
+    </file>
+</xliff>

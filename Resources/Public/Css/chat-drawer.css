@@ -1,0 +1,1332 @@
+:root {
+    --cheddi-bg: var(--typo3-component-bg, #fff);
+    --cheddi-fg: var(--typo3-component-color, var(--typo3-text-color-base, #1a1a1a));
+    --cheddi-muted-fg: var(--typo3-text-color-variant, #6f6f6f);
+    --cheddi-border-color: var(--typo3-component-border-color, rgba(127, 127, 127, 0.32));
+    --cheddi-surface-2: rgba(127, 127, 127, 0.12);
+    --cheddi-hover: rgba(127, 127, 127, 0.18);
+    --cheddi-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+    --cheddi-radius: 12px;
+    --cheddi-z: 1040;
+
+    /* The drawer is injected on every backend page, but the --ai-suite-* variables only exist on
+       AI Suite module pages. Resolving them once here keeps one accent for the whole drawer. */
+    --cheddi-accent: var(--ai-suite-primary-color, #F09C42);
+    --cheddi-accent-border: var(--ai-suite-border-color, #F09C42);
+    --cheddi-accent-fg: var(--ai-suite-button-font-color, #000);
+    --cheddi-danger: #c8412c;
+}
+
+#cheddi-drawer {
+    position: fixed;
+    inset: auto 0 0 auto;
+    z-index: var(--cheddi-z);
+    pointer-events: none;
+}
+
+body.cheddi-resizing,
+body.cheddi-resizing * {
+    user-select: none !important;
+    cursor: nwse-resize !important;
+}
+
+/* The composer only grows vertically, so it keeps the cursor for that axis. */
+body.cheddi-resizing-composer,
+body.cheddi-resizing-composer * {
+    user-select: none !important;
+    cursor: ns-resize !important;
+}
+
+#cheddi-drawer * {
+    box-sizing: border-box;
+}
+
+.cheddi__bubble,
+.cheddi__drawer {
+    pointer-events: auto;
+}
+
+.cheddi__bubble {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: var(--cheddi-accent);
+    color: var(--cheddi-accent-fg);
+    box-shadow: var(--cheddi-shadow);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    line-height: 1;
+}
+
+.cheddi__bubble-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.cheddi__bubble:hover,
+.cheddi__bubble:focus-visible {
+    filter: brightness(0.95);
+    outline: 2px solid var(--cheddi-accent);
+    outline-offset: 2px;
+}
+
+.cheddi__drawer {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 480px;
+    height: 720px;
+    background-color: var(--cheddi-bg);
+    color: var(--cheddi-fg);
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: var(--cheddi-radius);
+    box-shadow: var(--cheddi-shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cheddi__drawer[hidden] {
+    display: none;
+}
+
+.cheddi__resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    z-index: 3;
+    cursor: nwse-resize;
+    touch-action: none;
+    background: linear-gradient(135deg,
+        transparent 0%,
+        transparent 35%,
+        var(--cheddi-accent-border) 35%,
+        var(--cheddi-accent-border) 45%,
+        transparent 45%,
+        transparent 55%,
+        var(--cheddi-accent-border) 55%,
+        var(--cheddi-accent-border) 65%,
+        transparent 65%);
+    border-top-left-radius: var(--cheddi-radius);
+}
+
+.cheddi__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 8px 28px; /* leave space for resize handle */
+    border-bottom: 1px solid var(--cheddi-border-color);
+    background-color: var(--cheddi-bg);
+}
+
+.cheddi__model-select {
+    flex: 0 1 auto;
+    max-width: 60%;
+    padding: 3px 6px;
+    font-size: 12px;
+    color: var(--cheddi-fg);
+    background-color: var(--cheddi-bg);
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cheddi__model-select[hidden] {
+    display: none;
+}
+
+.cheddi__model-select:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.cheddi__header-credits {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__header-credits[hidden] {
+    display: none;
+}
+
+.cheddi__header-credits-icon {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+.cheddi__header-credits[hidden] + .cheddi__header-actions {
+    margin-left: auto;
+}
+
+.cheddi__header-credits--low {
+    color: #8c5a1a;
+    font-weight: 600;
+}
+
+.cheddi__header-button {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--cheddi-fg);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.cheddi__header-button:hover,
+.cheddi__header-button:focus-visible {
+    border-color: var(--cheddi-accent-border);
+    outline: none;
+}
+
+.cheddi__header-actions {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.cheddi__actions-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 1;
+    margin: 0;
+    padding: 4px 0;
+    min-width: 200px;
+    list-style: none;
+    background-color: var(--cheddi-bg);
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.cheddi__actions-menu[hidden] {
+    display: none;
+}
+
+.cheddi__actions-menu li {
+    margin: 0;
+}
+
+.cheddi__actions-menu button {
+    width: 100%;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+}
+
+.cheddi__actions-menu button:hover,
+.cheddi__actions-menu button:focus-visible {
+    background-color: var(--cheddi-hover);
+    outline: none;
+}
+
+.cheddi__orientation {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--cheddi-fg);
+    border-bottom: 1px solid var(--cheddi-border-color);
+}
+
+.cheddi__orientation[hidden] {
+    display: none;
+}
+
+.cheddi__orientation-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    color: var(--cheddi-muted-fg);
+    font-weight: 600;
+}
+
+.cheddi__orientation-summary:hover {
+    color: var(--cheddi-fg);
+}
+
+.cheddi__orientation-summary::-webkit-details-marker {
+    display: none;
+}
+
+.cheddi__orientation-summary::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+    flex: 0 0 auto;
+}
+
+.cheddi__orientation[open] .cheddi__orientation-summary::before {
+    transform: rotate(45deg);
+}
+
+.cheddi__orientation-body {
+    margin: 0 12px 10px 12px;
+    padding: 8px 12px;
+    list-style: none;
+    line-height: 1.5;
+    background-color: var(--cheddi-surface-2);
+    border-radius: 8px;
+}
+
+.cheddi__orientation-body li {
+    position: relative;
+    padding-left: 16px;
+}
+
+.cheddi__orientation-body li + li {
+    margin-top: 4px;
+}
+
+.cheddi__orientation-body li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 0.6em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: var(--cheddi-accent);
+}
+
+.cheddi__orientation-more {
+    display: block;
+    margin: -4px 12px 10px 12px;
+    padding: 0 12px;
+    border: 0;
+    background: none;
+    color: var(--cheddi-accent);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cheddi__orientation-more:hover {
+    text-decoration: underline;
+}
+
+.cheddi__messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 12px;
+    background-color: var(--cheddi-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cheddi__message {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+.cheddi__message--user {
+    align-items: flex-end;
+}
+
+.cheddi__message--assistant,
+.cheddi__message--tool-call {
+    align-items: flex-start;
+}
+
+.cheddi__nav-targets {
+    align-items: flex-start;
+    gap: 6px;
+    padding-left: 0;
+    text-align: left;
+}
+
+.cheddi__nav-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    width: 100%;
+}
+
+.cheddi__nav-heading {
+    flex: 0 0 100%;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__nav-more {
+    font-size: 12px;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    padding: 4px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    border: 1px solid var(--cheddi-accent-border);
+    border-radius: 12px;
+    background-color: transparent;
+    color: var(--cheddi-fg);
+    cursor: pointer;
+}
+
+.cheddi__nav-link:hover,
+.cheddi__nav-link:focus-visible {
+    background-color: var(--cheddi-accent);
+    border-color: var(--cheddi-accent-border);
+    color: var(--cheddi-accent-fg);
+    outline: none;
+}
+
+.cheddi__nav-icon {
+    flex: 0 0 auto;
+    opacity: 0.7;
+}
+
+.cheddi__nav-label {
+    max-width: 18ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cheddi__sources {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.cheddi__sources-heading {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+.cheddi__sources-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 13px;
+}
+
+.cheddi__sources-list a {
+    color: var(--cheddi-accent);
+    word-break: break-word;
+}
+
+.cheddi__source-content > summary {
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+.cheddi__source-content-body {
+    margin: 4px 0 0;
+    padding: 8px;
+    max-height: 320px;
+    overflow: auto;
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 4px;
+}
+
+.cheddi__bubble-user,
+.cheddi__bubble-assistant {
+    max-width: 90%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.cheddi__bubble-user {
+    background-color: var(--cheddi-accent);
+    color: var(--cheddi-accent-fg);
+    border-top-right-radius: 2px;
+}
+
+.cheddi__bubble-assistant {
+    background-color: var(--cheddi-surface-2);
+    color: var(--cheddi-fg);
+    border-top-left-radius: 2px;
+}
+
+.cheddi__bubble-assistant > :first-child {
+    margin-top: 0;
+}
+
+.cheddi__bubble-assistant > :last-child {
+    margin-bottom: 0;
+}
+
+.cheddi__bubble-assistant pre {
+    background-color: var(--cheddi-surface-2);
+    padding: 6px 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 12px;
+}
+
+.cheddi__bubble-assistant code {
+    background-color: var(--cheddi-surface-2);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.cheddi__bubble-assistant a {
+    color: var(--cheddi-accent);
+}
+
+.cheddi__tool-call {
+    width: 90%;
+    margin-left: 16px;
+    padding: 4px 8px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    background-color: var(--cheddi-surface-2);
+    font-size: 12px;
+}
+
+.cheddi__tool-call-summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.cheddi__tool-call-summary--done::after {
+    content: ' ✓';
+    color: #2a8c3e;
+}
+
+.cheddi__tool-call-summary--failed::after {
+    content: ' ✗';
+    color: var(--cheddi-danger);
+}
+
+.cheddi__tool-call-args {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    background-color: var(--cheddi-surface-2);
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+}
+
+.cheddi__confirm-block {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--cheddi-accent-border);
+    border-radius: 8px;
+    background-color: rgba(240, 156, 66, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+}
+
+.cheddi__confirm-intro {
+    font-weight: 600;
+}
+
+.cheddi__confirm-target {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__confirm-item {
+    padding: 8px 10px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    background-color: var(--cheddi-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cheddi__confirm-item[data-cheddi-severity="destructive"] {
+    border-color: var(--cheddi-danger);
+    background-color: rgba(200, 65, 44, 0.06);
+}
+
+.cheddi__confirm-item--approved {
+    border-color: #2a8c3e;
+    background-color: rgba(42, 140, 62, 0.06);
+}
+
+.cheddi__confirm-item--declined {
+    border-color: var(--cheddi-muted-fg, #6f6f6f);
+    background-color: var(--cheddi-hover);
+    opacity: 0.7;
+}
+
+.cheddi__confirm-item-header {
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.cheddi__confirm-severity-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--cheddi-danger);
+    background-color: rgba(200, 65, 44, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.cheddi__confirm-item--blocked {
+    border-color: var(--cheddi-danger);
+}
+
+.cheddi__confirm-blocked {
+    font-size: 12px;
+    color: var(--cheddi-danger);
+    background-color: rgba(200, 65, 44, 0.1);
+    padding: 6px 8px;
+    border-radius: 3px;
+}
+
+.cheddi__preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cheddi__preview-record {
+    padding: 8px 10px;
+    background-color: var(--cheddi-surface-2);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.cheddi__preview-record-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.cheddi__preview-action {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background-color: rgba(120, 120, 120, 0.15);
+    color: var(--cheddi-muted-fg);
+    flex-shrink: 0;
+}
+
+.cheddi__preview-action--create {
+    color: #2c7a3f;
+    background-color: rgba(44, 122, 63, 0.12);
+}
+
+.cheddi__preview-action--delete {
+    color: var(--cheddi-danger);
+    background-color: rgba(200, 65, 44, 0.12);
+}
+
+.cheddi__preview-title {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.cheddi__preview-context,
+.cheddi__preview-more {
+    font-size: 11px;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__preview-pagetree {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+}
+
+.cheddi__preview-pagetree > li {
+    padding: 2px 0;
+    word-break: break-word;
+}
+
+.cheddi__preview-note {
+    font-size: 11px;
+    color: var(--cheddi-danger);
+}
+
+.cheddi__preview-fields {
+    display: grid;
+    grid-template-columns: minmax(70px, max-content) 1fr;
+    gap: 2px 10px;
+    margin: 6px 0 0;
+}
+
+.cheddi__preview-fields > dt {
+    font-weight: 500;
+    color: var(--cheddi-muted-fg);
+    word-break: break-word;
+}
+
+.cheddi__preview-fields > dd {
+    margin: 0;
+    min-width: 0;
+}
+
+/* Line-based fields (bullets, table) keep their newlines: the editor has to see the same lines the
+   frontend will render as list items. */
+.cheddi__preview-value {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cheddi__preview-value--old {
+    text-decoration: line-through;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__preview-value--empty {
+    font-style: italic;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__preview-arrow,
+.cheddi__preview-unchanged {
+    color: var(--cheddi-muted-fg);
+    margin: 0 4px;
+}
+
+.cheddi__preview-unchanged {
+    font-size: 11px;
+    font-style: italic;
+}
+
+.cheddi__confirm-item-details > summary {
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__confirm-item-args {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    background-color: var(--cheddi-surface-2);
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 11px;
+}
+
+.cheddi__confirm-item-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.cheddi__confirm-approve,
+.cheddi__confirm-decline {
+    padding: 5px 12px;
+    border: 1px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.cheddi__confirm-approve {
+    border-color: var(--cheddi-accent-border);
+    background-color: var(--cheddi-accent);
+    color: var(--cheddi-accent-fg);
+    font-weight: 600;
+}
+
+.cheddi__confirm-approve--armed {
+    border-color: var(--cheddi-danger);
+    background-color: var(--cheddi-danger);
+    color: #fff;
+}
+
+.cheddi__confirm-decline {
+    border-color: var(--cheddi-border-color);
+    background-color: transparent;
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__confirm-decline:hover,
+.cheddi__confirm-decline:focus-visible {
+    background-color: var(--cheddi-hover);
+    color: var(--cheddi-fg);
+    outline: none;
+}
+
+.cheddi__confirm-approve:disabled,
+.cheddi__confirm-decline:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.cheddi__confirm-bulk {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.cheddi__confirm-block--submitted {
+    opacity: 0.8;
+}
+
+.cheddi__thinking {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    max-width: 90%;
+    margin: 2px 0;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border-top-left-radius: 2px;
+    background-color: var(--cheddi-surface-2);
+    color: var(--cheddi-muted-fg);
+    font-size: 13px;
+}
+
+.cheddi__thinking-dots {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.cheddi__thinking-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--cheddi-accent);
+    animation: cheddi-bounce 1.2s infinite ease-in-out both;
+}
+
+.cheddi__thinking-dots span:nth-child(1) {
+    animation-delay: -0.24s;
+}
+
+.cheddi__thinking-dots span:nth-child(2) {
+    animation-delay: -0.12s;
+}
+
+@keyframes cheddi-bounce {
+    0%, 80%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    40% {
+        transform: translateY(-5px);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cheddi__thinking-dots span {
+        animation: none;
+    }
+}
+
+.cheddi__message--summary {
+    align-items: stretch;
+}
+
+.cheddi__summary {
+    width: 100%;
+    margin: 4px 0;
+    padding: 6px 10px;
+    background-color: var(--cheddi-surface-2);
+    border: 1px dashed var(--cheddi-border-color);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.cheddi__summary-marker {
+    cursor: pointer;
+    text-align: center;
+    color: var(--cheddi-muted-fg);
+    font-style: italic;
+    list-style: none;
+}
+
+.cheddi__summary-marker::-webkit-details-marker {
+    display: none;
+}
+
+.cheddi__summary-body {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--cheddi-border-color);
+    color: var(--cheddi-fg);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.cheddi__message--system {
+    align-items: center;
+    text-align: center;
+    color: var(--cheddi-muted-fg);
+    font-size: 12px;
+    padding: 4px 8px;
+}
+
+.cheddi__message--warning {
+    width: 90%;
+    margin: 4px auto;
+    padding: 6px 10px;
+    background-color: rgba(240, 156, 66, 0.15);
+    border: 1px solid var(--cheddi-accent-border);
+    border-radius: 6px;
+    color: #8c5a1a;
+    font-weight: 500;
+}
+
+.cheddi__message--error {
+    color: var(--cheddi-danger);
+}
+
+.cheddi__quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px 0;
+}
+
+.cheddi__quick-actions[hidden] {
+    display: none;
+}
+
+.cheddi__quick-action {
+    padding: 3px 9px;
+    font-size: 12px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 12px;
+    background-color: var(--cheddi-surface-2);
+    color: var(--cheddi-muted-fg);
+    cursor: pointer;
+}
+
+.cheddi__quick-action:hover,
+.cheddi__quick-action:focus-visible {
+    background-color: var(--cheddi-hover);
+    border-color: var(--cheddi-accent-border);
+    color: var(--cheddi-fg);
+    outline: none;
+}
+
+.cheddi__attachment-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px 0;
+    background-color: var(--cheddi-bg);
+}
+
+.cheddi__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 3px 8px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.cheddi__chip--warning {
+    border-color: #F09C42;
+}
+
+.cheddi__chip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+}
+
+.cheddi__chip-hint {
+    opacity: 0.75;
+    font-size: 11px;
+}
+
+.cheddi__chip-remove {
+    border: 0;
+    background: transparent;
+    padding: 0 2px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.cheddi__input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--cheddi-border-color);
+    background-color: var(--cheddi-bg);
+}
+
+.cheddi__attachment-button,
+.cheddi__send-button {
+    flex: 0 0 auto;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--cheddi-muted-fg);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.cheddi__attachment-button {
+    width: 36px;
+    padding: 0;
+    font-size: 18px;
+}
+
+.cheddi__attachment-button:hover,
+.cheddi__attachment-button:focus-visible {
+    background-color: var(--cheddi-hover);
+    color: var(--cheddi-fg);
+    outline: none;
+}
+
+/*
+ * Attachment sits on top of send in a single column, which frees the left half of the
+ * composer row for the textarea. Two 36px buttons plus the gap add up to the composer's
+ * 80px default, so the column and the text field line up.
+ */
+.cheddi__input-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Match the send button's width so the column reads as one block. */
+.cheddi__input-actions .cheddi__attachment-button {
+    width: auto;
+}
+
+.cheddi__attachment-button[disabled],
+.cheddi__send-button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.cheddi__send-button:not([disabled]) {
+    border-color: var(--cheddi-accent-border);
+    background-color: var(--cheddi-accent);
+    color: var(--cheddi-accent-fg);
+    font-weight: 600;
+}
+
+.cheddi__composer {
+    position: relative;
+    flex: 1 1 auto;
+}
+
+/* Mirrors .cheddi__resize-handle, but drags only along the vertical axis. */
+.cheddi__composer-resize {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 20px;
+    z-index: 3;
+    cursor: ns-resize;
+    touch-action: none;
+    background: linear-gradient(135deg,
+        transparent 0%,
+        transparent 35%,
+        var(--cheddi-accent-border) 35%,
+        var(--cheddi-accent-border) 45%,
+        transparent 45%,
+        transparent 55%,
+        var(--cheddi-accent-border) 55%,
+        var(--cheddi-accent-border) 65%,
+        transparent 65%);
+    border-top-left-radius: 6px;
+}
+
+.cheddi__textarea {
+    display: block;
+    width: 100%;
+    /* Height is applied inline from the persisted state; these are the drag limits. */
+    min-height: 72px;
+    max-height: 320px;
+    padding: 8px 10px;
+    /* The grip sits in the top-left corner, so keep the first line clear of it. */
+    padding-left: 24px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    resize: none;
+    font: inherit;
+    color: inherit;
+    background-color: var(--cheddi-bg);
+}
+
+.cheddi__textarea:focus-visible {
+    outline: 2px solid var(--cheddi-accent);
+    outline-offset: -1px;
+}
+
+.cheddi__sessions-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background-color: var(--cheddi-bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top-left-radius: var(--cheddi-radius);
+    border-top-right-radius: var(--cheddi-radius);
+}
+
+.cheddi__sessions-panel[hidden] {
+    display: none;
+}
+
+.cheddi__sessions-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 8px 28px;
+    border-bottom: 1px solid var(--cheddi-border-color);
+}
+
+.cheddi__sessions-panel-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* While the conversations panel is open, the text-field resize grip below it does nothing but bleed an
+   orange stripe into the panel — hide it until the panel is closed again. */
+.cheddi__sessions-panel:not([hidden]) ~ .cheddi__input-area .cheddi__composer-resize {
+    display: none;
+}
+
+/* Context action at the top of the panel: back to the current chat, or start a new one when empty. */
+.cheddi__sessions-primary {
+    flex: 0 0 auto;
+    margin: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: center;
+}
+
+.cheddi__sessions-primary:hover {
+    background-color: var(--cheddi-hover);
+    border-color: var(--cheddi-accent-border);
+}
+
+.cheddi__sessions-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    margin: 0;
+    padding: 8px 0;
+    list-style: none;
+}
+
+.cheddi__sessions-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--cheddi-muted-fg);
+    font-size: 13px;
+}
+
+.cheddi__sessions-item {
+    display: flex;
+    align-items: stretch;
+    margin: 0 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+}
+
+.cheddi__sessions-item:hover {
+    background-color: var(--cheddi-hover);
+    border-color: var(--cheddi-border-color);
+}
+
+.cheddi__sessions-item--current {
+    background-color: rgba(240, 156, 66, 0.08);
+    border-color: var(--cheddi-accent-border);
+}
+
+.cheddi__sessions-item-open {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    min-width: 0;
+}
+
+.cheddi__sessions-item-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+/* Signals that the row opens the conversation. */
+.cheddi__sessions-item-chevron {
+    flex: 0 0 auto;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--cheddi-muted-fg);
+    transition: transform 0.1s ease;
+}
+
+.cheddi__sessions-item:hover .cheddi__sessions-item-chevron {
+    color: var(--cheddi-accent-border);
+    transform: translateX(2px);
+}
+
+.cheddi__sessions-item-title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.cheddi__sessions-item-meta {
+    font-size: 11px;
+    color: var(--cheddi-muted-fg);
+    margin-top: 2px;
+}
+
+.cheddi__sessions-item-delete {
+    flex: 0 0 auto;
+    width: 36px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--cheddi-muted-fg);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.cheddi__sessions-item:hover .cheddi__sessions-item-delete,
+.cheddi__sessions-item-delete:focus-visible {
+    opacity: 1;
+}
+
+.cheddi__sessions-item-delete:hover {
+    color: var(--cheddi-danger);
+}
+
+@media (max-width: 767px) {
+    #cheddi-drawer {
+        display: none !important;
+    }
+}
+
+/*
+ * The review modal lives outside the drawer, in TYPO3's own modal.
+ *
+ * The modal body already scrolls and grows into the dialog (flex-grow: 1, min-height: 0,
+ * overflow-y: auto), so it must not be given a height of its own: a max-height stops it from
+ * filling the dialog, and because .modal is transparent with a border, the leftover space shows
+ * up as an empty bordered strip below the footer.
+ *
+ * What actually cut the list off is .table-fit: it carries overflow-y: hidden and, as a flex
+ * child of the body, shrinks below its content height and clips the rest. Letting it scroll
+ * keeps the intro and the module link in place while only the change list moves.
+ */
+.cheddi-review-modal .table-fit {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.cheddi-help-modal__section + .cheddi-help-modal__section {
+    margin-top: 20px;
+}
+
+.cheddi-help-modal__section h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.05rem;
+}
+
+.cheddi-help-modal__section p {
+    margin: 0 0 8px 0;
+}
+
+.cheddi-help-modal__section ul {
+    margin: 0 0 8px 0;
+    padding-left: 20px;
+}

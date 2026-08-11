@@ -1,0 +1,29 @@
+# cat=ChEddi/basic; type=int+; label=Chat Session Lifetime (days):Days a chat session may stay inactive before the auto-delete scheduler soft-deletes it. Soft-deleted sessions are hard-deleted seven days later, together with their messages, their workspace change log and their attachments. An attachment survives when it left the "cheddi" upload folder or is referenced elsewhere.
+chatSessionLifetimeDays = 20
+
+# cat=ChEddi/writes; type=options[Inherit from MCP=inherit,Draft workspace=workspace,Live=live]; label=ChEddi Write Mode:Where ChEddi writes land. "Inherit" (default) follows the MCP write mode (ai_suite_mcp: mcpWriteMode); set it explicitly to decouple the editor chat from headless MCP usage. Draft workspace = always a draft (auto-provisioned if needed, requires ext:workspaces). Live = always direct to live.
+chatWriteMode = inherit
+
+# cat=ChEddi/basic; type=options[Inherit from AI Suite=inherit,Yes=1,No=0]; label=GDPR compliant mode:Only offer GDPR-compliant models in the chat (restricts the model list to libraries marked as GDPR-compliant on the AI Suite server, and blocks web search). "Inherit" (default) follows the AI Suite setting (ai_suite: forceGdpa). This setting can only tighten, never widen: with AI Suite on "Yes" the chat stays restricted even when set to "No" here.
+chatForceGdpa = inherit
+
+# cat=ChEddi/security; type=options[Inherit from MCP=inherit,Yes=1,No=0]; label=Allow Raw HTML Write:Whether ChEddi may store raw markup verbatim in code editor fields (e.g. tt_content.bodytext of CType "html"), which TYPO3 renders unfiltered. "Inherit" (default) follows the MCP setting (ai_suite_mcp: mcpAllowRawHtmlWrite). This setting can only tighten, never widen: with MCP set to "No" a write from the chat stays rejected here as well. A rejected write stores nothing, so the existing value survives.
+chatAllowRawHtmlWrite = inherit
+
+# cat=ChEddi/security; type=string; label=Excluded Tables:Comma-separated tables ChEddi must never read or write, on top of the MCP list (ai_suite_mcp: mcpExcludedTables). Empty (default) = exactly the MCP list; entries here are added to it and never remove one. TYPO3 backend permissions still apply additionally, and the exclusion also blocks admins.
+chatExcludedTables =
+
+# cat=ChEddi/security; type=string; label=Excluded Tools:Comma-separated MCP tool names ChEddi must never offer, on top of the built-in list (bulk runs, media upload, workspace diff, server diagnostics - all reachable through a backend module instead). The list is applied identically on every turn; a catalogue that varies per turn destroys the provider's prompt-prefix cache and was measured to cost more than it saves.
+chatExcludedTools =
+
+# cat=ChEddi/search; type=string; label=Additional Searchable Tables:Comma-separated tables searchContent sweeps for ChEddi on top of the MCP list (ai_suite_mcp: mcpSearchAdditionalTables) and the automatically detected IRRE child tables. Empty (default) = exactly what MCP searches. Use it for standalone record tables that are not children of anything, e.g. tx_news_domain_model_news. Excluded tables and backend permissions still apply.
+chatSearchAdditionalTables =
+
+# cat=ChEddi/search; type=string; label=Exclude Auto-Detected Tables from Search:Comma-separated tables ChEddi removes from the automatically detected IRRE child tables, on top of the MCP list (ai_suite_mcp: mcpExcludeAdditionalTablesFromSearch). Use it to silence noisy or irrelevant child tables in the chat. This only affects the auto-detected set: a table listed under "Additional Searchable Tables" is searched regardless. To block a table from ChEddi entirely, use "Excluded Tables" instead.
+chatExcludeAdditionalTablesFromSearch =
+
+# cat=ChEddi/logging; type=options[Inherit from MCP=inherit,On=1,Off=0]; label=Verbose INFO log:Write the verbose INFO trace to var/log/cheddi.log (turn lifecycle: chosen model, offered/called tools, charged credits). "Inherit" (default) follows the MCP setting (ai_suite_mcp: mcpLogVerbose). The WARNING+ alert log (var/log/cheddi_warnings.log) stays active either way. Switch it off in production once monitoring is mature to reduce I/O and PII surface.
+chatLogVerbose = inherit
+
+# cat=ChEddi/logging; type=string; label=Chat Log Redaction Patterns:Comma-separated additional regex patterns (without delimiters) whose matches are replaced with [REDACTED] in chat log entries. Built-in defaults (Bearer tokens, 64-char hex hashes, email addresses) and the MCP patterns (ai_suite_mcp: mcpLogRedactionPatterns) are always applied - these patterns are added on top.
+chatLogRedactionPatterns =

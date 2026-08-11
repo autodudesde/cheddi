@@ -1,0 +1,36 @@
+{
+  "name": "autodudes/cheddi",
+  "type": "typo3-cms-extension",
+  "description": "ChEddi - Chat interface for EXT:ai_suite. Adds a conversational backend drawer that lets editors interact with AI Suite tools via natural language, powered by the MCP ToolRegistry.",
+  "homepage": "https://www.autodudes.de/",
+  "license": [
+    "GPL-2.0-or-later"
+  ],
+  "version": "0.1.0",
+  "keywords": [
+    "TYPO3 CMS",
+    "AI Suite",
+    "Chat",
+    "AI Assistant"
+  ],
+  "require": {
+    "php": "^8.1",
+    "autodudes/ai-suite": "^12.22.0 || ^13.16.0 || ^14.4.0",
+    "autodudes/ai-suite-mcp": "^0.7",
+    "typo3/cms-workspaces": "^12.4.11 || ^13.4.1 || ^14.3.0",
+    "typo3/cms-scheduler": "^12.4.11 || ^13.4.1 || ^14.3.0",
+    "phpoffice/phpspreadsheet": "^3.10",
+    "phpoffice/phpword": "^1.4",
+    "smalot/pdfparser": "^2.12"
+  },
+  "autoload": {
+    "psr-4": {
+      "AutoDudes\\Cheddi\\": "Classes/"
+    }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "cheddi"
+    }
+  }
+}

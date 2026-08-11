@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0" xmlns:t3="http://typo3.org/schemas/xliff">
+    <file source-language="en" datatype="plaintext" original="messages" date="2026-04-24T00:00:00Z" product-name="cheddi">
+        <header/>
+        <body>
+            <trans-unit id="cheddi.permissions.enableChatInterface">
+                <source>Enable Chat Interface</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableChatInterfaceDescription">
+                <source>Allow backend users of this group to use the ChEddi drawer in the TYPO3 backend.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableWebResearch">
+                <source>Enable Web Research</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableWebResearchDescription">
+                <source>Allow ChEddi to search and read the open web for this group. The editor's query leaves the installation, so this is off by default; it is never available in GDPR mode.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelOpenAiLuna">
+                <source>ChEddi model: OpenAI GPT-5.6 Luna</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelIonosQwen35">
+                <source>ChEddi model: IONOS Qwen3.5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeHaiku45">
+                <source>ChEddi model: Claude Haiku 4.5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeSonnet5">
+                <source>ChEddi model: Claude Sonnet 5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelChatDescription">
+                <source>Allow backend users of this group to select this chat model in ChEddi.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.model.OpenAiLuna.label">
+                <source>OpenAI GPT-5.6 Luna</source>
+            </trans-unit>
+            <trans-unit id="cheddi.model.IonosQwen35.label">
+                <source>IONOS Qwen3.5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.model.ClaudeHaiku45.label">
+                <source>Claude Haiku 4.5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.model.ClaudeSonnet5.label">
+                <source>Claude Sonnet 5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.promptTemplate.scopeCheddi">
+                <source>ChEddi (chat starter template)</source>
+            </trans-unit>
+            <trans-unit id="cheddi.tca.session">
+                <source>ChEddi chat session</source>
+            </trans-unit>
+            <trans-unit id="cheddi.tca.session.sessionUuid">
+                <source>Session UUID</source>
+            </trans-unit>
+            <trans-unit id="cheddi.tca.session.beUser">
+                <source>Backend user</source>
+            </trans-unit>
+            <trans-unit id="cheddi.tca.session.model">
+                <source>Chat model</source>
+            </trans-unit>
+            <trans-unit id="cheddi.tca.session.lastActivity">
+                <source>Last activity</source>
+            </trans-unit>
+        </body>
+    </file>
+</xliff>
