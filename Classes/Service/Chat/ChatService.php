@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\UuidService;
+use AutoDudes\AiSuiteMcp\Mcp\Service\BackendBaseUrlResolver;
 use AutoDudes\AiSuiteMcp\Mcp\Service\NavigationTargetCollector;
 use AutoDudes\Cheddi\Domain\Enum\Severity;
 use AutoDudes\Cheddi\Domain\Model\ChatMessage;
@@ -32,6 +33,13 @@ class ChatService
 {
     public const TOOL_CAP_SOFT_WARNING = 20;
     public const TOOL_CAP_HARD_LIMIT = 40;
+
+    public const CONTEXT_NOTICE_RATIO = 0.8;
+    public const CONTEXT_WARNING_RATIO = 0.95;
+
+    public const CONTEXT_LEVEL_OK = 'ok';
+    public const CONTEXT_LEVEL_NOTICE = 'notice';
+    public const CONTEXT_LEVEL_WARNING = 'warning';
 
     public const SESSION_TITLE_MAX_LENGTH = 40;
 
@@ -51,7 +59,11 @@ class ChatService
         protected readonly ContextPrefillService $contextPrefillService,
         protected readonly ChatWriteCaptureService $writeCapture,
         protected readonly PendingPreviewService $pendingPreviewService,
+        protected readonly ChatProgressService $progressService,
+        protected readonly ChatModelPolicy $modelPolicy,
+        protected readonly ChatOrientationService $orientationService,
         protected readonly NavigationTargetCollector $navigationTargetCollector,
+        protected readonly BackendBaseUrlResolver $backendBaseUrlResolver,
         protected readonly LoggerInterface $logger,
     ) {}
 
@@ -118,6 +130,63 @@ class ChatService
         return $this->runTurn($session, $request);
     }
 
+    public function summarizeHistory(string $sessionUuid): TurnResult
+    {
+        $beUserUid = $this->resolveBeUserUid();
+        if (0 === $beUserUid) {
+            return TurnResult::error('', 'No backend user in context.');
+        }
+        $session = $this->sessionRepository->findByUuidForUser($sessionUuid, $beUserUid);
+        if (null === $session) {
+            return TurnResult::error($sessionUuid, 'Chat session not found.');
+        }
+
+        $history = $this->messageRepository->findBySession($session->uid);
+        if ([] === $history) {
+            return TurnResult::error($session->sessionUuid, 'There is nothing to summarize yet.', 'nothingToSummarize');
+        }
+
+        $rejected = $this->guardSessionModel($session);
+        if (null !== $rejected) {
+            return $rejected;
+        }
+
+        $answer = $this->chatRequestService->executeTurn(
+            $session->model,
+            $this->reconcileDanglingToolCalls(
+                array_map(fn (ChatMessage $m): array => $this->messageToApiShape($m, true), $history),
+            ),
+            [],
+            '',
+            ChatRequestService::INTENT_SUMMARIZE,
+        );
+
+        if (ChatTurnAnswer::TYPE_ERROR === $answer->type) {
+            return TurnResult::error(
+                $session->sessionUuid,
+                $answer->errorMessage ?? 'Unknown chat error.',
+                $answer->chatErrorCode,
+            );
+        }
+
+        $replacedIds = array_map(static fn (ChatMessage $m): int => $m->uid, $history);
+        $summaryContent = (string) ($answer->historySummary['summaryContent'] ?? '');
+        $this->applyHistorySummaryIfPresent($session, $answer, $replacedIds);
+        $this->sessionRepository->touchActivity($session->uid);
+
+        // The summarising call reports the usage of the history it has just replaced.
+        return TurnResult::final(
+            $session->sessionUuid,
+            '',
+            [],
+            $this->buildUsage($answer),
+            $answer->contextWindowTokens,
+            '' === $summaryContent
+                ? null
+                : ['summaryContent' => $summaryContent, 'replacedCount' => count($replacedIds)],
+        )->withContextFill(['ratio' => 0.0, 'level' => self::CONTEXT_LEVEL_OK]);
+    }
+
     /**
      * @param list<array{toolCallId: string, approved: bool}> $approvals
      */
@@ -148,10 +217,14 @@ class ChatService
         }
 
         $this->writeCapture->begin();
+        $touchedTables = [];
         $applied = ['executed' => [], 'failed' => [], 'declined' => [], 'rejected' => []];
+        $step = 0;
+        $total = count($pendingCalls);
 
         try {
             foreach ($pendingCalls as $call) {
+                ++$step;
                 $callId = (string) $call['id'];
                 $approved = $approvalMap[$callId] ?? false;
 
@@ -195,6 +268,7 @@ class ChatService
                     continue;
                 }
 
+                $this->progressService->toolStarted($session->sessionUuid, (string) $call['name'], $step, $total);
                 $result = $this->toolBridge->execute((string) $call['name'], $call['arguments'], $context);
                 $applied[$result['isError'] ? 'failed' : 'executed'][] = (string) $call['name'];
                 $this->rememberNavigationTargets($result['structured'] ?? null);
@@ -210,6 +284,7 @@ class ChatService
         } finally {
             foreach ($this->writeCapture->flush() as $change) {
                 $this->changeTracker->track($session->uid, $change['table'], $change['uid'], $change['action']);
+                $touchedTables[$change['table']] = true;
             }
             $this->writeCapture->end();
         }
@@ -224,7 +299,7 @@ class ChatService
 
         $this->sessionRepository->touchActivity($session->uid);
 
-        return $this->runTurn($session, $request);
+        return $this->runTurn($session, $request)->withTouchedTables(array_keys($touchedTables));
     }
 
     /**
@@ -259,7 +334,7 @@ class ChatService
      *     uuid: string,
      *     title: string,
      *     model: string,
-     *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string}>,
+     *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, sources?: list<array<string, mixed>>}>,
      * }
      */
     public function loadSession(string $sessionUuid): ?array
@@ -274,7 +349,7 @@ class ChatService
         }
 
         $messages = array_map(
-            $this->messageToApiShape(...),
+            fn (ChatMessage $m): array => $this->messageToApiShape($m, withSources: true),
             $this->messageRepository->findBySession($session->uid),
         );
 
@@ -367,14 +442,16 @@ class ChatService
         return $pending;
     }
 
-    private function applyHistorySummaryIfPresent(ChatSession $session, ChatTurnAnswer $answer): void
+    /**
+     * @param list<int> $replacedIds
+     */
+    private function applyHistorySummaryIfPresent(ChatSession $session, ChatTurnAnswer $answer, array $replacedIds): void
     {
         if (null === $answer->historySummary) {
             return;
         }
-        $replacedIds = $answer->historySummary['replacedMessageIds'] ?? [];
         $summaryContent = $answer->historySummary['summaryContent'] ?? '';
-        if ([] === $replacedIds || '' === $summaryContent) {
+        if ('' === $summaryContent || [] === $replacedIds) {
             return;
         }
         $this->messageRepository->replaceWithSummary($session->uid, $replacedIds, $summaryContent);
@@ -384,18 +461,86 @@ class ChatService
         ]);
     }
 
+    /**
+     * @return array{key: string, params?: array<string, string>}
+     */
+    private function confirmTarget(): array
+    {
+        if ('live' === $this->orientationService->getWriteMode()) {
+            return ['key' => 'cheddi.confirm.targetLive'];
+        }
+
+        $workspace = $this->orientationService->resolveWorkspaceForDisplay();
+        if ($workspace['pending']) {
+            return ['key' => 'cheddi.confirm.targetWorkspacePending'];
+        }
+
+        $title = $workspace['title'];
+        if ('' === $title) {
+            return ['key' => 'cheddi.confirm.targetWorkspace'];
+        }
+
+        return ['key' => 'cheddi.confirm.targetWorkspaceNamed', 'params' => ['workspace' => $title]];
+    }
+
+    /**
+     * @return null|array{ratio: float, level: string}
+     */
+    private function contextFill(ChatTurnAnswer $answer): ?array
+    {
+        if ($answer->contextWindowTokens <= 0) {
+            return null;
+        }
+
+        $ratio = $answer->inputTokens / $answer->contextWindowTokens;
+
+        return ['ratio' => $ratio, 'level' => self::contextLevel($ratio)];
+    }
+
+    private static function contextLevel(float $ratio): string
+    {
+        if ($ratio >= self::CONTEXT_WARNING_RATIO) {
+            return self::CONTEXT_LEVEL_WARNING;
+        }
+
+        return $ratio >= self::CONTEXT_NOTICE_RATIO ? self::CONTEXT_LEVEL_NOTICE : self::CONTEXT_LEVEL_OK;
+    }
+
+    private function guardSessionModel(ChatSession $session): ?TurnResult
+    {
+        $reason = $this->modelPolicy->reasonNotSelectable($session->model);
+        if (null === $reason) {
+            return null;
+        }
+        $this->logger->warning('ChEddi: session model is no longer selectable', [
+            'sessionUuid' => $session->sessionUuid,
+            'model' => $session->model,
+            'reason' => $reason,
+        ]);
+
+        return TurnResult::error($session->sessionUuid, 'The model of this conversation is no longer available.', $reason);
+    }
+
     private function runTurn(ChatSession $session, ServerRequestInterface $request, bool $prefillContext = false): TurnResult
     {
+        $rejected = $this->guardSessionModel($session);
+        if (null !== $rejected) {
+            return $rejected;
+        }
+
+        $this->progressService->startTurn($session->sessionUuid);
         $context = new ChatToolContext($request, $session->sessionUuid, $session->model);
         $history = $this->messageRepository->findBySession($session->uid);
         $messages = $this->reconcileDanglingToolCalls(
             array_map(fn (ChatMessage $m): array => $this->messageToApiShape($m, true), $history),
         );
-        $tools = $this->toolBridge->getAvailableToolDefinitions();
+        $tools = $this->toolBridge->getAvailableToolDefinitions($session->model);
+        $webResearch = $this->toolBridge->webResearchTurnConfiguration($session->model);
         $systemContext = $this->contextCollector->build(
             $request,
-            $this->toolBridge->webResearchAvailable(),
+            $this->toolBridge->webResearchAvailable($session->model),
             $this->toolBridge->webPageReadingAvailable(),
+            $this->toolBridge->nativeWebResearchAvailable($session->model),
         );
         if ($prefillContext) {
             $messages = [...$messages, ...$this->contextPrefillService->buildSyntheticMessages($context)];
@@ -406,6 +551,7 @@ class ChatService
             $messages,
             $tools,
             $systemContext,
+            webResearch: $webResearch,
         );
 
         if (ChatTurnAnswer::TYPE_ERROR === $answer->type) {
@@ -425,16 +571,15 @@ class ChatService
                 $session->sessionUuid,
                 $this->buildUsage($answer),
                 $answer->contextWindowTokens,
-            );
+            )->withContextFill($this->contextFill($answer));
         }
-
-        $this->applyHistorySummaryIfPresent($session, $answer);
 
         $this->messageRepository->append($session->uid, [
             'role' => ChatMessage::ROLE_ASSISTANT,
             'content' => $answer->assistantText,
             'tool_calls' => $this->encodeToolCalls($answer->toolCalls),
             'provider_items' => $this->encodeProviderItems($answer->providerItems),
+            'sources' => $this->encodeSources($this->withEmptyText($answer->sources)),
         ]);
 
         if ([] === $answer->toolCalls) {
@@ -444,10 +589,15 @@ class ChatService
                 [],
                 $this->buildUsage($answer),
                 $answer->contextWindowTokens,
-                $answer->historySummary,
+                // Only summarizeHistory() may summarise; a volunteered one would clear the transcript.
+                null,
                 [],
                 $this->navigationTargets,
-            ));
+                $this->mergeSources(
+                    $this->withEmptyText($answer->sources),
+                    $this->collectSourcesFromCurrentSequence($history),
+                ),
+            )->withContextFill($this->contextFill($answer)));
         }
 
         $existingToolCount = $this->countToolMessagesInCurrentSequence($history);
@@ -460,7 +610,7 @@ class ChatService
                 $answer->assistantText,
                 $this->buildUsage($answer),
                 $answer->contextWindowTokens,
-            ));
+            )->withContextFill($this->contextFill($answer)));
         }
 
         $notices = [];
@@ -542,6 +692,114 @@ class ChatService
     }
 
     /**
+     * @param list<array{title: string, url: string, snippet: string}> $sources
+     *
+     * @return list<array{title: string, url: string, snippet: string, text: string}>
+     */
+    private function withEmptyText(array $sources): array
+    {
+        return array_map(
+            static fn (array $source): array => $source + ['text' => ''],
+            $sources,
+        );
+    }
+
+    /**
+     * @param list<array{title: string, url: string, snippet: string, text: string}> ...$lists
+     *
+     * @return list<array{title: string, url: string, snippet: string, text: string}>
+     */
+    private function mergeSources(array ...$lists): array
+    {
+        $merged = [];
+        foreach ($lists as $list) {
+            foreach ($list as $source) {
+                $merged[$source['url']] ??= $source;
+            }
+        }
+
+        return array_values($merged);
+    }
+
+    /**
+     * @return array<string, array{title: string, url: string, snippet: string, text: string}>
+     */
+    private function extractSources(mixed $structured): array
+    {
+        if (!is_array($structured) || !is_array($structured['webSearch']['sources'] ?? null)) {
+            return [];
+        }
+
+        $sources = [];
+        foreach ($structured['webSearch']['sources'] as $source) {
+            $url = is_array($source) ? trim((string) ($source['url'] ?? '')) : '';
+            if ('' === $url) {
+                continue;
+            }
+            $sources[$url] = [
+                'title' => (string) ($source['title'] ?? $url),
+                'url' => $url,
+                'snippet' => (string) ($source['snippet'] ?? ''),
+                'text' => (string) ($source['text'] ?? ''),
+            ];
+        }
+
+        return $sources;
+    }
+
+    /**
+     * @param list<array{title: string, url: string, snippet: string, text: string}> $sources
+     */
+    private function encodeSources(array $sources): string
+    {
+        if ([] === $sources) {
+            return '';
+        }
+
+        try {
+            return json_encode($sources, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return '';
+        }
+    }
+
+    /**
+     * @param list<ChatMessage> $messages
+     *
+     * @return list<array{title: string, url: string, snippet: string, text: string}>
+     */
+    private function collectSourcesFromCurrentSequence(array $messages): array
+    {
+        $collected = [];
+        for ($i = count($messages) - 1; $i >= 0; --$i) {
+            $message = $messages[$i];
+            if (ChatMessage::ROLE_USER === $message->role) {
+                break;
+            }
+            if ('' === $message->sources) {
+                continue;
+            }
+            $decoded = json_decode($message->sources, true);
+            if (!is_array($decoded)) {
+                continue;
+            }
+            foreach ($decoded as $source) {
+                $url = is_array($source) ? trim((string) ($source['url'] ?? '')) : '';
+                if ('' !== $url && !isset($collected[$url])) {
+                    $collected[$url] = [
+                        'title' => (string) ($source['title'] ?? $url),
+                        'url' => $url,
+                        'snippet' => (string) ($source['snippet'] ?? ''),
+                        'text' => (string) ($source['text'] ?? ''),
+                    ];
+                }
+            }
+        }
+
+        return array_values(array_reverse($collected, true));
+    }
+
+    /**
      * @param list<array<string, mixed>> $providerItems
      */
     private function encodeProviderItems(array $providerItems): string
@@ -588,25 +846,18 @@ class ChatService
         $autoExecuted = [];
         $pending = [];
         $sources = [];
+        $step = 0;
+        $total = count($answer->toolCalls);
         foreach ($answer->toolCalls as $call) {
+            ++$step;
             $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments']);
             if (Severity::ReadOnly === $severity) {
+                $this->progressService->toolStarted($session->sessionUuid, $call['name'], $step, $total);
                 $result = $this->toolBridge->execute($call['name'], $call['arguments'], $context);
                 $structured = $result['structured'] ?? null;
                 $this->rememberNavigationTargets($structured);
-                if (is_array($structured) && is_array($structured['webSearch']['sources'] ?? null)) {
-                    foreach ($structured['webSearch']['sources'] as $source) {
-                        $url = is_array($source) ? trim((string) ($source['url'] ?? '')) : '';
-                        if ('' !== $url) {
-                            $sources[$url] = [
-                                'title' => (string) ($source['title'] ?? $url),
-                                'url' => $url,
-                                'snippet' => (string) ($source['snippet'] ?? ''),
-                                'text' => (string) ($source['text'] ?? ''),
-                            ];
-                        }
-                    }
-                }
+                $callSources = $this->extractSources($structured);
+                $sources = [...$sources, ...$callSources];
                 $this->messageRepository->append($session->uid, [
                     'role' => ChatMessage::ROLE_TOOL,
                     'content' => $result['content'],
@@ -614,6 +865,7 @@ class ChatService
                     'tool_status' => $result['isError']
                         ? ChatMessage::TOOL_STATUS_FAILED
                         : ChatMessage::TOOL_STATUS_DONE,
+                    'sources' => $this->encodeSources(array_values($callSources)),
                 ]);
                 $autoExecuted[] = [
                     'id' => $call['id'],
@@ -631,6 +883,7 @@ class ChatService
                 'name' => $call['name'],
                 'arguments' => $call['arguments'],
                 'severity' => $severity->value,
+                'creditCost' => $this->toolBridge->creditCost($call['name']),
                 'preview' => $this->pendingPreviewService->build($call['name'], $call['arguments']),
             ];
         }
@@ -644,7 +897,8 @@ class ChatService
                 $answer->contextWindowTokens,
                 $notices,
                 $autoExecuted,
-            );
+                $this->confirmTarget(),
+            )->withContextFill($this->contextFill($answer));
         }
 
         return TurnResult::continuing(
@@ -654,9 +908,9 @@ class ChatService
             $this->buildUsage($answer),
             $answer->contextWindowTokens,
             $notices,
-            array_values($sources),
+            $this->mergeSources($this->withEmptyText($answer->sources), array_values($sources)),
             $this->navigationTargets,
-        );
+        )->withContextFill($this->contextFill($answer));
     }
 
     private function rememberNavigationTargets(mixed $structured): void
@@ -666,8 +920,47 @@ class ChatService
         }
         $this->navigationTargets = $this->navigationTargetCollector->merge(
             $this->navigationTargets,
-            $this->navigationTargetCollector->collect($structured),
+            $this->withSameOriginUrlsOnly($this->navigationTargetCollector->collect($structured)),
         );
+    }
+
+    /**
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $groups
+     *
+     * @return list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>
+     */
+    private function withSameOriginUrlsOnly(array $groups): array
+    {
+        $host = null;
+        $base = $this->backendBaseUrlResolver->getBaseUrl();
+        if (null !== $base) {
+            $host = parse_url($base, PHP_URL_HOST);
+        }
+
+        $kept = [];
+        foreach ($groups as $group) {
+            $targets = array_values(array_filter(
+                $group['targets'],
+                function (array $target) use ($host): bool {
+                    if (str_starts_with($target['url'], '/')) {
+                        return true;
+                    }
+                    if (1 !== preg_match('#^https?://#i', $target['url'])) {
+                        return false;
+                    }
+                    $targetHost = parse_url($target['url'], PHP_URL_HOST);
+
+                    return is_string($host) && $targetHost === $host;
+                },
+            ));
+            if ([] === $targets) {
+                continue;
+            }
+            $group['targets'] = $targets;
+            $kept[] = $group;
+        }
+
+        return $kept;
     }
 
     private function resolveSession(?string $sessionUuid, int $beUserUid, string $model): ?ChatSession
@@ -726,6 +1019,9 @@ class ChatService
             'totalCredits' => $answer->totalCredits,
             'remainingCredits' => $answer->remainingCredits,
             'lowBalance' => $answer->lowBalance,
+            'lowRemaining' => null !== $answer->remainingCredits
+                && $answer->remainingCredits > 0
+                && $answer->remainingCredits < ChatCreditsService::LOW_BALANCE_THRESHOLD,
         ];
     }
 
@@ -787,10 +1083,13 @@ class ChatService
     }
 
     /**
-     * @return array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, providerItems?: string}
+     * @return array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, providerItems?: string, sources?: list<array<string, mixed>>}
      */
-    private function messageToApiShape(ChatMessage $message, bool $withProviderItems = false): array
-    {
+    private function messageToApiShape(
+        ChatMessage $message,
+        bool $withProviderItems = false,
+        bool $withSources = false,
+    ): array {
         $shape = [
             'role' => $message->role,
             'content' => $message->content,
@@ -812,6 +1111,14 @@ class ChatService
         }
         if ($withProviderItems && '' !== $message->providerItems) {
             $shape['providerItems'] = $message->providerItems;
+        }
+        if ($withSources && '' !== $message->sources) {
+            $decoded = json_decode($message->sources, true);
+            if (is_array($decoded)) {
+                /** @var list<array<string, mixed>> $sources */
+                $sources = array_values(array_filter($decoded, 'is_array'));
+                $shape['sources'] = $sources;
+            }
         }
 
         return $shape;

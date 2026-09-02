@@ -6,7 +6,7 @@
   "license": [
     "GPL-2.0-or-later"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "keywords": [
     "TYPO3 CMS",
     "AI Suite",
@@ -21,6 +21,7 @@
     "typo3/cms-scheduler": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "phpoffice/phpspreadsheet": "^3.10",
     "phpoffice/phpword": "^1.4",
+    "symfony/clock": "^6.4 || ^7.0 || ^8.0",
     "smalot/pdfparser": "^2.12"
   },
   "autoload": {

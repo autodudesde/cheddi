@@ -100,6 +100,32 @@ class ChatSettingsService implements SingletonInterface
         return $value > 0 ? $value : ChatSessionAutoDeleter::DEFAULT_LIFETIME_DAYS;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function getWebResearchAllowedDomains(): array
+    {
+        return $this->list('chatWebResearchAllowedDomains');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getWebResearchBlockedDomains(): array
+    {
+        return $this->list('chatWebResearchBlockedDomains');
+    }
+
+    public function getWebResearchCountry(): string
+    {
+        return strtoupper($this->setting('chatWebResearchCountry'));
+    }
+
+    public function getWebResearchMaxSearches(): int
+    {
+        return (int) $this->setting('chatWebResearchMaxSearches');
+    }
+
     private function boolOverride(string $key): ?bool
     {
         $value = $this->setting($key);

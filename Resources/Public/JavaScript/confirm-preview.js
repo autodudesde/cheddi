@@ -32,7 +32,7 @@ export function renderPendingPreview(preview) {
     if (preview.truncated) {
         const more = document.createElement('div');
         more.className = 'cheddi__preview-more';
-        more.textContent = ll('cheddi.preview.moreRecords', '+ {count} more record(s), see the technical details', {
+        more.textContent = ll('cheddi.preview.moreRecords', {
             count: preview.total - preview.records.length,
         });
         container.append(more);
@@ -55,19 +55,19 @@ function renderPageTree(preview) {
     const header = document.createElement('div');
     header.className = 'cheddi__preview-record-header';
     const badge = document.createElement('span');
-    badge.className = 'cheddi__preview-action cheddi__preview-action--create';
+    badge.className = 'badge cheddi__preview-action cheddi__preview-action--create';
     badge.textContent = actionLabel('create');
     header.append(badge);
     const title = document.createElement('span');
     title.className = 'cheddi__preview-title';
-    title.textContent = ll('cheddi.preview.pageTree.title', '{count} new page(s)', { count: preview.total });
+    title.textContent = ll('cheddi.preview.pageTree.title', { count: preview.total });
     header.append(title);
     item.append(header);
 
     if (preview.parentLabel) {
         const context = document.createElement('div');
         context.className = 'cheddi__preview-context';
-        context.textContent = ll('cheddi.preview.pageTree.under', 'Below: {parent}', { parent: preview.parentLabel });
+        context.textContent = ll('cheddi.preview.pageTree.under', { parent: preview.parentLabel });
         item.append(context);
     }
 
@@ -87,7 +87,7 @@ function renderPageTree(preview) {
     if (preview.truncated) {
         const more = document.createElement('div');
         more.className = 'cheddi__preview-more';
-        more.textContent = ll('cheddi.preview.moreRecords', '+ {count} more record(s), see the technical details', {
+        more.textContent = ll('cheddi.preview.moreRecords', {
             count: preview.total - preview.pages.length,
         });
         item.append(more);
@@ -130,7 +130,7 @@ function renderRecord(record) {
     if (record.hiddenFieldCount > 0) {
         const more = document.createElement('div');
         more.className = 'cheddi__preview-more';
-        more.textContent = ll('cheddi.preview.moreFields', '+ {count} more field(s)', {
+        more.textContent = ll('cheddi.preview.moreFields', {
             count: record.hiddenFieldCount,
         });
         item.append(more);
@@ -139,7 +139,7 @@ function renderRecord(record) {
     if (Array.isArray(record.translations) && record.translations.length > 0) {
         const translations = document.createElement('div');
         translations.className = 'cheddi__preview-more';
-        translations.textContent = ll('cheddi.preview.translations', '+ one translation each in: {languages}', {
+        translations.textContent = ll('cheddi.preview.translations', {
             languages: record.translations.join(', '),
         });
         item.append(translations);
@@ -178,10 +178,10 @@ function recordContext(record) {
     const parts = [];
 
     if (record.pageLabel) {
-        parts.push(ll('cheddi.preview.page', 'Page: {page}', { page: record.pageLabel }));
+        parts.push(ll('cheddi.preview.page', { page: record.pageLabel }));
     }
     if (record.action === 'create' && record.position) {
-        parts.push(ll('cheddi.preview.position', 'Position: {position}', { position: record.position }));
+        parts.push(ll('cheddi.preview.position', { position: record.position }));
     }
     if (record.uid) {
         parts.push(`UID ${record.uid}`);
@@ -224,7 +224,7 @@ function valueEl(value, truncated, kind = '') {
     const text = String(value ?? '');
     if (text === '') {
         el.classList.add('cheddi__preview-value--empty');
-        el.textContent = ll('cheddi.preview.empty', '(empty)');
+        el.textContent = ll('cheddi.preview.empty');
 
         return el;
     }
@@ -237,7 +237,7 @@ function valueEl(value, truncated, kind = '') {
 function unchangedMarker() {
     const el = document.createElement('span');
     el.className = 'cheddi__preview-unchanged';
-    el.textContent = ll('cheddi.preview.unchanged', 'unchanged');
+    el.textContent = ll('cheddi.preview.unchanged');
 
     return el;
 }
@@ -246,21 +246,22 @@ function arrow() {
     const el = document.createElement('span');
     el.className = 'cheddi__preview-arrow';
     el.textContent = '→';
-    el.setAttribute('aria-label', ll('cheddi.preview.becomes', 'becomes'));
+    el.setAttribute('aria-label', ll('cheddi.preview.becomes'));
 
     return el;
 }
 
 function actionLabel(action) {
     const labels = {
-        create: ll('cheddi.preview.action.create', 'New'),
-        update: ll('cheddi.preview.action.update', 'Change'),
-        delete: ll('cheddi.preview.action.delete', 'Delete'),
-        copy: ll('cheddi.preview.action.copy', 'Copy'),
-        move: ll('cheddi.preview.action.move', 'Move'),
-        localize: ll('cheddi.preview.action.localize', 'Translate'),
-        skipped: ll('cheddi.preview.action.skipped', 'Skipped'),
-        invalid: ll('cheddi.preview.action.invalid', 'Invalid'),
+        create: ll('cheddi.preview.action.create'),
+        update: ll('cheddi.preview.action.update'),
+        delete: ll('cheddi.preview.action.delete'),
+        copy: ll('cheddi.preview.action.copy'),
+        move: ll('cheddi.preview.action.move'),
+        localize: ll('cheddi.preview.action.localize'),
+        skipped: ll('cheddi.preview.action.skipped'),
+        target: ll('cheddi.preview.action.target'),
+        invalid: ll('cheddi.preview.action.invalid'),
     };
 
     return labels[action] || labels.update;

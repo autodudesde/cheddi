@@ -1,14 +1,16 @@
-import { ll } from '@autodudes/cheddi/i18n.js';
+import { ll, llOr } from '@autodudes/cheddi/i18n.js';
 
 export function mapServerError(chatErrorCode, fallback) {
-    const key = chatErrorCode ? 'cheddi.error.' + chatErrorCode : 'cheddi.error.unknown';
-    const generic = fallback || ll('cheddi.error.unknown', 'Unknown error.');
-    return ll(key, generic);
+    const generic = fallback || ll('cheddi.error.unknown');
+    if (!chatErrorCode) {
+        return generic;
+    }
+    return llOr('cheddi.error.' + chatErrorCode, generic);
 }
 
 export function friendlyToolLabel(name) {
     if (!name) {
-        return ll('cheddi.tool.fallback', 'Action');
+        return ll('cheddi.tool.fallback');
     }
     const label = (typeof TYPO3 !== 'undefined' && TYPO3.lang)
         ? TYPO3.lang['cheddi.tool.' + name]

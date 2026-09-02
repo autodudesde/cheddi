@@ -39,6 +39,8 @@ CREATE TABLE tx_cheddi_message (
     attachments mediumtext,
     # Provider-native items of an assistant turn, as JSON. Opaque: stored and replayed unread.
     provider_items mediumtext,
+    # Web research sources of a tool message, as JSON. Read back so the closing turn, which runs in a later request, can still carry them.
+    sources mediumtext,
 
     PRIMARY KEY (uid),
     KEY session_sort (session, sort)

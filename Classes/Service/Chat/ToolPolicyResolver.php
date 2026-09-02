@@ -38,7 +38,8 @@ class ToolPolicyResolver
         }
 
         if (true === ($annotations['readOnlyHint'] ?? false)) {
-            return Severity::ReadOnly;
+            // Kostenpflichtige Read-Tools werden wie ein Write bestätigt
+            return ($tool->getCreditCost() ?? 0) > 0 ? Severity::Write : Severity::ReadOnly;
         }
 
         return Severity::Write;

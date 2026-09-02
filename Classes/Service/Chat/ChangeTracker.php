@@ -15,6 +15,8 @@ declare(strict_types=1);
 namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
+use AutoDudes\AiSuite\Service\TcaCompatibilityService;
+use AutoDudes\AiSuiteMcp\Mcp\Service\WorkspaceRecordService;
 use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
@@ -27,6 +29,8 @@ class ChangeTracker
         private readonly ChatOrientationService $orientationService,
         private readonly BackendUserService $backendUserService,
         private readonly Context $context,
+        private readonly WorkspaceRecordService $workspaceRecordService,
+        private readonly TcaCompatibilityService $tcaCompatibilityService,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -79,14 +83,26 @@ class ChangeTracker
 
     protected function resolveLiveUid(string $table, int $uid): int
     {
-        $liveUid = BackendUtility::getLiveVersionIdOfRecord($table, $uid);
-
-        return is_int($liveUid) && $liveUid > 0 ? $liveUid : $uid;
+        return $this->workspaceRecordService->resolveLiveUid($table, $uid);
     }
 
     protected function resolveWorkspaceRecordUid(int $workspace, string $table, int $liveUid): int
     {
-        $versioned = BackendUtility::getWorkspaceVersionOfRecord($workspace, $table, $liveUid, 'uid');
+        if (!$this->tcaCompatibilityService->isWorkspaceAware($table)) {
+            return $liveUid;
+        }
+
+        try {
+            $versioned = BackendUtility::getWorkspaceVersionOfRecord($workspace, $table, $liveUid, 'uid');
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: workspace version lookup failed', [
+                'table' => $table,
+                'uid' => $liveUid,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return $liveUid;
+        }
 
         return is_array($versioned) && isset($versioned['uid']) ? (int) $versioned['uid'] : $liveUid;
     }

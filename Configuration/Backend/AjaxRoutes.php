@@ -7,10 +7,6 @@ use AutoDudes\Cheddi\Controller\ChatController;
 use AutoDudes\Cheddi\Controller\WorkspaceReviewController;
 
 return [
-    'cheddi_attachment_preflight' => [
-        'path' => '/cheddi/attachment/preflight',
-        'target' => AttachmentController::class.'::preflightAction',
-    ],
     'cheddi_attachment_upload' => [
         'path' => '/cheddi/attachment/upload',
         'target' => AttachmentController::class.'::uploadAction',
@@ -35,25 +31,25 @@ return [
         'path' => '/cheddi/turn/continue',
         'target' => ChatController::class.'::continueTurnAction',
     ],
+    'cheddi_turn_progress' => [
+        'path' => '/cheddi/turn/progress',
+        'target' => ChatController::class.'::turnProgressAction',
+    ],
+    'cheddi_summarize' => [
+        'path' => '/cheddi/summarize',
+        'target' => ChatController::class.'::summarizeHistoryAction',
+    ],
     'cheddi_confirm' => [
         'path' => '/cheddi/confirm',
         'target' => ChatController::class.'::applyConfirmationsAction',
     ],
-    'cheddi_models' => [
-        'path' => '/cheddi/models',
-        'target' => ChatController::class.'::availableModelsAction',
+    'cheddi_status' => [
+        'path' => '/cheddi/status',
+        'target' => ChatController::class.'::statusAction',
     ],
     'cheddi_help' => [
         'path' => '/cheddi/help',
         'target' => ChatController::class.'::helpAction',
-    ],
-    'cheddi_templates' => [
-        'path' => '/cheddi/templates',
-        'target' => ChatController::class.'::availableTemplatesAction',
-    ],
-    'cheddi_languages' => [
-        'path' => '/cheddi/languages',
-        'target' => ChatController::class.'::availableLanguagesAction',
     ],
     'cheddi_sessions_list' => [
         'path' => '/cheddi/sessions',

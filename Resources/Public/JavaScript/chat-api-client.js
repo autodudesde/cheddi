@@ -1,6 +1,7 @@
-import { readBackendContext } from '@autodudes/cheddi/backend-context.js';
+import { readTurnContext } from '@autodudes/cheddi/backend-context.js';
 
 const FORM_HEADERS = { 'Content-Type': 'application/x-www-form-urlencoded' };
+const NO_STORE = { cache: 'no-store', headers: { 'Cache-Control': 'no-store' } };
 
 export class ChatTransportError extends Error {
     constructor(chatErrorCode, message) {
@@ -46,24 +47,24 @@ export class ChatApiClient {
             throw new ChatTransportError('serverError', `Chat server returned non-JSON (HTTP ${response.status}).`);
         }
         if (!response.ok && payload?.status !== 'error') {
-            throw new Error(payload?.error?.message ?? `Chat server returned HTTP ${response.status}.`);
+            throw new ChatTransportError(
+                payload?.error?.chatErrorCode ?? '',
+                payload?.error?.message ?? `Chat server returned HTTP ${response.status}.`,
+            );
         }
         return payload;
     }
 
-    async fetchModels() {
-        const response = await this.request(this.ajaxUrl('cheddi_models'), { method: 'POST', credentials: 'same-origin' });
+    async fetchStatus({ refreshCredits = false } = {}, signal) {
+        const response = await this.request(this.ajaxUrl('cheddi_status'), {
+            method: 'POST',
+            headers: { ...FORM_HEADERS, 'Cache-Control': 'no-store' },
+            body: new URLSearchParams({ refreshCredits: refreshCredits ? '1' : '0' }),
+            credentials: 'same-origin',
+            signal,
+            cache: 'no-store',
+        });
         return response.json();
-    }
-
-    async fetchTemplates() {
-        const url = this.optionalUrl('cheddi_templates');
-        if (!url) {
-            return [];
-        }
-        const response = await this.request(url, { method: 'POST', credentials: 'same-origin' });
-        const payload = await response.json();
-        return Array.isArray(payload?.templates) ? payload.templates : [];
     }
 
     async fetchSessions() {
@@ -71,7 +72,7 @@ export class ChatApiClient {
         if (!url) {
             return [];
         }
-        const response = await this.request(url, { credentials: 'same-origin' });
+        const response = await this.request(url, { credentials: 'same-origin', ...NO_STORE });
         if (!response.ok) {
             return [];
         }
@@ -159,14 +160,28 @@ export class ChatApiClient {
         return this.parseResponse(response);
     }
 
-    async preflightAttachments(uids) {
-        const response = await this.request(this.ajaxUrl('cheddi_attachment_preflight'), {
-            method: 'POST',
-            headers: FORM_HEADERS,
-            body: new URLSearchParams({ attachments: JSON.stringify(uids) }),
-            credentials: 'same-origin',
-        });
-        return this.parseResponse(response);
+    async fetchTurnProgress(sessionUuid, signal) {
+        const url = this.optionalUrl('cheddi_turn_progress');
+        if (!url) {
+            return null;
+        }
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: FORM_HEADERS,
+                body: new URLSearchParams({ sessionUuid: sessionUuid ?? '' }),
+                signal,
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                return null;
+            }
+            const payload = await response.json();
+            return payload?.progress ?? null;
+        } catch (err) {
+            // A failing poll must never surface as a turn error; the turn request itself reports the truth.
+            return null;
+        }
     }
 
     async startTurn({ sessionUuid, text, model, attachments = [] }, signal) {
@@ -177,9 +192,20 @@ export class ChatApiClient {
                 sessionUuid: sessionUuid ?? '',
                 text,
                 model,
-                context: JSON.stringify(readBackendContext()),
+                context: JSON.stringify(readTurnContext()),
                 attachments: JSON.stringify(attachments.map((a) => a.uid)),
             }),
+            signal,
+            credentials: 'same-origin',
+        });
+        return this.parseResponse(response);
+    }
+
+    async summarizeHistory({ sessionUuid }, signal) {
+        const response = await this.request(this.ajaxUrl('cheddi_summarize'), {
+            method: 'POST',
+            headers: FORM_HEADERS,
+            body: new URLSearchParams({ sessionUuid: sessionUuid ?? '' }),
             signal,
             credentials: 'same-origin',
         });
@@ -192,7 +218,7 @@ export class ChatApiClient {
             headers: FORM_HEADERS,
             body: new URLSearchParams({
                 sessionUuid: sessionUuid ?? '',
-                context: JSON.stringify(readBackendContext()),
+                context: JSON.stringify(readTurnContext()),
             }),
             signal,
             credentials: 'same-origin',

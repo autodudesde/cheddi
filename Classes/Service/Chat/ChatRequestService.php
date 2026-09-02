@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
+use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use AutoDudes\Cheddi\Domain\Model\Dto\ChatTurnAnswer;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\ConnectException;
@@ -27,8 +28,14 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ChatRequestService
 {
+    public const INTENT_SUMMARIZE = 'summarize';
+
+    public const CONNECT_TIMEOUT_SECONDS = 10;
+    public const REQUEST_TIMEOUT_SECONDS = 180;
     public const RETRY_BACKOFF_SECONDS = 2;
     public const RETRY_MAX_ATTEMPTS = 2;
+
+    private const CURL_TIMEOUT_ERRNO = 28;
 
     public function __construct(
         protected readonly RequestFactory $requestFactory,
@@ -36,17 +43,21 @@ class ChatRequestService
         protected readonly LoggerInterface $logger,
         protected readonly GdprModelPolicy $gdprModelPolicy,
         protected readonly ModelService $modelService,
+        protected readonly SystemDomainResolver $systemDomainResolver,
     ) {}
 
     /**
      * @param list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, providerItems?: string}> $messages
      * @param list<array{name: string, description: string, inputSchema: array<string, mixed>}>                                                                    $tools
+     * @param array<string, mixed>                                                                                                                                 $webResearch
      */
     public function executeTurn(
         string $model,
         array $messages,
         array $tools,
         string $systemContext,
+        string $intent = '',
+        array $webResearch = [],
     ): ChatTurnAnswer {
         $extConf = $this->settingsFactory->mergeExtConfAndUserGroupSettings();
 
@@ -58,6 +69,8 @@ class ChatRequestService
 
         $endpoint = ((string) ($extConf['aiSuiteServer'] ?? '')).'api/chatTurn';
         $options = [
+            'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'timeout' => self::REQUEST_TIMEOUT_SECONDS,
             'headers' => [
                 'Authorization' => 'Bearer '.((string) ($extConf['aiSuiteApiKey'] ?? '')),
                 'X-AiSuite-Source' => 'chat',
@@ -68,9 +81,11 @@ class ChatRequestService
                 'tools' => json_encode($tools),
                 'systemContext' => $systemContext,
                 'keys' => $this->modelService->fetchKeysByModel($extConf, [$model]),
-                'request_system_domain' => GeneralUtility::getIndpEnv('HTTP_HOST'),
+                'request_system_domain' => $this->systemDomainResolver->resolve(),
                 'typo3_version' => GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion(),
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
+                'intent' => $intent,
+                'webResearch' => json_encode($webResearch),
             ],
         ];
 
@@ -85,6 +100,19 @@ class ChatRequestService
             );
 
             return $this->buildErrorAnswer(sprintf('chat-server-http-%d: %s', $statusCode, substr($body, 0, 256)));
+        } catch (ConnectException $e) {
+            if ($this->isTimeout($e)) {
+                $this->logger->error(
+                    'Chat turn timed out',
+                    ['timeoutSeconds' => self::REQUEST_TIMEOUT_SECONDS, 'exception' => $e->getMessage()],
+                );
+
+                return $this->buildErrorAnswer('chat-server-timeout: '.$e->getMessage(), 'chatServerTimeout');
+            }
+
+            $this->logger->error('Chat turn request failed', ['exception' => $e->getMessage()]);
+
+            return $this->buildErrorAnswer('chat-server-unavailable: '.$e->getMessage());
         } catch (\Throwable $e) {
             $this->logger->error('Chat turn request failed', ['exception' => $e->getMessage()]);
 
@@ -131,7 +159,8 @@ class ChatRequestService
                 );
                 $this->sleepBackoff();
             } catch (ConnectException $e) {
-                if ($attempt >= self::RETRY_MAX_ATTEMPTS) {
+                // A timeout is not retried.
+                if ($this->isTimeout($e) || $attempt >= self::RETRY_MAX_ATTEMPTS) {
                     throw $e;
                 }
                 $this->logger->warning(
@@ -143,13 +172,18 @@ class ChatRequestService
         }
     }
 
+    private function isTimeout(ConnectException $exception): bool
+    {
+        return self::CURL_TIMEOUT_ERRNO === (int) ($exception->getHandlerContext()['errno'] ?? 0);
+    }
+
     private function buildErrorAnswer(string $message, ?string $chatErrorCode = null): ChatTurnAnswer
     {
         return ChatTurnAnswer::fromResponseData([
             'type' => ChatTurnAnswer::TYPE_ERROR,
             'body' => array_filter([
                 'message' => $message,
-                'chatErrorCode' => $chatErrorCode,
+                'errorType' => $chatErrorCode,
             ], static fn (?string $value): bool => null !== $value),
         ]);
     }

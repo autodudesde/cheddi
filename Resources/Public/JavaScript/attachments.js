@@ -1,22 +1,41 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
 
-export const MAX_ATTACHMENTS = 5;
-
-const ACCEPTED = '.txt,.json,.xml,.pdf,.docx,.doc,.odt,.rtf,.xlsx,.xls,.ods';
-
 export class AttachmentTray {
     constructor(apiClient, chipsElement, onChange) {
         this.api = apiClient;
         this.element = chipsElement;
         this.onChange = onChange ?? (() => {});
         this.attachments = [];
+        this.limits = null;
         this.input = this.createFileInput();
+    }
+
+    /**
+     * Both limits come from the server with the status refresh, which runs before the composer can
+     * be used. Until then nothing is capped and no `accept` is set: an unset limit means the client
+     * makes no decision, and the upload endpoint refuses what it will not store anyway. A default
+     * here would be the duplication this removed.
+     */
+    applyLimits(limits) {
+        this.limits = limits ?? null;
+        if (typeof this.limits?.accept === 'string' && this.limits.accept !== '') {
+            this.input.accept = this.limits.accept;
+        }
+    }
+
+    maxAttachments() {
+        const max = Number(this.limits?.maxPerMessage);
+        return Number.isFinite(max) && max > 0 ? max : null;
+    }
+
+    isFull() {
+        const max = this.maxAttachments();
+        return max !== null && this.attachments.length >= max;
     }
 
     createFileInput() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = ACCEPTED;
         input.multiple = true;
         input.hidden = true;
         input.addEventListener('change', () => {
@@ -29,8 +48,8 @@ export class AttachmentTray {
     }
 
     pick() {
-        if (this.attachments.length >= MAX_ATTACHMENTS) {
-            this.notify(ll('cheddi.attachment.tooMany', 'You can attach at most {count} files.', { count: MAX_ATTACHMENTS }));
+        if (this.isFull()) {
+            this.notify(ll('cheddi.attachment.tooMany', { count: this.maxAttachments() }));
             return;
         }
         this.input.click();
@@ -38,8 +57,8 @@ export class AttachmentTray {
 
     async addFiles(files) {
         for (const file of files) {
-            if (this.attachments.length >= MAX_ATTACHMENTS) {
-                this.notify(ll('cheddi.attachment.tooMany', 'You can attach at most {count} files.', { count: MAX_ATTACHMENTS }));
+            if (this.isFull()) {
+                this.notify(ll('cheddi.attachment.tooMany', { count: this.maxAttachments() }));
                 break;
             }
 
@@ -53,7 +72,7 @@ export class AttachmentTray {
             } catch (err) {
                 console.error('[ChEddi] attachment upload failed.', err);
                 this.remove(placeholder);
-                this.notify(ll('cheddi.attachment.uploadFailed', 'Could not upload "{name}".', { name: file.name }));
+                this.notify(ll('cheddi.attachment.uploadFailed', { name: file.name }));
             }
 
             this.render();
@@ -93,7 +112,7 @@ export class AttachmentTray {
 
     buildChip(attachment) {
         const chip = document.createElement('span');
-        chip.className = 'cheddi__chip';
+        chip.className = 'badge cheddi__chip';
         chip.dataset.cheddiChip = '';
 
         const label = document.createElement('span');
@@ -113,9 +132,9 @@ export class AttachmentTray {
         if (!attachment.uploading) {
             const remove = document.createElement('button');
             remove.type = 'button';
-            remove.className = 'cheddi__chip-remove';
-            remove.setAttribute('aria-label', ll('cheddi.attachment.remove', 'Remove attachment'));
-            remove.textContent = '×';
+            remove.className = 'btn btn-default btn-sm cheddi__chip-remove';
+            remove.setAttribute('aria-label', ll('cheddi.attachment.remove'));
+            remove.innerHTML = '<typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon>';
             remove.addEventListener('click', () => this.remove(attachment));
             chip.append(remove);
         }
@@ -125,20 +144,20 @@ export class AttachmentTray {
 
     hintFor(attachment) {
         if (attachment.uploading) {
-            return ll('cheddi.attachment.uploading', 'Uploading …');
+            return ll('cheddi.attachment.uploading');
         }
         if (attachment.readable) {
             return '';
         }
         switch (attachment.reason) {
             case 'oversize':
-                return ll('cheddi.attachment.oversize', 'Too large to read');
+                return ll('cheddi.attachment.oversize');
             case 'libraryMissing':
-                return ll('cheddi.attachment.libraryMissing', 'This format cannot be read on this installation');
+                return ll('cheddi.attachment.libraryMissing');
             case 'notFound':
-                return ll('cheddi.attachment.notFound', 'File not found');
+                return ll('cheddi.attachment.notFound');
             default:
-                return ll('cheddi.attachment.metadataOnly', 'Text cannot be read from this file');
+                return ll('cheddi.attachment.metadataOnly');
         }
     }
 

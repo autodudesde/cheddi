@@ -3,10 +3,10 @@
 $EM_CONF[$_EXTKEY] = [
     'title' => 'ChEddi',
     'description' => 'Chat interface for EXT:ai_suite. Adds a conversational backend drawer that lets editors interact with AI Suite tools via natural language, powered by the MCP ToolRegistry.',
-    'category' => 'backend',
+    'category' => 'be',
     'author' => 'AutoDudes',
     'state' => 'beta',
-    'version' => '0.1.0',
+    'version' => '0.2.0',
     'constraints' => [
         'depends' => [
             'typo3' => '12.4.11-14.3.99',

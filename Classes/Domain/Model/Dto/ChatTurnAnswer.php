@@ -21,8 +21,9 @@ final class ChatTurnAnswer
 
     /**
      * @param list<array{id: string, name: string, arguments: array<string, mixed>}> $toolCalls
-     * @param null|array{replacedMessageIds: list<int>, summaryContent: string}      $historySummary
+     * @param null|array{summaryContent: string}                                     $historySummary
      * @param list<array<string, mixed>>                                             $providerItems
+     * @param list<array{title: string, url: string, snippet: string}>               $sources
      */
     public function __construct(
         public readonly string $type,
@@ -39,6 +40,7 @@ final class ChatTurnAnswer
         public readonly bool $lowBalance = false,
         public readonly ?string $chatErrorCode = null,
         public readonly array $providerItems = [],
+        public readonly array $sources = [],
     ) {}
 
     /**
@@ -64,9 +66,7 @@ final class ChatTurnAnswer
                 creditsExhausted: false,
                 errorMessage: is_string($body['message'] ?? null) ? $body['message'] : null,
                 historySummary: null,
-                chatErrorCode: is_string($body['chatErrorCode'] ?? null)
-                    ? $body['chatErrorCode']
-                    : (is_string($body['errorType'] ?? null) ? $body['errorType'] : null),
+                chatErrorCode: is_string($body['errorType'] ?? null) ? $body['errorType'] : null,
             );
         }
 
@@ -94,7 +94,36 @@ final class ChatTurnAnswer
             lowBalance: ($usage['lowBalance'] ?? false) === true,
             chatErrorCode: null,
             providerItems: self::normaliseProviderItems($assistantMessage['providerItems'] ?? []),
+            sources: self::normaliseSources($body['sources'] ?? []),
         );
+    }
+
+    /**
+     * @return list<array{title: string, url: string, snippet: string}>
+     */
+    private static function normaliseSources(mixed $raw): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $sources = [];
+        foreach ($raw as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $url = trim((string) ($entry['url'] ?? ''));
+            if ('' === $url) {
+                continue;
+            }
+            $sources[] = [
+                'title' => (string) ($entry['title'] ?? $url),
+                'url' => $url,
+                'snippet' => (string) ($entry['snippet'] ?? ''),
+            ];
+        }
+
+        return $sources;
     }
 
     /**
@@ -142,23 +171,15 @@ final class ChatTurnAnswer
     }
 
     /**
-     * @return null|array{replacedMessageIds: list<int>, summaryContent: string}
+     * @return null|array{summaryContent: string}
      */
     private static function normaliseHistorySummary(mixed $raw): ?array
     {
         if (!is_array($raw)) {
             return null;
         }
-        $rawIds = is_array($raw['replacedMessageIds'] ?? null) ? $raw['replacedMessageIds'] : [];
-        $ids = [];
-        foreach ($rawIds as $id) {
-            if (is_int($id) || (is_string($id) && ctype_digit($id))) {
-                $ids[] = (int) $id;
-            }
-        }
 
         return [
-            'replacedMessageIds' => $ids,
             'summaryContent' => (string) ($raw['summaryContent'] ?? ''),
         ];
     }

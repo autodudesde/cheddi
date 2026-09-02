@@ -16,7 +16,7 @@ export class WorkspaceReview {
         this.sessionUuid = sessionUuid;
 
         this.modal = Modal.advanced({
-            title: ll('cheddi.review.title', 'Changes of this conversation'),
+            title: ll('cheddi.review.title'),
             content: '',
             size: Modal.sizes.large,
             additionalCssClasses: ['cheddi-review-modal'],
@@ -40,18 +40,18 @@ export class WorkspaceReview {
             payload = await this.api.fetchWorkspaceChanges(this.sessionUuid);
         } catch (err) {
             console.error('[ChEddi] could not load workspace changes.', err);
-            this.renderNotice(body, ll('cheddi.review.loadFailed', 'The changes of this conversation could not be loaded.'));
+            this.renderNotice(body, ll('cheddi.review.loadFailed'));
             return;
         }
 
         if (!payload || payload.workspacesAvailable === false) {
-            this.renderNotice(body, ll('cheddi.review.unavailable', 'Draft workspaces are not available, so changes cannot be reviewed here.'));
+            this.renderNotice(body, ll('cheddi.review.unavailable'));
             return;
         }
 
         const changes = Array.isArray(payload.changes) ? payload.changes : [];
         if (changes.length === 0) {
-            this.renderNotice(body, ll('cheddi.review.empty', 'This conversation has not changed any records yet.'));
+            this.renderNotice(body, ll('cheddi.review.empty'));
             return;
         }
 
@@ -75,10 +75,7 @@ export class WorkspaceReview {
         this.renderFooter(changes);
 
         const intro = document.createElement('p');
-        intro.textContent = ll(
-            'cheddi.review.intro',
-            'These records were changed in your draft workspace. Publish them to make them live, or discard them to undo them.',
-        );
+        intro.textContent = ll('cheddi.review.intro');
         body.append(intro);
 
         const wrapper = document.createElement('div');
@@ -91,7 +88,7 @@ export class WorkspaceReview {
 
     closeButton() {
         return {
-            text: ll('cheddi.review.close', 'Close'),
+            text: ll('cheddi.review.close'),
             btnClass: 'btn-default',
             name: 'close',
             trigger: (event, modal) => modal.hideModal(),
@@ -114,13 +111,13 @@ export class WorkspaceReview {
         this.modal.buttons = [
             this.closeButton(),
             {
-                text: ll('cheddi.review.discardAll', 'Discard all'),
+                text: ll('cheddi.review.discardAll'),
                 btnClass: 'btn-default',
                 name: 'discard-all',
                 trigger: () => this.confirmDiscard(uids),
             },
             {
-                text: ll('cheddi.review.publishAll', 'Publish all'),
+                text: ll('cheddi.review.publishAll'),
                 btnClass: 'btn-primary',
                 name: 'publish-all',
                 trigger: () => this.apply(uids, true),
@@ -152,7 +149,7 @@ export class WorkspaceReview {
         if (Array.isArray(change.changedFields) && change.changedFields.length > 0) {
             const fields = document.createElement('small');
             fields.className = 'text-body-secondary';
-            fields.textContent = ll('cheddi.review.changedFields', 'Changed: {fields}', {
+            fields.textContent = ll('cheddi.review.changedFields', {
                 fields: change.changedFields.join(', '),
             });
             label.append(fields);
@@ -166,8 +163,8 @@ export class WorkspaceReview {
         const actions = document.createElement('td');
         actions.className = 'text-end';
         actions.append(
-            this.actionButton(ll('cheddi.review.publish', 'Publish'), 'btn-primary', () => this.apply([change.uid], true)),
-            this.actionButton(ll('cheddi.review.discard', 'Discard'), 'btn-default', () => this.confirmDiscard([change.uid])),
+            this.actionButton(ll('cheddi.review.publish'), 'btn-primary', () => this.apply([change.uid], true)),
+            this.actionButton(ll('cheddi.review.discard'), 'btn-default', () => this.confirmDiscard([change.uid])),
         );
         row.append(actions);
 
@@ -186,20 +183,18 @@ export class WorkspaceReview {
     statusLabel(change) {
         switch (change.status) {
             case 'added':
-            case 'create':
-                return ll('cheddi.review.statusAdded', 'New');
+                return ll('cheddi.review.statusAdded');
             case 'removed':
-            case 'delete':
-                return ll('cheddi.review.statusDeleted', 'Deleted');
+                return ll('cheddi.review.statusDeleted');
             default:
-                return ll('cheddi.review.statusModified', 'Changed');
+                return ll('cheddi.review.statusModified');
         }
     }
 
     confirmDiscard(uids) {
         const confirmation = Modal.confirm(
-            ll('cheddi.review.confirmDiscardTitle', 'Discard changes?'),
-            ll('cheddi.review.confirmDiscardText', 'The selected changes are removed from the draft. This cannot be undone.'),
+            ll('cheddi.review.confirmDiscardTitle'),
+            ll('cheddi.review.confirmDiscardText'),
             SeverityEnum.warning,
         );
         confirmation.addEventListener('confirm.button.ok', () => {
@@ -215,7 +210,7 @@ export class WorkspaceReview {
             payload = await this.api.applyWorkspaceChanges({ sessionUuid: this.sessionUuid, uids, publish });
         } catch (err) {
             console.error('[ChEddi] could not apply workspace changes.', err);
-            Notification.error(ll('cheddi.review.loadFailed', 'The changes of this conversation could not be loaded.'), '');
+            Notification.error(ll('cheddi.review.loadFailed'), '');
             return;
         }
 
@@ -224,12 +219,12 @@ export class WorkspaceReview {
 
         if (applied > 0) {
             const message = publish
-                ? ll('cheddi.review.published', 'Published {count} change(s).', { count: applied })
-                : ll('cheddi.review.discarded', 'Discarded {count} change(s).', { count: applied });
+                ? ll('cheddi.review.published', { count: applied })
+                : ll('cheddi.review.discarded', { count: applied });
             Notification.success(message, '');
         }
         if (errors.length > 0) {
-            Notification.error(ll('cheddi.review.partialFailure', '{count} change(s) could not be processed.', { count: errors.length }), errors[0]);
+            Notification.error(ll('cheddi.review.partialFailure', { count: errors.length }), errors[0]);
         }
 
         await this.refresh();
@@ -239,7 +234,7 @@ export class WorkspaceReview {
         const link = document.createElement('button');
         link.type = 'button';
         link.className = 'btn btn-link btn-sm ps-0';
-        link.textContent = ll('cheddi.review.openModule', 'Open in the Workspaces module');
+        link.textContent = ll('cheddi.review.openModule');
         link.addEventListener('click', () => {
             try {
                 top.TYPO3.ModuleMenu.App.showModule(WORKSPACES_MODULE);

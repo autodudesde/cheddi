@@ -89,13 +89,13 @@ class ToolBridge
     /**
      * @return list<array{name: string, description: string, inputSchema: array<string, mixed>}>
      */
-    public function getAvailableToolDefinitions(): array
+    public function getAvailableToolDefinitions(string $model = ''): array
     {
         $this->chatSettings->applyToMcpSurface();
 
         $excluded = $this->excludedTools();
         $result = [];
-        foreach ($this->toolGateway->listTools($this->accessContext(), $this->availableChatTools()) as $tool) {
+        foreach ($this->toolGateway->listTools($this->accessContext(), $this->availableChatTools($model)) as $tool) {
             if (in_array($tool->getName(), $excluded, true)) {
                 continue;
             }
@@ -120,7 +120,7 @@ class ToolBridge
 
         $this->userContext->setInlineBackendLinks(false);
 
-        $chatTools = $this->availableChatTools();
+        $chatTools = $this->availableChatTools($context->model);
         if (isset($chatTools[$toolName])) {
             $result = $this->toolGateway->callTool($toolName, $arguments, $this->accessContext(), $chatTools);
 
@@ -191,14 +191,35 @@ class ToolBridge
         return $this->policyResolver->resolve($tool);
     }
 
-    public function webResearchAvailable(): bool
+    public function creditCost(string $toolName): ?int
     {
-        return $this->webResearchPolicy->isSearchAllowed();
+        $tool = $this->chatTools[$toolName] ?? $this->toolRegistry->getTool($toolName);
+
+        return $tool?->getCreditCost();
+    }
+
+    public function webResearchAvailable(string $model = ''): bool
+    {
+        return $this->webResearchPolicy->isBrokeredSearchAllowed()
+            && !$this->webResearchPolicy->isNativeSearchModel($model);
     }
 
     public function webPageReadingAvailable(): bool
     {
         return $this->webResearchPolicy->isPageReadingAllowed();
+    }
+
+    public function nativeWebResearchAvailable(string $model): bool
+    {
+        return $this->webResearchPolicy->isNativeSearchAllowed($model);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function webResearchTurnConfiguration(string $model): array
+    {
+        return $this->webResearchPolicy->turnConfiguration($model);
     }
 
     /**
@@ -238,10 +259,10 @@ class ToolBridge
     /**
      * @return array<string, ToolInterface>
      */
-    private function availableChatTools(): array
+    private function availableChatTools(string $model = ''): array
     {
         $blocked = [];
-        if (!$this->webResearchAvailable()) {
+        if (!$this->webResearchAvailable($model)) {
             $blocked[] = SearchWebTool::NAME;
         }
         if (!$this->webPageReadingAvailable()) {

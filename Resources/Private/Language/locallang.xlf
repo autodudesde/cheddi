@@ -10,9 +10,15 @@
             <trans-unit id="cheddi.ui.actionsMenu"><source>Actions menu</source></trans-unit>
             <trans-unit id="cheddi.ui.bubbleOpen"><source>Open ChEddi</source></trans-unit>
             <trans-unit id="cheddi.ui.modelSelect"><source>Select ChEddi model</source></trans-unit>
-            <trans-unit id="cheddi.ui.creditsRemaining"><source>Remaining credits</source></trans-unit>
             <trans-unit id="cheddi.ui.newConversation"><source>New conversation</source></trans-unit>
-            <trans-unit id="cheddi.ui.conversationsMenu"><source>Conversations …</source></trans-unit>
+            <trans-unit id="cheddi.ui.conversationsMenu"><source>Conversations</source></trans-unit>
+            <trans-unit id="cheddi.ui.templatesMenu"><source>Templates</source></trans-unit>
+            <trans-unit id="cheddi.templates.loading"><source>Loading templates …</source></trans-unit>
+            <trans-unit id="cheddi.ui.templatesTitle"><source>Prompt templates</source></trans-unit>
+            <trans-unit id="cheddi.templates.searchPlaceholder"><source>Search templates</source></trans-unit>
+            <trans-unit id="cheddi.templates.none"><source>No prompt templates are available.</source></trans-unit>
+            <trans-unit id="cheddi.templates.noMatch"><source>No template matches this search.</source></trans-unit>
+            <trans-unit id="cheddi.templates.needsRecord"><source>This template works on the record you are editing. Open one first.</source></trans-unit>
             <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source></trans-unit>
             <trans-unit id="cheddi.ui.panelClose"><source>Close panel</source></trans-unit>
             <trans-unit id="cheddi.ui.minimize"><source>Minimize</source></trans-unit>
@@ -27,33 +33,40 @@
             <trans-unit id="cheddi.thinking.default"><source>ChEddi is thinking</source></trans-unit>
             <trans-unit id="cheddi.thinking.moment"><source>One moment …</source></trans-unit>
             <trans-unit id="cheddi.thinking.almost"><source>Almost done …</source></trans-unit>
-            <trans-unit id="cheddi.thinking.intent.translate"><source>ChEddi is translating</source></trans-unit>
-            <trans-unit id="cheddi.thinking.intent.metadata"><source>ChEddi is creating metadata</source></trans-unit>
-            <trans-unit id="cheddi.thinking.intent.write"><source>ChEddi is writing content</source></trans-unit>
-            <trans-unit id="cheddi.thinking.intent.media"><source>ChEddi is handling media</source></trans-unit>
-            <trans-unit id="cheddi.thinking.intent.edit"><source>ChEddi is editing content</source></trans-unit>
+            <trans-unit id="cheddi.thinking.stepOf"><source>{base} · step {step} of {total}</source></trans-unit>
             <trans-unit id="cheddi.thinking.step"><source>{base} · step {step}</source></trans-unit>
 
             <!-- Server error messages (keyed by ErrorType) -->
-            <trans-unit id="cheddi.error.chatModelTemporarilyUnavailable"><source>The chat model is currently unavailable. Please try again later.</source></trans-unit>
             <trans-unit id="cheddi.error.requestLimitReached"><source>Your credit balance is used up. Please top up credits.</source></trans-unit>
             <trans-unit id="cheddi.error.notEnoughRequests"><source>Not enough credits for this request. Please top up credits.</source></trans-unit>
             <trans-unit id="cheddi.error.aiModelInstanceNotFound"><source>The selected model is not available. Please choose a different model.</source></trans-unit>
+            <trans-unit id="cheddi.error.modelNotChat"><source>This model cannot be used for chat. Please pick one of the offered chat models.</source></trans-unit>
+            <trans-unit id="cheddi.error.modelNotPermitted"><source>Your backend group is not allowed to use this chat model. Please pick another one.</source></trans-unit>
+            <trans-unit id="cheddi.error.featureDisabled"><source>The chat is not enabled for your backend group. Please ask an administrator.</source></trans-unit>
+            <trans-unit id="cheddi.error.badRequest"><source>ChEddi sent an incomplete request. Please reload the backend and try the action again.</source></trans-unit>
             <trans-unit id="cheddi.error.gdprModelBlocked"><source>Only the GDPR-compliant model is allowed in this system. Please select the GDPR model.</source></trans-unit>
             <trans-unit id="cheddi.error.chatUnavailableForPlan"><source>ChEddi is not yet available for your plan. Please contact your provider.</source></trans-unit>
             <trans-unit id="cheddi.error.missingAiModelApiKey"><source>Your plan runs on your own provider keys, and the key for this model is missing. Please add it in the extension configuration under "Bring Your Own Keys".</source></trans-unit>
             <trans-unit id="cheddi.error.chatRequestMalformed"><source>ChEddi built an invalid request for this model. That is an error on our side, not a model outage, and it is not charged. Please report it to us.</source></trans-unit>
+            <trans-unit id="cheddi.error.chatServerTimeout"><source>The server did not answer in time. The turn may still be running there, so it was not retried automatically. Please check the TYPO3 log and ask again if nothing arrives.</source></trans-unit>
             <trans-unit id="cheddi.error.serverUnreachable"><source>The server aborted the request. This is usually a server-side error. Please check the TYPO3 log.</source></trans-unit>
             <trans-unit id="cheddi.error.serverError"><source>The server did not return a valid response. Please check the TYPO3 log.</source></trans-unit>
             <trans-unit id="cheddi.error.noOpenTurn"><source>This conversation has nothing left to continue. Please ask a new question.</source></trans-unit>
+            <trans-unit id="cheddi.error.requestRateLimited"><source>The AI Suite Server received too many requests from this installation. Please wait a moment and try again.</source></trans-unit>
             <trans-unit id="cheddi.error.rateLimited"><source>Too many requests in a short time. Please wait a moment and try again.</source></trans-unit>
             <trans-unit id="cheddi.error.apiKeyMissing"><source>No AI Suite API key is configured. Please enter your key in the extension configuration. If you don't have a key yet, you can get one at https://www.autodudes.de</source></trans-unit>
+            <trans-unit id="cheddi.error.missingApiKey"><source>The request reached the AI Suite Server without an API key. Please check the key in the extension configuration.</source></trans-unit>
+            <trans-unit id="cheddi.error.invalidApiKey"><source>The AI Suite Server did not accept the API key of this installation. Please check the key in the extension configuration.</source></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyNotFound"><source>The AI Suite Server does not know the API key of this installation. Please check the key in the extension configuration.</source></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyExpired"><source>The API key of this installation has expired. Please renew it at your provider.</source></trans-unit>
+            <trans-unit id="cheddi.error.apiRouteNotFound"><source>The AI Suite Server does not know this route. Usually the extension is newer than the server it talks to.</source></trans-unit>
+            <trans-unit id="cheddi.error.thirdPartyApi"><source>The AI provider did not answer. Please try again in a moment; the details are in the server log.</source></trans-unit>
+            <trans-unit id="cheddi.error.webSearchUnavailable"><source>Web research is not available for this installation under its current data-protection settings.</source></trans-unit>
             <trans-unit id="cheddi.error.unknown"><source>Unknown error.</source></trans-unit>
 
             <!-- System notices -->
             <trans-unit id="cheddi.notice.modelUnavailable"><source>Note: Your previously selected chat model is no longer available. Please pick a model above. This may be because data-protection (GDPR) mode was activated, which only allows the compliant models.</source></trans-unit>
             <trans-unit id="cheddi.notice.selectModelFirst"><source>Please select a chat model above first.</source></trans-unit>
-            <trans-unit id="cheddi.notice.selectModelPlaceholder"><source>Select a model …</source></trans-unit>
             <trans-unit id="cheddi.notice.noModels"><source>No chat model is enabled. Please contact your administrator.</source></trans-unit>
             <trans-unit id="cheddi.notice.apiKeyMissing.title"><source>Please enter your AI Suite API key in the extension configuration.</source></trans-unit>
             <trans-unit id="cheddi.notice.apiKeyMissing.message"><source>If you don't have an API key yet, you can get one at https://www.autodudes.de</source></trans-unit>
@@ -74,6 +87,11 @@
             <trans-unit id="cheddi.notice.lowBalance"><source>Your balance is almost used up, please top up credits, otherwise ChEddi will soon be unable to continue.</source></trans-unit>
             <trans-unit id="cheddi.notice.lowBalanceRemaining"><source>{count} credits left, please top up in time.</source></trans-unit>
             <trans-unit id="cheddi.notice.unexpectedStatus"><source>Unexpected status: {status}</source></trans-unit>
+            <trans-unit id="cheddi.context.notice"><source>This conversation is getting long. A summary makes room again.</source></trans-unit>
+            <trans-unit id="cheddi.context.warning"><source>This conversation is so long that the next message will fail. Summarize it to keep working.</source></trans-unit>
+            <trans-unit id="cheddi.context.summarizeButton"><source>Summarize</source></trans-unit>
+            <trans-unit id="cheddi.context.summarizing"><source>Summarizing the conversation</source></trans-unit>
+            <trans-unit id="cheddi.error.nothingToSummarize"><source>There is nothing to summarize yet.</source></trans-unit>
 
             <!-- Restored history: tool result placeholder + relative timestamps -->
             <trans-unit id="cheddi.history.toolStatus"><source>Tool: {status}</source></trans-unit>
@@ -83,16 +101,20 @@
             <trans-unit id="cheddi.time.daysAgo"><source>{count} days ago</source></trans-unit>
 
             <!-- Header status: how ChEddi operates (write mode / preview / GDPR) -->
-            <trans-unit id="cheddi.orientation.summary"><source>How ChEddi works here</source></trans-unit>
             <trans-unit id="cheddi.orientation.gdprOn"><source>Data protection: GDPR mode active, only the compliant model is offered</source></trans-unit>
             <trans-unit id="cheddi.orientation.gdprOff"><source>Data protection: GDPR mode off</source></trans-unit>
             <trans-unit id="cheddi.orientation.writeLive"><source>Write mode: live, changes apply directly to the live site</source></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspace"><source>Write mode: draft, changes go to a workspace and not live</source></trans-unit>
+            <trans-unit id="cheddi.orientation.writeWorkspacePending"><source>Write mode: draft, a personal workspace is created for your first change and nothing goes live</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOn"><source>Web research: on, search queries leave this installation</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff"><source>Web research: off, ChEddi only works with content from this installation</source></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.default"><source>Web research: off, ChEddi only works with content from this installation</source></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.noPermission"><source>Web research: off, your backend group is not allowed to use it</source></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.noKey"><source>Web research: off, this plan runs on your own provider keys and the key for the search provider is missing</source></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.gdprNoProvider"><source>Web research: off, GDPR mode is active and this server has no EU search provider</source></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.gdprMarket"><source>Web research: off, GDPR mode is active and the EU search provider does not serve this site's language region</source></trans-unit>
             <trans-unit id="cheddi.orientation.confirmation"><source>Every change is shown to you as a preview and only written after you confirm it.</source></trans-unit>
             <trans-unit id="cheddi.orientation.retention"><source>Conversations are deleted after {days} days without activity.</source></trans-unit>
-            <trans-unit id="cheddi.orientation.more"><source>How ChEddi works in detail …</source></trans-unit>
             <trans-unit id="cheddi.help.modalTitle"><source>How ChEddi works</source></trans-unit>
             <trans-unit id="cheddi.help.close"><source>Close</source></trans-unit>
             <trans-unit id="cheddi.help.loadFailed"><source>The help text could not be loaded.</source></trans-unit>
@@ -128,10 +150,14 @@
             <trans-unit id="cheddi.confirm.introOne"><source>One tool call needs your confirmation:</source></trans-unit>
             <trans-unit id="cheddi.confirm.introMany"><source>{count} tool calls need your confirmation:</source></trans-unit>
             <trans-unit id="cheddi.confirm.targetWorkspace"><source>These changes go to a draft (workspace) and not live.</source></trans-unit>
+            <trans-unit id="cheddi.confirm.targetWorkspacePending"><source>A personal draft workspace is created for these changes; they do not go live.</source></trans-unit>
+            <trans-unit id="cheddi.orientation.writeWorkspaceNamed"><source>Write mode: draft, changes go to the workspace "{workspace}" and not live</source></trans-unit>
+            <trans-unit id="cheddi.confirm.targetWorkspaceNamed"><source>These changes go to the workspace "{workspace}" and not live.</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspaceBadgeHint"><source>Changes go to the workspace "{workspace}" (#{id})</source></trans-unit>
             <trans-unit id="cheddi.confirm.targetLive"><source>These changes apply directly to the live site.</source></trans-unit>
-            <trans-unit id="cheddi.confirm.targetAuto"><source>These changes go to a draft (if one exists), otherwise live.</source></trans-unit>
             <trans-unit id="cheddi.confirm.declineAll"><source>Decline all</source></trans-unit>
-            <trans-unit id="cheddi.confirm.destructiveBadge"><source>⚠️ hard to undo</source></trans-unit>
+            <trans-unit id="cheddi.confirm.destructiveBadge"><source>hard to undo</source></trans-unit>
+            <trans-unit id="cheddi.confirm.creditsBadge"><source>costs {credits} credits</source></trans-unit>
             <trans-unit id="cheddi.confirm.blockedInvalid"><source>This tool call contains invalid records and cannot be executed. Decline it so the assistant can correct it.</source></trans-unit>
             <trans-unit id="cheddi.confirm.blockedInvalidHint"><source>Invalid records in the payload</source></trans-unit>
             <trans-unit id="cheddi.confirm.technicalDetails"><source>Technical details</source></trans-unit>
@@ -147,6 +173,7 @@
             <trans-unit id="cheddi.preview.action.copy"><source>Copy</source></trans-unit>
             <trans-unit id="cheddi.preview.action.move"><source>Move</source></trans-unit>
             <trans-unit id="cheddi.preview.action.localize"><source>Translate</source></trans-unit>
+            <trans-unit id="cheddi.preview.action.target"><source>Destination</source></trans-unit>
             <trans-unit id="cheddi.preview.action.skipped"><source>Skipped</source></trans-unit>
             <trans-unit id="cheddi.preview.action.invalid"><source>Invalid</source></trans-unit>
             <trans-unit id="cheddi.preview.page"><source>Page: {page}</source></trans-unit>
@@ -208,6 +235,16 @@
             <trans-unit id="cheddi.tool.batchTranslatePage"><source>Batch: Translate pages</source></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslateFileMetadata"><source>Batch: Translate file metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslateFolderMetadata"><source>Batch: Translate folder metadata</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditSeo"><source>Run SEO audit</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditAccessibility"><source>Run accessibility audit</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditQuestions"><source>Find questions readers ask</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditContentGap"><source>Find content gaps</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditTopicCluster"><source>Analyse topic cluster</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditCompetitors"><source>Compare with competitors</source></trans-unit>
+            <trans-unit id="cheddi.tool.readAuditResults"><source>Read audit results</source></trans-unit>
+            <trans-unit id="cheddi.tool.readAttachmentText"><source>Read attachment</source></trans-unit>
+            <trans-unit id="cheddi.tool.searchWeb"><source>Search the web</source></trans-unit>
+            <trans-unit id="cheddi.tool.readWebPage"><source>Read web page</source></trans-unit>
 
             <!-- Attachment section -->
             <trans-unit id="cheddi.attachment.add"><source>Attach a document</source></trans-unit>
@@ -221,7 +258,7 @@
             <trans-unit id="cheddi.attachment.metadataOnly"><source>Text cannot be read from this file</source></trans-unit>
 
             <!-- Workspace review section -->
-            <trans-unit id="cheddi.review.menu"><source>Changes of this conversation …</source></trans-unit>
+            <trans-unit id="cheddi.review.menu"><source>Changes of this conversation</source></trans-unit>
             <trans-unit id="cheddi.review.title"><source>Changes of this conversation</source></trans-unit>
             <trans-unit id="cheddi.review.intro"><source>These records were changed in your draft workspace. Publish them to make them live, or discard them to undo them.</source></trans-unit>
             <trans-unit id="cheddi.review.empty"><source>This conversation has not changed any records yet.</source></trans-unit>
@@ -249,6 +286,21 @@
             <trans-unit id="cheddi.statistics.emptyText"><source>No ChEddi usage recorded for the selected month.</source></trans-unit>
             <trans-unit id="cheddi.statistics.byModelTitle"><source>Credits by model</source></trans-unit>
             <trans-unit id="cheddi.statistics.creditsLabel"><source>Credits</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspaceBadgeLabel"><source>Workspace</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspaceUnnamed"><source>Draft</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspacePending"><source>Draft will be created</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspacePendingHint"><source>No draft workspace exists yet. ChEddi creates a personal one with your first confirmed change; nothing goes live.</source></trans-unit>
+            <trans-unit id="cheddi.ui.modeLive"><source>Live</source></trans-unit>
+            <trans-unit id="cheddi.ui.modeLiveHint"><source>Changes take effect on the live site immediately.</source></trans-unit>
+            <trans-unit id="cheddi.ui.helpButton"><source>How ChEddi works here</source></trans-unit>
+            <trans-unit id="cheddi.ui.guidelines"><source>Editorial rules</source></trans-unit>
+            <trans-unit id="cheddi.ui.guidelinesSoon"><source>Editorial rules for ChEddi - coming soon</source></trans-unit>
+            <trans-unit id="cheddi.credits.pack"><source>Pack</source></trans-unit>
+            <trans-unit id="cheddi.credits.plan"><source>Plan</source></trans-unit>
+            <trans-unit id="cheddi.credits.packHint"><source>Pack: {count} credits left</source></trans-unit>
+            <trans-unit id="cheddi.credits.planHint"><source>Plan: {used} of {total} used</source></trans-unit>
+            <trans-unit id="cheddi.intro.title"><source>Hi, I am ChEddi.</source></trans-unit>
+            <trans-unit id="cheddi.help.currentSituation"><source>How ChEddi works here</source></trans-unit>
         </body>
     </file>
 </xliff>

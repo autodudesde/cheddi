@@ -26,13 +26,13 @@ executed.
 - ✅ **Confirm before anything changes**: read-only tools auto-run; write tools require a
   click; destructive tools require a second confirming click. Decisions are recorded inline
   in the conversation as an audit trail.
-- 🧠 **Location-aware**: the drawer sends the current page id and module on every turn, so
-  the assistant knows what the editor is looking at.
+- 🧠 **Location-aware**: when the editor has a record open, the drawer names its table and uid
+  with the turn, so the assistant knows what is being looked at. The table is checked against
+  the TCA before anything is read with it.
 - 📎 **Attach documents**: PDF, Word, spreadsheets and plain text are uploaded into FAL and
-  their *text* is pulled in on demand via the `readAttachmentText` tool. A metadata-only
-  preflight tells the editor up front when a file cannot be read. **Images can be attached
-  but not analysed**: messages reach the AI Suite Server as plain strings, so no image data
-  ever reaches the model.
+  their *text* is pulled in on demand via the `readAttachmentText` tool. The upload answer says
+  per file whether it can be read at all, so the editor learns that before sending. Images are
+  **not** an accepted attachment type — see *Limitations*.
 - 🚧 **Research the web** *(experimental)*: two separate capabilities behind the
   `enable_web_research` backend-group flag. `searchWeb` runs through the AI Suite Server on a
   US-hosted search provider and costs credits; `readWebPage` fetches one URL the editor named
@@ -46,6 +46,11 @@ executed.
   message, listed in a panel, and can be reopened, switched or deleted.
 - 💰 **Credit + token feedback**: remaining credits show in the header and turn amber below
   a threshold; the input locks when credits are exhausted.
+- 🔑 **Bring your own keys**: on BYOK tariffs the turn runs on the provider keys stored under
+  *Bring your own keys* in the AI Suite extension configuration, and models without a stored
+  key never appear in the picker. On credit tariffs the AI Suite Server's own keys are used
+  and every turn is billed against your credits. Either way the request goes through the
+  AI Suite Server; the chat never calls a provider directly.
 - 🔒 **Markdown rendered safely**: assistant Markdown is rendered with `marked` and
   sanitised with `DOMPurify` (both vendored locally) before it ever touches `innerHTML`.
 - 🧹 **Self-cleaning**: a scheduler command soft-deletes idle sessions and hard-deletes
@@ -55,13 +60,13 @@ executed.
 
 These are deliberate design decisions, not bugs, and worth knowing before you deploy:
 
-- **Chat always runs on the AI Suite Server's keys, and there is no bring-your-own-key path for
-  the chat.** Every turn is billed against the configured AI Suite credentials/credits; you
-  cannot point the chat at your own provider key. Remaining credits show in the header and the
-  input locks when they run out.
-- **Images can be attached but not analysed.** Messages travel to the server as plain strings,
-  so no image content ever reaches the model. Documents (PDF, Word, spreadsheets, plain text)
-  *are* read, as text, on demand.
+- **Every turn goes through the AI Suite Server.** The chat never calls a model provider
+  directly, so the server has to be reachable even on BYOK tariffs, where it forwards the
+  request using your own keys.
+- **Images are not supported as attachments.** Messages travel to the server as plain strings,
+  so no image content could reach the model anyway; image extensions are therefore not in the
+  upload allowlist and are rejected. Documents (PDF, Word, spreadsheets, plain text) *are* read,
+  as text, on demand.
 - **Write reversibility comes from the workspace draft, not from the chat.** With the default
   `workspace` write mode a confirmed change lands in a draft you can publish or discard from the
   drawer; in `live` mode a confirmed change is immediate. Note that the underlying `uploadMedia`
@@ -138,15 +143,18 @@ required before it runs:
 
 | Severity | Behaviour | Resolved from |
 |---|---|---|
-| `ReadOnly` | Runs automatically, no confirmation | `readOnlyHint` **or** `mcp:read` scope |
+| `ReadOnly` | Runs automatically, no confirmation | `readOnlyHint` |
 | `Write` | Inline confirm (one click) | Default catch-all |
-| `Destructive` | Inline confirm + a second "really?" click | `destructiveHint` **or** `delete*` / `*Delete*` name heuristic |
+| `Destructive` | Inline confirm + a second "really?" click | `destructiveHint` |
 
-Resolution order: the tool's own MCP behavioural hints (`readOnlyHint` / `destructiveHint`)
-are authoritative, the same hints every MCP client sees; otherwise the `mcp:read` scope
-marks read-only tools; otherwise a delete-naming heuristic catches obvious destructive
-calls; otherwise it defaults to `Write`, and it will **never** silently
-mutate records when a tool author neither annotated nor declared a safe scope.
+Resolution order: `destructiveHint` wins, then `readOnlyHint`, otherwise `Write`. Only the
+tool's own MCP behavioural hints decide — the same hints every MCP client sees. There is no
+scope or name heuristic: a tool that annotates nothing is treated as a write and asks for
+confirmation, so an unannotated tool can never mutate records silently.
+
+One exception, in `ToolBridge::isModelDiscoveryCall()`: a `generate*` / `translate*` / image /
+workflow tool called *without* a `model` argument is only listing the models it could use, so it
+counts as `ReadOnly` and does not spend credits.
 
 ## How a turn works
 
@@ -180,8 +188,8 @@ sequence (reset by each new user message):
 - **soft warning** at `TOOL_CAP_SOFT_WARNING = 20`: attaches a notice the drawer surfaces;
 - **hard abort** at `TOOL_CAP_HARD_LIMIT = 40`: returns `aborted` / `toolCapReached`.
 
-The client carries its own slightly higher ceiling (`MAX_AUTO_CONTINUES = 25`) purely as a
-backstop in case the server ever forgets to terminate a loop.
+The client carries its own higher ceiling (`MAX_AUTO_CONTINUES = 50` in `chat-drawer.js`)
+purely as a backstop in case the server ever forgets to terminate a loop.
 
 ### History summarisation
 
@@ -197,18 +205,20 @@ the feature flag:
 
 | Route identifier | Path | Action |
 |---|---|---|
+| `cheddi_status` | `/cheddi/status` | Everything the drawer needs on open: models, operating context, credits, templates, attachment limits |
 | `cheddi_turn` | `/cheddi/turn` | Start a turn (creates the session on first call) |
 | `cheddi_turn_continue` | `/cheddi/turn/continue` | Fire the next turn after auto-run read-only tools |
 | `cheddi_confirm` | `/cheddi/confirm` | Apply Write/Destructive confirmations |
-| `cheddi_models` | `/cheddi/models` | List chat-capable models the BE user may use |
-| `cheddi_sessions` | `/cheddi/sessions` | List the BE user's sessions |
+| `cheddi_sessions_list` | `/cheddi/sessions` | List the BE user's sessions |
 | `cheddi_session_load` | `/cheddi/session/load` | Load full session detail + message history |
 | `cheddi_session_delete` | `/cheddi/session/delete` | Soft-delete a session |
 | `cheddi_attachment_upload` | `/cheddi/attachment/upload` | Store an attachment in FAL (extension allowlist + size cap + folder write permission) |
-| `cheddi_attachment_preflight` | `/cheddi/attachment/preflight` | Metadata-only readability check; never loads file contents |
 | `cheddi_ws_changes` | `/cheddi/workspace/changes` | List the draft records this session changed |
 | `cheddi_ws_publish` | `/cheddi/workspace/publish` | Publish selected drafts |
 | `cheddi_ws_discard` | `/cheddi/workspace/discard` | Discard selected drafts |
+| `cheddi_help` | `/cheddi/help` | Help text for the drawer's help modal |
+| `cheddi_turn_progress` | `/cheddi/turn/progress` | Poll which tool the running turn is on (no rate limit, by design) |
+| `cheddi_summarize` | `/cheddi/summarize` | Roll the conversation up into one summary, on the editor's request |
 
 Validation errors and permission denials use `4xx` with `{ "error": { "message": ... } }`
 so the frontend can branch on HTTP status. Domain-level errors from the orchestrator come
@@ -238,14 +248,15 @@ Classes/
 │   └── Enum/Severity.php             ReadOnly | Write | Destructive (derived from MCP hints)
 
 Resources/Public/
-├── JavaScript/chat-drawer.js        The whole drawer UI (vanilla ES module, no framework)
+├── JavaScript/chat-drawer.js        The drawer: turn loop, messages, confirmations, model state
+├── JavaScript/{sessions-panel,templates-dropdown,navigation-targets,drawer-resize}.js  Self-contained pieces of the surface
 ├── JavaScript/vendor/{marked.esm.js,dompurify.es.mjs}   Locally vendored, CVE-audited
 └── Css/chat-drawer.css              Drawer styling
 ```
 
 ### Frontend
 
-`chat-drawer.js` is a single dependency-free ES module registered via
+`chat-drawer.js` is a dependency-free ES module registered via
 `Configuration/JavaScriptModules.php`. It mounts on the `[data-cheddi-drawer]` div
 the event listener appends to the backend `<body>`. It owns the bubble/drawer, model
 selector, session panel, the auto-continue loop, inline confirm UI, credit display, and
@@ -261,10 +272,11 @@ the CVEs they patch; re-run the audit and update that comment when bumping them.
 | Table | Purpose |
 |---|---|
 | `tx_cheddi_session` | One row per conversation: `session_uuid`, `be_user`, `title`, `model`, `last_activity`, soft-delete `deleted` flag |
-| `tx_cheddi_message` | One row per message: `session`, `sort`, `role` (`user`/`assistant`/`tool`/`summary`), `content`, `tool_calls`, `tool_call_id`, `tool_status` |
+| `tx_cheddi_message` | One row per message: `session`, `sort`, `role` (`user`/`assistant`/`tool`/`summary`), `content`, `tool_calls`, `tool_call_id`, `tool_status`, `attachments` (file references, never bytes), `provider_items` |
+| `tx_cheddi_change` | Audit trail of the records a session mutated: `session`, `tablename`, `record_uid`, `workspace_record_uid`, `workspace`, `page_id`, `action`. Only filled in workspace write mode |
 
-There is no FK constraint between the two; the auto-deleter cascades message deletion in
-application code.
+There are no FK constraints between them; the auto-deleter cascades message, change and
+attachment deletion in application code.
 
 ## Session retention
 
@@ -326,10 +338,20 @@ of a raw HTTP 401 from the server.
 
 ## Development
 
-Unit tests live under `Tests/Unit/` and run with the bundled config:
+Unit tests live under `Tests/Unit/`, functional tests under `Tests/Functional/`. Both run in
+one call from the parent repository:
+
+```bash
+ddev tests-cheddi                    # unit + functional
+ddev tests-cheddi unit               # one suite
+ddev tests-cheddi functional --filter someTest
+```
+
+The raw invocations behind it:
 
 ```bash
 ddev exec .Build/bin/phpunit -c Extensions/cheddi/Tests/UnitTests.xml
+ddev exec .Build/bin/phpunit -c Extensions/cheddi/Tests/FunctionalTests.xml
 ```
 
 Static analysis uses the extension-local `phpstan.neon`. Code style follows the repo-wide

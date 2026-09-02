@@ -37,22 +37,6 @@ final class AttachmentController
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function preflightAction(ServerRequestInterface $request): ResponseInterface
-    {
-        $denied = $this->guardPermission();
-        if (null !== $denied) {
-            return $denied;
-        }
-
-        $params = $request->getParsedBody();
-        $uids = $this->attachmentService->parseClientPayload(is_array($params) ? ($params['attachments'] ?? null) : null);
-        if ([] === $uids) {
-            return $this->error('Missing or empty `attachments` field.', 400);
-        }
-
-        return new JsonResponse(['attachments' => $this->attachmentService->normalizeRefs($uids)]);
-    }
-
     public function uploadAction(ServerRequestInterface $request): ResponseInterface
     {
         $denied = $this->guardPermission();

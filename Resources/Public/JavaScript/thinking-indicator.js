@@ -13,9 +13,9 @@ export class ThinkingIndicator {
         this.phaseIndex = 0;
     }
 
-    show(label, step = 0) {
+    show(label, step = 0, total = 0) {
         this.stopSequence();
-        this.renderLabel(label, step);
+        this.renderLabel(label, step, total);
     }
 
     showSequence(phases, step = 0) {
@@ -47,7 +47,7 @@ export class ThinkingIndicator {
             .map((call) => friendlyToolLabel(call?.name))
             .filter(Boolean);
         if (labels.length === 0) {
-            this.show(ll('cheddi.thinking.default', 'ChEddi is thinking'), step);
+            this.show(ll('cheddi.thinking.default'), step);
             return;
         }
         const label = labels.length === 1
@@ -69,7 +69,7 @@ export class ThinkingIndicator {
         }
     }
 
-    renderLabel(label, step = 0) {
+    renderLabel(label, step = 0, total = 0) {
         if (!this.el) {
             this.el = document.createElement('div');
             this.el.className = 'cheddi__thinking';
@@ -80,11 +80,15 @@ export class ThinkingIndicator {
             `;
             this.labelEl = this.el.querySelector('[data-cheddi-thinking-label]');
         }
-        const base = label || ll('cheddi.thinking.default', 'ChEddi is thinking');
+        const base = label || ll('cheddi.thinking.default');
 
-        this.labelEl.textContent = step >= 2
-            ? ll('cheddi.thinking.step', '{base} · step {step}', { base, step })
-            : base;
+        if (total >= 2 && step >= 1) {
+            this.labelEl.textContent = ll('cheddi.thinking.stepOf', { base, step, total });
+        } else if (step >= 2) {
+            this.labelEl.textContent = ll('cheddi.thinking.step', { base, step });
+        } else {
+            this.labelEl.textContent = base;
+        }
 
         this.container.appendChild(this.el);
         this.container.scrollTop = this.container.scrollHeight;

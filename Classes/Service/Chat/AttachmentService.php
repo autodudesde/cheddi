@@ -84,6 +84,19 @@ class AttachmentService
         return max(self::MAX_BYTES_BY_GROUP);
     }
 
+    public function maxAttachmentsPerMessage(): int
+    {
+        return self::MAX_ATTACHMENTS_PER_MESSAGE;
+    }
+
+    public function acceptAttribute(): string
+    {
+        return implode(',', array_map(
+            static fn (string $extension): string => '.'.$extension,
+            array_keys(self::EXTENSION_GROUPS),
+        ));
+    }
+
     /**
      * @param list<int> $uids
      *

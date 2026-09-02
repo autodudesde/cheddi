@@ -1,9 +1,16 @@
-import { ll } from '@autodudes/cheddi/i18n.js';
+import '@typo3/backend/element/icon-element.js';
+import { ll, llOr } from '@autodudes/cheddi/i18n.js';
 import { renderMarkdown } from '@autodudes/cheddi/markdown.js';
 import { readBackendContext } from '@autodudes/cheddi/backend-context.js';
 import { mapServerError, friendlyToolLabel } from '@autodudes/cheddi/labels.js';
-import { defaultThinkingPhases, intentThinkingLabel } from '@autodudes/cheddi/thinking-labels.js';
+import { defaultThinkingPhases } from '@autodudes/cheddi/thinking-labels.js';
 import { ThinkingIndicator } from '@autodudes/cheddi/thinking-indicator.js';
+import { renderNavigationTargets } from '@autodudes/cheddi/navigation-targets.js';
+import { SessionsPanel } from '@autodudes/cheddi/sessions-panel.js';
+import { renderCreditsBadge, renderModeBadge } from '@autodudes/cheddi/status-bar.js';
+import { orientationStatus, renderIntro } from '@autodudes/cheddi/intro-card.js';
+import { TemplatesDropdown } from '@autodudes/cheddi/templates-dropdown.js';
+import { bindComposerResize, bindResize } from '@autodudes/cheddi/drawer-resize.js';
 import { ChatApiClient } from '@autodudes/cheddi/chat-api-client.js';
 import { drawerMarkup } from '@autodudes/cheddi/drawer-template.js';
 import { WorkspaceReview } from '@autodudes/cheddi/workspace-review.js';
@@ -22,8 +29,29 @@ import {
 } from '@autodudes/cheddi/state.js';
 
 const CHEDDI_ICON_URL = new URL('../Icons/cheddi.png', import.meta.url).href;
-const MAX_AUTO_CONTINUES = 50;
-const CREDITS_WARNING_THRESHOLD = 50;
+// Unreachable by design: guards a `continuing` chain that never ends
+const AUTO_CONTINUE_SAFETY_LIMIT = 50;
+const CREDITS_REFRESH_DELAY_MS = 1200;
+const PROGRESS_POLL_INTERVAL_MS = 900;
+
+const CALLOUT_VARIANTS = {
+    info: 'callout-info',
+    warning: 'callout-warning',
+    error: 'callout-danger',
+};
+
+// v14 opens modals as a native <dialog>, v12 and v13 as a Bootstrap div carrying `.show`.
+function modalIsOpen() {
+    return document.querySelector('dialog[open], .modal.show') !== null;
+}
+
+function refreshPageTreeIfPagesChanged(touchedTables) {
+    if (!Array.isArray(touchedTables) || !touchedTables.includes('pages')) {
+        return;
+    }
+    // The content frame is deliberately left alone: it may hold an unsaved edit form.
+    top.document.dispatchEvent(new CustomEvent('typo3:pagetree:refresh'));
+}
 
 class ChatDrawer {
     constructor(mountPoint) {
@@ -33,11 +61,17 @@ class ChatDrawer {
         this.elements = {};
         this.sessionUuid = loadSessionUuid();
         this.activeAbortController = null;
+        this.progressTimer = null;
         this.isSending = false;
         this.creditsAvailable = true;
         this.availableModels = [];
-        this.starterTemplates = [];
         this.orientation = null;
+        this.confirmTarget = null;
+        this.credits = null;
+        this.starterTemplates = [];
+        this.statusAbortController = null;
+        this.creditsRefreshTimer = null;
+        this.creditsExhausted = false;
         this.workspaceReview = null;
         this.helpModal = null;
         this.attachmentTray = null;
@@ -51,47 +85,25 @@ class ChatDrawer {
         this.boundDocumentClick = null;
         this.boundDocumentPointerDown = null;
         this.boundWindowBlur = null;
+        this.sessionsPanel = null;
+        this.templatesDropdown = null;
+        this.contextFillLevel = 'ok';
     }
 
     init() {
         this.render();
         this.thinking = new ThinkingIndicator(this.elements.messages);
-        this.renderQuickActions();
-        this.applyState();
+        this.sessionsPanel = new SessionsPanel(this.api, this.elements, {
+            onSelect: (uuid) => this.switchToSession(uuid),
+            onNew: () => this.startNewConversation(),
+            currentSessionUuid: () => this.sessionUuid,
+        });
+        this.templatesDropdown = new TemplatesDropdown(this.elements, {
+            onPick: (prompt) => this.applyTemplate(prompt),
+            appliesToContext: (prompt) => this.templateAppliesToContext(prompt, readBackendContext()),
+        });
         this.bindEvents();
-        this.loadAvailableModels();
-        this.loadStarterTemplates();
-    }
-
-    renderQuickActions() {
-        const el = this.elements.quickActions;
-        if (!el) {
-            return;
-        }
-        el.innerHTML = '';
-        const ctx = readBackendContext();
-        this.starterTemplates
-            .filter((tpl) => this.templateAppliesToContext(tpl.prompt, ctx))
-            .forEach((tpl) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'cheddi__quick-action';
-                btn.textContent = tpl.name;
-                btn.title = tpl.name;
-                btn.addEventListener('click', () => this.applyTemplate(tpl.prompt));
-                el.appendChild(btn);
-            });
-    }
-
-    async loadStarterTemplates() {
-        try {
-            this.starterTemplates = await this.api.fetchTemplates();
-        } catch (e) {
-            console.warn('[ChEddi] could not load starter templates.', e);
-            this.starterTemplates = [];
-        }
-        this.renderQuickActions();
-        this.updateQuickActionsVisibility();
+        this.applyState();
     }
 
     applyTemplate(prompt) {
@@ -115,16 +127,6 @@ class ChatDrawer {
         return needsRecord ? Boolean(ctx.recordUid) : true;
     }
 
-    updateQuickActionsVisibility() {
-        const el = this.elements.quickActions;
-        if (!el) {
-            return;
-        }
-        const empty = this.elements.messages.querySelectorAll('.cheddi__message').length === 0;
-        const usable = this.availableModels.length > 0 && this.creditsAvailable;
-        el.hidden = !(empty && usable);
-    }
-
     render() {
         this.mountPoint.hidden = false;
         // The brand icon comes from the TYPO3 icon registry via PHP, so white-label installs
@@ -144,13 +146,19 @@ class ChatDrawer {
             messages: this.mountPoint.querySelector('[data-cheddi-messages]'),
             textarea: this.mountPoint.querySelector('[data-cheddi-textarea]'),
             sendButton: this.mountPoint.querySelector('[data-cheddi-send]'),
+            workspace: this.mountPoint.querySelector('[data-cheddi-workspace]'),
+            workspaceLabel: this.mountPoint.querySelector('[data-cheddi-workspace-label]'),
+            workspaceTitle: this.mountPoint.querySelector('[data-cheddi-workspace-title]'),
             credits: this.mountPoint.querySelector('[data-cheddi-credits]'),
             creditsValue: this.mountPoint.querySelector('[data-cheddi-credits-value]'),
             modelSelect: this.mountPoint.querySelector('[data-cheddi-model-select]'),
-            orientation: this.mountPoint.querySelector('[data-cheddi-orientation]'),
-            orientationBody: this.mountPoint.querySelector('[data-cheddi-orientation-body]'),
+            intro: this.mountPoint.querySelector('[data-cheddi-intro]'),
+            introList: this.mountPoint.querySelector('[data-cheddi-intro-list]'),
+            introModel: this.mountPoint.querySelector('[data-cheddi-intro-model]'),
             openHelpButton: this.mountPoint.querySelector('[data-cheddi-open-help]'),
-            quickActions: this.mountPoint.querySelector('[data-cheddi-quick-actions]'),
+            contextNotice: this.mountPoint.querySelector('[data-cheddi-context-notice]'),
+            contextNoticeText: this.mountPoint.querySelector('[data-cheddi-context-notice-text]'),
+            summarizeButton: this.mountPoint.querySelector('[data-cheddi-summarize]'),
             actionsToggle: this.mountPoint.querySelector('[data-cheddi-actions-toggle]'),
             actionsMenu: this.mountPoint.querySelector('[data-cheddi-actions-menu]'),
             newConversationButton: this.mountPoint.querySelector('[data-cheddi-new-conversation]'),
@@ -162,6 +170,11 @@ class ChatDrawer {
             sessionsList: this.mountPoint.querySelector('[data-cheddi-sessions-list]'),
             sessionsPrimaryButton: this.mountPoint.querySelector('[data-cheddi-sessions-primary]'),
             closeSessionsButton: this.mountPoint.querySelector('[data-cheddi-close-sessions]'),
+            templates: this.mountPoint.querySelector('[data-cheddi-templates]'),
+            templatesToggle: this.mountPoint.querySelector('[data-cheddi-templates-toggle]'),
+            templatesMenu: this.mountPoint.querySelector('[data-cheddi-templates-menu]'),
+            templatesSearch: this.mountPoint.querySelector('[data-cheddi-templates-search]'),
+            templatesList: this.mountPoint.querySelector('[data-cheddi-templates-list]'),
         };
     }
 
@@ -186,9 +199,10 @@ class ChatDrawer {
         this.elements.closeButton.addEventListener('click', () => this.setOpen(false));
         this.elements.minimizeButton.addEventListener('click', () => this.setOpen(false));
         this.elements.sendButton.addEventListener('click', () => this.handlePrimaryAction());
+        this.elements.summarizeButton.addEventListener('click', () => this.summarizeHistory());
         this.elements.textarea.addEventListener('keydown', (event) => this.onTextareaKeydown(event));
-        this.bindResize();
-        this.bindComposerResize();
+        bindResize(this.elements, this.state);
+        bindComposerResize(this.elements, this.state, () => this.applyComposerHeight());
 
         this.elements.actionsToggle.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -200,7 +214,7 @@ class ChatDrawer {
         });
         this.elements.openSessionsButton.addEventListener('click', () => {
             this.closeActionsMenu();
-            this.openSessionsPanel();
+            this.sessionsPanel.open();
         });
         if (this.elements.openReviewButton) {
             this.elements.openReviewButton.addEventListener('click', () => {
@@ -218,7 +232,16 @@ class ChatDrawer {
                 this.renderMessage({ role: 'system', kind: 'warning', text: event.detail.message });
             });
         }
-        this.elements.closeSessionsButton.addEventListener('click', () => this.closeSessionsPanel());
+        this.elements.closeSessionsButton.addEventListener('click', () => this.sessionsPanel.close());
+        this.elements.templatesToggle.addEventListener('click', () => {
+            this.closeActionsMenu();
+            this.templatesDropdown.toggle();
+        });
+        this.elements.drawer.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                this.closeOpenPanels();
+            }
+        });
         if (this.elements.modelSelect) {
             this.elements.modelSelect.addEventListener('change', (event) => {
                 if (this.modelLocked) {
@@ -230,12 +253,16 @@ class ChatDrawer {
                     this.sessionUuid = null;
                     saveSessionUuid(null);
                 }
+                this.renderIntroCard();
             });
         }
         this.boundDocumentClick = (event) => {
             if (!this.elements.actionsMenu.contains(event.target)
                 && event.target !== this.elements.actionsToggle) {
                 this.closeActionsMenu();
+            }
+            if (!this.templatesDropdown.contains(event.target)) {
+                this.templatesDropdown.close();
             }
         };
         document.addEventListener('click', this.boundDocumentClick);
@@ -260,7 +287,7 @@ class ChatDrawer {
 
     bindAutoMinimize() {
         this.boundDocumentPointerDown = (event) => {
-            if (!this.state.open) {
+            if (!this.state.open || modalIsOpen()) {
                 return;
             }
             if (this.elements.drawer.contains(event.target)
@@ -277,6 +304,7 @@ class ChatDrawer {
             }
             window.setTimeout(() => {
                 if (this.state.open
+                    && !modalIsOpen()
                     && document.activeElement
                     && document.activeElement.tagName === 'IFRAME') {
                     this.setOpen(false);
@@ -284,6 +312,13 @@ class ChatDrawer {
             }, 0);
         };
         window.addEventListener('blur', this.boundWindowBlur);
+    }
+
+    closeOpenPanels() {
+        this.templatesDropdown.close();
+        if (!this.elements.sessionsPanel.hidden) {
+            this.sessionsPanel.close();
+        }
     }
 
     toggleActionsMenu() {
@@ -333,7 +368,7 @@ class ChatDrawer {
 
     openHelp() {
         if (this.helpModal === null) {
-            this.helpModal = new HelpModal(this.api);
+            this.helpModal = new HelpModal(this.api, () => orientationStatus(this.orientation));
         }
         this.helpModal.open();
     }
@@ -347,19 +382,22 @@ class ChatDrawer {
         this.cancelTurn();
         this.sessionUuid = null;
         saveSessionUuid(null);
+        this.selectedModel = '';
         saveSessionModel(null);
+        this.ensureModelSelection();
+        this.renderModelSelect();
         this.modelLocked = false;
         this.applyModelLock();
         this.elements.messages.replaceChildren();
         this.lowBalanceShown = false;
-        this.updateQuickActionsVisibility();
         this.creditsAvailable = true;
+        this.creditsExhausted = false;
         this.creditsWarningShown = false;
         this.elements.textarea.disabled = false;
-        this.elements.textarea.placeholder = ll('cheddi.ui.textareaPlaceholder', 'Frage oder Anweisung tippen…');
+        this.elements.textarea.placeholder = ll('cheddi.ui.textareaPlaceholder');
         this.elements.sendButton.disabled = false;
-        this.elements.sendButton.textContent = ll('cheddi.ui.send', 'Senden');
-        this.updateCredits(null);
+        this.elements.sendButton.textContent = ll('cheddi.ui.send');
+        this.renderIntroCard();
         this.elements.textarea.focus();
     }
 
@@ -378,6 +416,11 @@ class ChatDrawer {
         this.handleSend();
     }
 
+    /**
+     * Models, operating context, workspace and templates are re-read on every open, never reused
+     * from the page load: the drawer outlives module switches, and an editor who just changed a
+     * template or a workspace must not be shown yesterday's list.
+     */
     setOpen(open, { persist = true } = {}) {
         this.state.open = open;
         this.elements.drawer.hidden = !open;
@@ -385,215 +428,15 @@ class ChatDrawer {
         if (persist) {
             saveState(this.state);
         }
+        if (open) {
+            this.refreshStatus();
+        }
     }
 
     /**
      * Grip sits in the composer's top-left corner, so dragging upwards grows the field,
      * the same direction the drawer's own handle uses.
      */
-    bindComposerResize() {
-        const handle = this.elements.composerResizeHandle;
-        const textarea = this.elements.textarea;
-        if (!handle) {
-            return;
-        }
-
-        const onPointerDown = (event) => {
-            if (event.button !== undefined && event.button !== 0) {
-                return;
-            }
-            event.preventDefault();
-            const startY = event.clientY;
-            const startHeight = textarea.offsetHeight;
-            const pointerId = event.pointerId;
-
-            try {
-                handle.setPointerCapture(pointerId);
-            } catch (err) {
-                console.debug('[ChEddi] setPointerCapture failed (pointer gone).', err);
-            }
-            document.body.classList.add('cheddi-resizing-composer');
-
-            const onPointerMove = (moveEvent) => {
-                const proposedHeight = startHeight + (startY - moveEvent.clientY);
-                const height = clampComposerHeight(proposedHeight, this.state.height);
-                this.state.composerHeight = height;
-                textarea.style.height = `${height}px`;
-            };
-
-            const onPointerUp = () => {
-                handle.removeEventListener('pointermove', onPointerMove);
-                handle.removeEventListener('pointerup', onPointerUp);
-                handle.removeEventListener('pointercancel', onPointerUp);
-                try {
-                    handle.releasePointerCapture(pointerId);
-                } catch (err) {
-                    console.debug('[ChEddi] releasePointerCapture failed (already released).', err);
-                }
-                document.body.classList.remove('cheddi-resizing-composer');
-                saveState(this.state);
-            };
-
-            handle.addEventListener('pointermove', onPointerMove);
-            handle.addEventListener('pointerup', onPointerUp);
-            handle.addEventListener('pointercancel', onPointerUp);
-        };
-
-        handle.addEventListener('pointerdown', onPointerDown);
-    }
-
-    bindResize() {
-        const handle = this.elements.resizeHandle;
-        const drawer = this.elements.drawer;
-
-        const onPointerDown = (event) => {
-            if (event.button !== undefined && event.button !== 0) {
-                return;
-            }
-            event.preventDefault();
-            const startX = event.clientX;
-            const startY = event.clientY;
-            const startWidth = drawer.offsetWidth;
-            const startHeight = drawer.offsetHeight;
-            const pointerId = event.pointerId;
-
-            try {
-                handle.setPointerCapture(pointerId);
-            } catch (err) {
-                console.debug('[ChEddi] setPointerCapture failed (pointer gone).', err);
-            }
-            document.body.classList.add('cheddi-resizing');
-
-            const onPointerMove = (moveEvent) => {
-                const proposedWidth = startWidth + (startX - moveEvent.clientX);
-                const proposedHeight = startHeight + (startY - moveEvent.clientY);
-                const { width, height } = clampSize(proposedWidth, proposedHeight);
-                this.state.width = width;
-                this.state.height = height;
-                drawer.style.width = `${width}px`;
-                drawer.style.height = `${height}px`;
-            };
-
-            const onPointerUp = () => {
-                handle.removeEventListener('pointermove', onPointerMove);
-                handle.removeEventListener('pointerup', onPointerUp);
-                handle.removeEventListener('pointercancel', onPointerUp);
-                try {
-                    handle.releasePointerCapture(pointerId);
-                } catch (err) {
-                    console.debug('[ChEddi] releasePointerCapture failed (already released).', err);
-                }
-                document.body.classList.remove('cheddi-resizing');
-                // A shorter drawer lowers the composer's ceiling, so re-clamp it.
-                this.applyComposerHeight();
-                saveState(this.state);
-            };
-
-            handle.addEventListener('pointermove', onPointerMove);
-            handle.addEventListener('pointerup', onPointerUp);
-            handle.addEventListener('pointercancel', onPointerUp);
-        };
-
-        handle.addEventListener('pointerdown', onPointerDown);
-    }
-
-    async openSessionsPanel() {
-        this.elements.sessionsPanel.hidden = false;
-        await this.loadSessionsList();
-    }
-
-    closeSessionsPanel() {
-        this.elements.sessionsPanel.hidden = true;
-    }
-
-    async loadSessionsList() {
-        this.renderSessionsList(await this.api.fetchSessions());
-    }
-
-    renderSessionsList(sessions) {
-        const list = this.elements.sessionsList;
-        list.replaceChildren();
-
-        this.updateSessionsPrimaryButton(sessions.length > 0);
-
-        if (sessions.length === 0) {
-            const empty = document.createElement('li');
-            empty.className = 'cheddi__sessions-empty';
-            empty.textContent = ll('cheddi.sessions.empty', 'Noch keine Konversationen vorhanden.');
-            list.appendChild(empty);
-            return;
-        }
-
-        for (const session of sessions) {
-            list.appendChild(this.makeSessionListItem(session));
-        }
-    }
-
-    updateSessionsPrimaryButton(hasSessions) {
-        const button = this.elements.sessionsPrimaryButton;
-        if (hasSessions) {
-            button.textContent = ll('cheddi.sessions.backToChat', '← Zurück zum aktuellen Chat');
-            button.onclick = () => this.closeSessionsPanel();
-        } else {
-            button.textContent = ll('cheddi.sessions.startNew', '+ Neue Konversation');
-            button.onclick = () => {
-                this.closeSessionsPanel();
-                this.startNewConversation();
-            };
-        }
-    }
-
-    makeSessionListItem(session) {
-        const item = document.createElement('li');
-        item.className = 'cheddi__sessions-item';
-        if (session.uuid === this.sessionUuid) {
-            item.classList.add('cheddi__sessions-item--current');
-        }
-
-        const openButton = document.createElement('button');
-        openButton.type = 'button';
-        openButton.className = 'cheddi__sessions-item-open';
-        openButton.addEventListener('click', () => this.switchToSession(session.uuid));
-
-        const text = document.createElement('span');
-        text.className = 'cheddi__sessions-item-text';
-
-        const title = document.createElement('span');
-        title.className = 'cheddi__sessions-item-title';
-        title.textContent = session.title !== '' ? session.title : ll('cheddi.sessions.untitled', '(untitled)');
-        text.appendChild(title);
-
-        const meta = document.createElement('span');
-        meta.className = 'cheddi__sessions-item-meta';
-        meta.textContent = this.formatRelativeTime(session.lastActivity);
-        text.appendChild(meta);
-
-        openButton.appendChild(text);
-
-        // Signals the row is a switchable conversation.
-        const chevron = document.createElement('span');
-        chevron.className = 'cheddi__sessions-item-chevron';
-        chevron.setAttribute('aria-hidden', 'true');
-        chevron.textContent = '›';
-        openButton.appendChild(chevron);
-
-        item.appendChild(openButton);
-
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.className = 'cheddi__sessions-item-delete';
-        deleteButton.setAttribute('aria-label', ll('cheddi.sessions.deleteLabel', 'Konversation löschen'));
-        deleteButton.title = ll('cheddi.sessions.delete', 'Löschen');
-        deleteButton.textContent = '🗑';
-        deleteButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.deleteSession(session.uuid);
-        });
-        item.appendChild(deleteButton);
-
-        return item;
-    }
-
     async switchToSession(sessionUuid) {
         try {
             const session = await this.api.loadSession(sessionUuid);
@@ -614,10 +457,17 @@ class ChatDrawer {
             for (const message of session.messages ?? []) {
                 this.renderRestoredMessage(message);
             }
+            this.renderIntroCard();
 
-            this.closeSessionsPanel();
+            this.sessionsPanel.close();
         } catch (e) {
             console.error('[ChEddi] could not switch to the selected conversation.', e);
+        }
+    }
+
+    renderRestoredSources(message) {
+        if (Array.isArray(message.sources) && message.sources.length > 0) {
+            this.renderSources(message.sources);
         }
     }
 
@@ -633,13 +483,15 @@ class ChatDrawer {
                 for (const call of message.toolCalls ?? []) {
                     this.renderMessage({ role: 'tool-call', call });
                 }
+                this.renderRestoredSources(message);
                 break;
             case 'tool':
                 this.renderMessage({
                     role: 'system',
                     kind: message.toolStatus === 'failed' || message.toolStatus === 'rejected' ? 'warning' : 'info',
-                    text: ll('cheddi.history.toolStatus', 'Tool: {status}', { status: message.toolStatus ?? 'done' }),
+                    text: ll('cheddi.history.toolStatus', { status: message.toolStatus ?? 'done' }),
                 });
+                this.renderRestoredSources(message);
                 break;
             case 'summary':
                 this.renderMessage({
@@ -650,50 +502,39 @@ class ChatDrawer {
         }
     }
 
-    async deleteSession(sessionUuid) {
-        try {
-            if (!await this.api.deleteSession(sessionUuid)) {
-                return;
-            }
-            if (sessionUuid === this.sessionUuid) {
-                this.startNewConversation();
-            }
-            await this.loadSessionsList();
-        } catch (e) {
-            console.error('[ChEddi] could not delete the conversation.', e);
+    async refreshStatus({ refreshCredits = false } = {}) {
+        if (this.isSending && !refreshCredits) {
+            return;
         }
-    }
+        if (this.statusAbortController) {
+            this.statusAbortController.abort();
+        }
+        const controller = new AbortController();
+        this.statusAbortController = controller;
 
-    formatRelativeTime(unixSeconds) {
-        if (typeof unixSeconds !== 'number' || unixSeconds <= 0) {
-            return '';
-        }
-        const diffSeconds = Math.floor(Date.now() / 1000) - unixSeconds;
-        if (diffSeconds < 60) {
-            return ll('cheddi.time.justNow', 'just now');
-        }
-        if (diffSeconds < 3600) {
-            return ll('cheddi.time.minutesAgo', '{count} min ago', { count: Math.floor(diffSeconds / 60) });
-        }
-        if (diffSeconds < 86400) {
-            return ll('cheddi.time.hoursAgo', '{count} h ago', { count: Math.floor(diffSeconds / 3600) });
-        }
-        if (diffSeconds < 86400 * 7) {
-            return ll('cheddi.time.daysAgo', '{count} days ago', { count: Math.floor(diffSeconds / 86400) });
-        }
-        return new Date(unixSeconds * 1000).toLocaleDateString();
-    }
-
-    async loadAvailableModels() {
+        let payload;
         try {
-            const payload = await this.api.fetchModels();
-            this.availableModels = Array.isArray(payload?.models) ? payload.models : [];
-            this.orientation = payload?.orientation ?? null;
-            this.renderOrientation();
+            payload = await this.api.fetchStatus({ refreshCredits }, controller.signal);
         } catch (err) {
-            console.warn('[ChEddi] could not load the available chat models.', err);
-            this.availableModels = [];
+            if (err?.name !== 'AbortError') {
+                console.warn('[ChEddi] could not load the chat status.', err);
+            }
+            return;
+        } finally {
+            if (this.statusAbortController === controller) {
+                this.statusAbortController = null;
+            }
         }
+
+        this.availableModels = Array.isArray(payload?.models) ? payload.models : [];
+        this.orientation = payload?.orientation ?? null;
+        this.credits = payload?.credits ?? null;
+        this.starterTemplates = Array.isArray(payload?.templates) ? payload.templates : [];
+
+        this.templatesDropdown.setTemplates(this.starterTemplates);
+        this.attachmentTray?.applyLimits(payload?.attachments ?? null);
+        this.renderStatusBadges();
+        this.resetAvailabilityState();
 
         if (this.selectedModel !== ''
             && this.availableModels.length > 0
@@ -701,11 +542,59 @@ class ChatDrawer {
             this.renderModelUnavailableNotice();
         }
 
+        this.ensureModelSelection();
         this.renderModelSelect();
         this.applyModelLock();
         this.applyNoModelsAvailableState();
         this.applyMissingApiKeyState();
-        this.updateQuickActionsVisibility();
+        this.renderIntroCard();
+    }
+
+    /**
+     * Only the two states a refresh can actually recompute - a missing key and an empty model list.
+     * An exhausted balance is not one of them, so it keeps the composer locked until the editor
+     * starts a new conversation.
+     */
+    resetAvailabilityState() {
+        if (this.creditsExhausted) {
+            return;
+        }
+        this.creditsAvailable = true;
+        this.elements.textarea.disabled = this.isSending;
+        this.elements.textarea.placeholder = ll('cheddi.ui.textareaPlaceholder');
+        this.elements.sendButton.disabled = false;
+        this.elements.sendButton.textContent = this.isSending
+            ? ll('cheddi.ui.cancel')
+            : ll('cheddi.ui.send');
+    }
+
+    renderStatusBadges() {
+        renderModeBadge(this.elements, this.orientation);
+        renderCreditsBadge(this.elements, this.credits);
+    }
+
+    renderIntroCard() {
+        renderIntro(this.elements, {
+            orientation: this.orientation,
+            visible: this.elements.messages.childElementCount === 0,
+            activeModelLabel: this.activeModelLabel(),
+        });
+    }
+
+    activeModelLabel() {
+        const model = this.availableModels.find((m) => m.name === this.selectedModel);
+
+        return model ? (model.label || model.name) : '';
+    }
+
+    scheduleCreditsRefresh() {
+        if (this.creditsRefreshTimer !== null) {
+            window.clearTimeout(this.creditsRefreshTimer);
+        }
+        this.creditsRefreshTimer = window.setTimeout(() => {
+            this.creditsRefreshTimer = null;
+            this.refreshStatus({ refreshCredits: true });
+        }, CREDITS_REFRESH_DELAY_MS);
     }
 
     applyMissingApiKeyState() {
@@ -715,7 +604,7 @@ class ChatDrawer {
         this.creditsAvailable = false;
         if (this.elements.textarea) {
             this.elements.textarea.disabled = true;
-            this.elements.textarea.placeholder = ll('cheddi.notice.apiKeyMissing.title', 'Bitte hinterlege deinen AI Suite API-Schlüssel in der Erweiterungskonfiguration.');
+            this.elements.textarea.placeholder = ll('cheddi.notice.apiKeyMissing.title');
         }
         if (this.elements.sendButton) {
             this.elements.sendButton.disabled = true;
@@ -727,9 +616,9 @@ class ChatDrawer {
         this.renderMessage({
             role: 'system',
             kind: 'warning',
-            text: ll('cheddi.notice.apiKeyMissing.title', 'Bitte hinterlege deinen AI Suite API-Schlüssel in der Erweiterungskonfiguration.')
+            text: ll('cheddi.notice.apiKeyMissing.title')
                 + ' '
-                + ll('cheddi.notice.apiKeyMissing.message', 'Wenn du noch keinen API-Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.'),
+                + ll('cheddi.notice.apiKeyMissing.message'),
         });
     }
 
@@ -741,7 +630,7 @@ class ChatDrawer {
         this.renderMessage({
             role: 'system',
             kind: 'warning',
-            text: ll('cheddi.notice.modelUnavailable', 'Note: Your previously selected chat model is no longer available. Please pick a model above. This may be because data-protection (GDPR) mode was activated, which only allows the compliant models.'),
+            text: ll('cheddi.notice.modelUnavailable'),
         });
     }
 
@@ -755,21 +644,17 @@ class ChatDrawer {
             select.innerHTML = '';
             return;
         }
-        const hasValidSelection = this.availableModels.some((m) => m.name === this.selectedModel);
         const options = [];
-        if (!hasValidSelection) {
-            options.push(`<option value="" disabled selected hidden>${ll('cheddi.notice.selectModelPlaceholder', 'Bitte Modell wählen …')}</option>`);
-        }
         for (const m of this.availableModels) {
             const option = document.createElement('option');
             option.value = m.name;
             const rate = Number(m.creditsPerMillion) || 0;
             const meta = [];
             if (rate > 0) {
-                meta.push(ll('cheddi.model.rate', '{rate} Credits/Mio. Tokens', { rate }));
+                meta.push(ll('cheddi.model.rate', { rate }));
             }
             if (m.isGdpr) {
-                meta.push(ll('cheddi.model.gdprBadge', 'DSGVO-konform'));
+                meta.push(ll('cheddi.model.gdprBadge'));
             }
             option.textContent = meta.length > 0
                 ? `${m.label || m.name} (${meta.join(' · ')})`
@@ -781,42 +666,25 @@ class ChatDrawer {
         select.hidden = false;
     }
 
-    renderOrientation() {
-        const el = this.elements.orientation;
-        const body = this.elements.orientationBody;
-        if (!el || !body || !this.orientation) {
+    /**
+     * The catalogue arrives ordered by the server with the default first, and it is already
+     * filtered by permission, GDPR mode and available keys — so its first entry is the model this
+     * installation should start on. Falling back to it removes the empty state entirely: an editor
+     * who never touches the dropdown gets a working chat instead of a rejected first message.
+     *
+     * Only applied when the current selection is not in the catalogue, so a deliberate choice is
+     * never overwritten mid-conversation.
+     */
+    ensureModelSelection() {
+        if (this.availableModels.length === 0) {
             return;
         }
-        const o = this.orientation;
-        const lines = [
-            o.gdprForced
-                ? ll('cheddi.orientation.gdprOn', 'Datenschutz: DSGVO-Modus aktiv, es wird nur das datenschutzkonforme Modell angeboten')
-                : ll('cheddi.orientation.gdprOff', 'Datenschutz: DSGVO-Modus aus'),
-            o.writeMode === 'live'
-                ? ll('cheddi.orientation.writeLive', 'Schreibmodus: live, Änderungen wirken direkt auf der Live-Seite')
-                : ll('cheddi.orientation.writeWorkspace', 'Schreibmodus: Entwurf, Änderungen landen im Workspace und nicht live'),
-            o.webResearch
-                ? ll('cheddi.orientation.webResearchOn', 'Web-Recherche: an, Suchanfragen verlassen diese Installation')
-                : ll('cheddi.orientation.webResearchOff', 'Web-Recherche: aus, ChEddi arbeitet nur mit Inhalten dieser Installation'),
-            ll('cheddi.orientation.confirmation', 'Jede Änderung wird dir vorher als Vorschau gezeigt und erst nach deiner Bestätigung geschrieben.'),
-        ];
-
-        const retentionDays = Number(o.sessionLifetimeDays) || 0;
-        if (retentionDays > 0) {
-            lines.push(ll(
-                'cheddi.orientation.retention',
-                'Konversationen werden nach {days} Tagen ohne Aktivität gelöscht.',
-                { days: retentionDays },
-            ));
+        if (this.availableModels.some((m) => m.name === this.selectedModel)) {
+            return;
         }
 
-        body.innerHTML = '';
-        for (const text of lines) {
-            const li = document.createElement('li');
-            li.textContent = text;
-            body.appendChild(li);
-        }
-        el.hidden = false;
+        this.selectedModel = this.availableModels[0].name;
+        saveSessionModel(this.selectedModel);
     }
 
     applyModelLock() {
@@ -826,7 +694,7 @@ class ChatDrawer {
         }
         select.disabled = this.modelLocked;
         select.title = this.modelLocked
-            ? ll('cheddi.notice.modelLocked', 'Das Modell ist pro Konversation festgelegt. Starte eine neue Konversation, um es zu wechseln. Credits fallen pro Antwort an, und ein fortgesetztes Gespräch kostet weniger als ein neues.')
+            ? ll('cheddi.notice.modelLocked')
             : '';
     }
 
@@ -837,7 +705,7 @@ class ChatDrawer {
         this.creditsAvailable = false;
         if (this.elements.textarea) {
             this.elements.textarea.disabled = true;
-            this.elements.textarea.placeholder = ll('cheddi.notice.noModels', 'Kein Chat-Modell freigeschaltet. Bitte an die Administration wenden.');
+            this.elements.textarea.placeholder = ll('cheddi.notice.noModels');
         }
         if (this.elements.sendButton) {
             this.elements.sendButton.disabled = true;
@@ -857,7 +725,7 @@ class ChatDrawer {
             this.renderMessage({
                 role: 'system',
                 kind: 'warning',
-                text: ll('cheddi.notice.selectModelFirst', 'Bitte wähle zuerst oben ein Chat-Modell aus.'),
+                text: ll('cheddi.notice.selectModelFirst'),
             });
             return;
         }
@@ -869,11 +737,7 @@ class ChatDrawer {
         this.renderMessage({ role: 'user', text: this.describeSentMessage(text, attachments) });
         this.attachmentTray?.clear();
         this.setSending(true);
-        this.thinking.showSequence([
-            intentThinkingLabel(text),
-            ll('cheddi.thinking.moment', 'Einen Moment …'),
-            ll('cheddi.thinking.almost', 'Fast fertig …'),
-        ]);
+        this.thinking.showSequence(defaultThinkingPhases());
 
         try {
             const result = await this.startTurn(text, attachments);
@@ -902,16 +766,33 @@ class ChatDrawer {
     }
 
     announceActiveModel() {
-        const model = this.availableModels.find((m) => m.name === this.selectedModel);
         this.renderMessage({
             role: 'system',
             kind: 'info',
-            text: ll(
-                'cheddi.notice.activeModel',
-                'Diese Konversation läuft auf {model}. Starte eine neue Konversation, um zu wechseln.',
-                { model: model?.label ?? this.selectedModel },
-            ),
+            text: ll('cheddi.notice.activeModel', { model: this.activeModelLabel() || this.selectedModel }),
         });
+    }
+
+    startProgressPolling() {
+        this.stopProgressPolling();
+        this.progressTimer = window.setInterval(async () => {
+            const progress = await this.api.fetchTurnProgress(this.sessionUuid);
+            if (!progress || progress.phase !== 'tool' || !this.isSending) {
+                return;
+            }
+            this.thinking.show(
+                friendlyToolLabel(progress.tool) || ll('cheddi.thinking.default'),
+                Number(progress.step) || 0,
+                Number(progress.total) || 0,
+            );
+        }, PROGRESS_POLL_INTERVAL_MS);
+    }
+
+    stopProgressPolling() {
+        if (this.progressTimer) {
+            window.clearInterval(this.progressTimer);
+            this.progressTimer = null;
+        }
     }
 
     async continueTurn() {
@@ -933,7 +814,7 @@ class ChatDrawer {
                 this.renderMessage({
                     role: 'system',
                     kind: 'warning',
-                    text: ll(notice.key, notice.key, notice.params || {}),
+                    text: llOr(notice.key, notice.key, notice.params || {}),
                 });
             }
         }
@@ -941,17 +822,14 @@ class ChatDrawer {
         if (result?.historySummary
             && typeof result.historySummary.summaryContent === 'string'
             && result.historySummary.summaryContent !== '') {
-            this.replaceLeadingMessagesWithSummary(
-                result.historySummary.summaryContent,
-                Array.isArray(result.historySummary.replacedMessageIds)
-                    ? result.historySummary.replacedMessageIds.length
-                    : 0,
-            );
+            this.replaceLeadingMessagesWithSummary(result.historySummary.summaryContent);
         }
 
         if (Array.isArray(result?.sources) && result.sources.length > 0) {
             this.renderSources(result.sources);
         }
+
+        refreshPageTreeIfPagesChanged(result?.touchedTables);
 
         switch (result?.status) {
             case 'final':
@@ -959,26 +837,28 @@ class ChatDrawer {
                     this.renderMessage({ role: 'assistant', text: result.text });
                 }
                 // After the answer, not before it: the buttons belong to what was just described.
-                this.renderNavigationTargets(result.navigationTargets);
+                renderNavigationTargets(this.elements.messages, result.navigationTargets);
                 this.updateCredits(result.usage);
+                this.updateContextFill(result);
                 break;
 
             case 'continuing':
                 if (typeof result.text === 'string' && result.text !== '') {
                     this.renderMessage({ role: 'assistant', text: result.text });
                 }
-                this.renderNavigationTargets(result.navigationTargets);
+                renderNavigationTargets(this.elements.messages, result.navigationTargets);
                 for (const call of result.toolCalls ?? []) {
                     this.renderMessage({ role: 'tool-call', call });
                 }
                 this.updateCredits(result.usage);
+                this.updateContextFill(result);
                 const nextStep = autoContinueDepth + 2;
                 this.thinking.updateFromToolCalls(result.toolCalls, nextStep);
-                if (autoContinueDepth >= MAX_AUTO_CONTINUES) {
+                if (autoContinueDepth >= AUTO_CONTINUE_SAFETY_LIMIT) {
                     this.renderMessage({
                         role: 'system',
                         kind: 'warning',
-                        text: ll('cheddi.notice.toolCapReached', 'Maximale Anzahl automatischer Tool-Calls erreicht. Bitte neue Frage stellen.'),
+                        text: ll('cheddi.notice.toolCapReached'),
                     });
                     break;
                 }
@@ -987,6 +867,7 @@ class ChatDrawer {
                 break;
 
             case 'needsConfirm':
+                this.confirmTarget = result.confirmTarget ?? null;
                 if (typeof result.text === 'string' && result.text !== '') {
                     this.renderMessage({ role: 'assistant', text: result.text });
                 }
@@ -995,18 +876,21 @@ class ChatDrawer {
                 }
                 this.renderMessage({ role: 'pending', pending: result.pending ?? [] });
                 this.updateCredits(result.usage);
+                this.updateContextFill(result);
                 break;
 
             case 'creditsExhausted':
                 this.creditsAvailable = false;
+                this.creditsExhausted = true;
                 this.renderMessage({
                     role: 'system',
                     kind: 'error',
                     text: autoContinueDepth > 0
-                        ? ll('cheddi.notice.creditsExhaustedAborted', 'Konversation abgebrochen: Credits aufgebraucht.')
-                        : ll('cheddi.notice.creditsExhausted', 'Credits aufgebraucht, bitte aufladen.'),
+                        ? ll('cheddi.notice.creditsExhaustedAborted')
+                        : ll('cheddi.notice.creditsExhausted'),
                 });
                 this.updateCredits(result.usage);
+                this.updateContextFill(result);
                 this.updateInputDisabledState();
                 break;
 
@@ -1020,6 +904,7 @@ class ChatDrawer {
                     text: this.formatAbortReason(result.abortReason),
                 });
                 this.updateCredits(result.usage);
+                this.updateContextFill(result);
                 break;
 
             case 'error':
@@ -1034,81 +919,8 @@ class ChatDrawer {
                 this.renderMessage({
                     role: 'system',
                     kind: 'error',
-                    text: ll('cheddi.notice.unexpectedStatus', 'Unexpected status: {status}', { status: String(result?.status ?? 'undefined') }),
+                    text: ll('cheddi.notice.unexpectedStatus', { status: String(result?.status ?? 'undefined') }),
                 });
-        }
-    }
-
-    renderNavigationTargets(groups) {
-        const usable = (groups ?? [])
-            .filter((g) => g && Array.isArray(g.targets))
-            .map((g) => ({ ...g, targets: g.targets.filter((t) => t && typeof t.url === 'string' && t.url !== '') }))
-            .filter((g) => g.targets.length > 0);
-        if (usable.length === 0) {
-            return;
-        }
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'cheddi__message cheddi__message--system cheddi__nav-targets';
-        for (const group of usable) {
-            wrapper.appendChild(this.buildNavigationGroup(group));
-        }
-        this.elements.messages.appendChild(wrapper);
-        this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
-    }
-
-    buildNavigationGroup(group) {
-        const row = document.createElement('div');
-        row.className = 'cheddi__nav-group';
-
-        const heading = document.createElement('span');
-        heading.className = 'cheddi__nav-heading';
-        heading.textContent = group.label || ll('cheddi.notice.navHeading', 'Bearbeiten');
-        row.appendChild(heading);
-
-        for (const target of group.targets) {
-            const label = target.label || ll('cheddi.notice.navLinkDefault', 'Im Backend öffnen');
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'cheddi__nav-link';
-            button.title = label;
-            const icon = document.createElement('span');
-            icon.className = 'cheddi__nav-icon';
-            icon.setAttribute('aria-hidden', 'true');
-            icon.textContent = '↗';
-            const text = document.createElement('span');
-            text.className = 'cheddi__nav-label';
-            text.textContent = label;
-            button.append(icon, text);
-            button.addEventListener('click', () => this.navigateBackend(target.url));
-            row.appendChild(button);
-        }
-
-        if (group.omitted > 0) {
-            const more = document.createElement('span');
-            more.className = 'cheddi__nav-more';
-            more.textContent = ll('cheddi.notice.navMore', '+{count} weitere', { count: String(group.omitted) });
-            row.appendChild(more);
-        }
-
-        return row;
-    }
-
-    navigateBackend(url) {
-        try {
-            if (top?.TYPO3?.Backend?.ContentContainer?.setUrl) {
-                top.TYPO3.Backend.ContentContainer.setUrl(url);
-                return true;
-            }
-        } catch (e) {
-            console.debug('[ChEddi] backend ContentContainer navigation failed, trying a new tab.', e);
-        }
-        try {
-            window.open(url, '_blank', 'noopener');
-            return true;
-        } catch (e) {
-            console.error('[ChEddi] could not open the backend location.', e);
-            return false;
         }
     }
 
@@ -1121,7 +933,7 @@ class ChatDrawer {
         wrapper.className = 'cheddi__message cheddi__message--system cheddi__sources';
         const heading = document.createElement('div');
         heading.className = 'cheddi__sources-heading';
-        heading.textContent = ll('cheddi.sources.heading', 'Quellen');
+        heading.textContent = ll('cheddi.sources.heading');
         wrapper.appendChild(heading);
         const list = document.createElement('ul');
         list.className = 'cheddi__sources-list';
@@ -1137,7 +949,7 @@ class ChatDrawer {
                 const details = document.createElement('details');
                 details.className = 'cheddi__source-content';
                 const summary = document.createElement('summary');
-                summary.textContent = ll('cheddi.sources.showContent', 'Gelesenen Inhalt anzeigen');
+                summary.textContent = ll('cheddi.sources.showContent');
                 const body = document.createElement('pre');
                 body.className = 'cheddi__source-content-body';
                 body.textContent = source.text;
@@ -1155,15 +967,15 @@ class ChatDrawer {
     formatAbortReason(reason) {
         switch (reason) {
             case 'toolCapReached':
-                return ll('cheddi.notice.toolCapReachedAbort', 'Tool-Aufruf-Limit erreicht, der Turn wurde abgebrochen. Bitte neue Frage stellen.');
+                return ll('cheddi.notice.toolCapReachedAbort');
             default:
-                return ll('cheddi.notice.turnAborted', 'Turn abgebrochen{reason}.', { reason: reason ? ` (${reason})` : '' });
+                return ll('cheddi.notice.turnAborted', { reason: reason ? ` (${reason})` : '' });
         }
     }
 
     handleTurnError(error) {
         if (error?.name === 'AbortError') {
-            this.renderMessage({ role: 'system', kind: 'info', text: ll('cheddi.notice.requestAborted', 'Anfrage abgebrochen.') });
+            this.renderMessage({ role: 'system', kind: 'info', text: ll('cheddi.notice.requestAborted') });
             return;
         }
         console.error('[ChEddi] chat turn failed.', error);
@@ -1185,11 +997,13 @@ class ChatDrawer {
         this.isSending = sending;
         this.elements.textarea.disabled = sending;
         this.elements.sendButton.textContent = sending
-            ? ll('cheddi.ui.cancel', 'Abbrechen')
-            : ll('cheddi.ui.send', 'Senden');
+            ? ll('cheddi.ui.cancel')
+            : ll('cheddi.ui.send');
         if (sending) {
             this.thinking.showSequence(defaultThinkingPhases());
+            this.startProgressPolling();
         } else {
+            this.stopProgressPolling();
             this.thinking.hide();
         }
         this.updateInputDisabledState();
@@ -1198,55 +1012,122 @@ class ChatDrawer {
     updateInputDisabledState() {
         if (!this.creditsAvailable) {
             this.elements.textarea.disabled = true;
-            this.elements.textarea.placeholder = ll('cheddi.credits.exhaustedPlaceholder', 'Credits used up, please top up');
+            this.elements.textarea.placeholder = ll('cheddi.credits.exhaustedPlaceholder');
             this.elements.sendButton.disabled = true;
-            this.elements.sendButton.textContent = ll('cheddi.ui.locked', 'Locked');
+            this.elements.sendButton.textContent = ll('cheddi.ui.locked');
         }
     }
 
     updateCredits(usage) {
-        if (usage && typeof usage.totalCredits === 'number' && usage.totalCredits > 0) {
+        if (!usage) {
+            return;
+        }
+        if (typeof usage.totalCredits === 'number' && usage.totalCredits > 0) {
             top.document.dispatchEvent(new CustomEvent('ai-suite:credits-changed', {
                 detail: { persisted: false, source: 'cheddi' },
             }));
         }
-        if (usage && usage.lowBalance === true && !this.lowBalanceShown) {
+        if (usage.lowBalance === true && !this.lowBalanceShown) {
             this.lowBalanceShown = true;
             this.renderMessage({
                 role: 'system',
                 kind: 'warning',
-                text: ll('cheddi.notice.lowBalance', 'Dein Guthaben ist fast aufgebraucht, bitte lade Credits auf, sonst kann ChEddi bald nicht weiterarbeiten.'),
+                text: ll('cheddi.notice.lowBalance'),
             });
-        } else if (usage && usage.lowBalance === false) {
+        } else if (usage.lowBalance === false) {
             this.lowBalanceShown = false;
         }
-        if (usage && typeof usage.remainingCredits === 'number') {
-            const remaining = usage.remainingCredits;
-            this.elements.credits.hidden = false;
-            this.elements.creditsValue.textContent = String(remaining);
-            const belowThreshold = remaining > 0 && remaining < CREDITS_WARNING_THRESHOLD;
-            this.elements.credits.classList.toggle('cheddi__header-credits--low', belowThreshold);
-            if (belowThreshold && !this.creditsWarningShown) {
-                this.creditsWarningShown = true;
+        if (usage.lowRemaining === true && !this.creditsWarningShown) {
+            this.creditsWarningShown = true;
+            this.renderMessage({
+                role: 'system',
+                kind: 'warning',
+                text: ll('cheddi.notice.lowBalanceRemaining', { count: usage.remainingCredits }),
+            });
+        } else if (usage.lowRemaining === false) {
+            this.creditsWarningShown = false;
+        }
+
+        // The badge shows pack and plan, which only the status endpoint knows.
+        this.scheduleCreditsRefresh();
+    }
+
+    /**
+     * An answer without a fill level leaves the last known one standing: an error turn reports no
+     * window size, and treating that as "empty" hid the summarize offer exactly when it was needed.
+     */
+    updateContextFill(result) {
+        const level = result?.contextFill?.level;
+        if (typeof level === 'string' && level !== '') {
+            this.contextFillLevel = level;
+        }
+        this.renderContextNotice();
+    }
+
+    renderContextNotice() {
+        const notice = this.elements.contextNotice;
+        if (!notice) {
+            return;
+        }
+        if (this.contextFillLevel !== 'notice' && this.contextFillLevel !== 'warning') {
+            notice.hidden = true;
+            notice.classList.remove('cheddi__context-notice--critical');
+            return;
+        }
+        const critical = this.contextFillLevel === 'warning';
+        notice.classList.toggle('cheddi__context-notice--critical', critical);
+        this.elements.contextNoticeText.textContent = critical
+            ? ll('cheddi.context.warning')
+            : ll('cheddi.context.notice');
+        notice.hidden = false;
+    }
+
+    async summarizeHistory() {
+        if (this.isSending || this.sessionUuid === '') {
+            return;
+        }
+        this.isSending = true;
+        this.elements.summarizeButton.disabled = true;
+        this.thinking?.show(ll('cheddi.context.summarizing'));
+        try {
+            const result = await this.api.summarizeHistory({ sessionUuid: this.sessionUuid });
+            if (result?.status === 'error') {
                 this.renderMessage({
                     role: 'system',
-                    kind: 'warning',
-                    text: ll('cheddi.notice.lowBalanceRemaining', 'Noch {count} Credits, bitte rechtzeitig aufladen.', { count: remaining }),
+                    kind: 'error',
+                    text: mapServerError(result?.error?.chatErrorCode, result?.error?.message),
                 });
+                return;
             }
-            if (remaining >= CREDITS_WARNING_THRESHOLD) {
-                this.creditsWarningShown = false;
+            if (typeof result?.historySummary?.summaryContent === 'string'
+                && result.historySummary.summaryContent !== '') {
+                this.replaceLeadingMessagesWithSummary(
+                    result.historySummary.summaryContent,
+                    result.historySummary.replacedCount,
+                );
             }
-        } else {
-            this.elements.credits.hidden = true;
+            this.updateCredits(result?.usage);
+            this.updateContextFill(result);
+        } catch (err) {
+            this.renderMessage({
+                role: 'system',
+                kind: 'error',
+                text: mapServerError(err?.chatErrorCode, err?.message),
+            });
+        } finally {
+            this.thinking?.hide();
+            this.elements.summarizeButton.disabled = false;
+            this.isSending = false;
         }
     }
 
     renderMessage(message) {
         const el = this.createMessageElement(message);
+        if (this.elements.intro) {
+            this.elements.intro.hidden = true;
+        }
         this.elements.messages.appendChild(el);
         this.thinking?.keepAtBottom();
-        this.updateQuickActionsVisibility();
         this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
     }
 
@@ -1272,10 +1153,13 @@ class ChatDrawer {
             case 'tool-call':
                 wrapper.appendChild(this.makeToolCallBlock(message.call));
                 break;
-            case 'system':
-                wrapper.classList.add(`cheddi__message--${message.kind ?? 'info'}`);
+            case 'system': {
+                const kind = message.kind ?? 'info';
+                wrapper.classList.add('callout', CALLOUT_VARIANTS[kind] ?? CALLOUT_VARIANTS.info);
+                wrapper.classList.add(`cheddi__message--${kind}`);
                 wrapper.textContent = message.text;
                 break;
+            }
             case 'pending':
                 wrapper.appendChild(this.makePendingConfirmBlock(message.pending ?? []));
                 break;
@@ -1295,8 +1179,8 @@ class ChatDrawer {
             ? replacedCount
             : null;
         summary.textContent = count !== null
-            ? ll('cheddi.summary.collapsedCount', '── {count} frühere Nachrichten zusammengefasst ──', { count })
-            : ll('cheddi.summary.collapsed', '── Frühere Nachrichten zusammengefasst ──');
+            ? ll('cheddi.summary.collapsedCount', { count })
+            : ll('cheddi.summary.collapsed');
         details.appendChild(summary);
         const body = document.createElement('div');
         body.className = 'cheddi__summary-body';
@@ -1330,20 +1214,6 @@ class ChatDrawer {
         return details;
     }
 
-    confirmWriteTarget() {
-        const mode = this.orientation?.writeMode;
-        if (!mode) {
-            return '';
-        }
-        if (mode === 'live') {
-            return ll('cheddi.confirm.targetLive', 'Diese Änderungen wirken direkt auf der Live-Seite.');
-        }
-        if (mode === 'workspace') {
-            return ll('cheddi.confirm.targetWorkspace', 'Diese Änderungen landen im Entwurf (Workspace) und nicht live.');
-        }
-        return ll('cheddi.confirm.targetAuto', 'Diese Änderungen landen im Entwurf (falls vorhanden), sonst live.');
-    }
-
     makePendingConfirmBlock(pending) {
         const container = document.createElement('div');
         container.className = 'cheddi__confirm-block';
@@ -1351,15 +1221,14 @@ class ChatDrawer {
         const intro = document.createElement('div');
         intro.className = 'cheddi__confirm-intro';
         intro.textContent = pending.length === 1
-            ? ll('cheddi.confirm.introOne', 'Ein Tool-Aufruf braucht Deine Bestätigung:')
-            : ll('cheddi.confirm.introMany', '{count} Tool-Aufrufe brauchen Deine Bestätigung:', { count: pending.length });
+            ? ll('cheddi.confirm.introOne')
+            : ll('cheddi.confirm.introMany', { count: pending.length });
         container.appendChild(intro);
 
-        const target = this.confirmWriteTarget();
-        if (target !== '') {
+        if (this.confirmTarget) {
             const targetEl = document.createElement('div');
             targetEl.className = 'cheddi__confirm-target';
-            targetEl.textContent = target;
+            targetEl.textContent = ll(this.confirmTarget.key, this.confirmTarget.params ?? {});
             container.appendChild(targetEl);
         }
 
@@ -1375,8 +1244,8 @@ class ChatDrawer {
 
             const allDecline = document.createElement('button');
             allDecline.type = 'button';
-            allDecline.className = 'cheddi__confirm-decline';
-            allDecline.textContent = ll('cheddi.confirm.declineAll', 'Alle ablehnen');
+            allDecline.className = 'btn btn-default btn-sm cheddi__confirm-decline';
+            allDecline.textContent = ll('cheddi.confirm.declineAll');
             allDecline.addEventListener('click', () => {
                 pending.forEach((call) => decisions.set(call.id, false));
                 container.querySelectorAll('.cheddi__confirm-item').forEach((item) => {
@@ -1401,9 +1270,16 @@ class ChatDrawer {
         header.textContent = friendlyToolLabel(call.name);
         if (call.severity === 'destructive') {
             const badge = document.createElement('span');
-            badge.className = 'cheddi__confirm-severity-badge';
-            badge.textContent = ll('cheddi.confirm.destructiveBadge', '⚠️ schwer umkehrbar');
+            badge.className = 'badge badge-danger cheddi__confirm-severity-badge';
+            badge.innerHTML = '<typo3-backend-icon identifier="actions-exclamation-triangle" size="small" aria-hidden="true"></typo3-backend-icon>';
+            badge.append(ll('cheddi.confirm.destructiveBadge'));
             header.appendChild(badge);
+        }
+        if (Number(call.creditCost) > 0) {
+            const creditBadge = document.createElement('span');
+            creditBadge.className = 'cheddi__confirm-severity-badge';
+            creditBadge.textContent = ll('cheddi.confirm.creditsBadge', { credits: call.creditCost });
+            header.appendChild(creditBadge);
         }
         item.appendChild(header);
 
@@ -1418,7 +1294,7 @@ class ChatDrawer {
             argsDetails.open = true;
         }
         const argsSummary = document.createElement('summary');
-        argsSummary.textContent = ll('cheddi.confirm.technicalDetails', 'Technische Details');
+        argsSummary.textContent = ll('cheddi.confirm.technicalDetails');
         argsDetails.appendChild(argsSummary);
         const args = document.createElement('pre');
         args.className = 'cheddi__confirm-item-args';
@@ -1431,10 +1307,7 @@ class ChatDrawer {
             item.classList.add('cheddi__confirm-item--blocked');
             const warning = document.createElement('div');
             warning.className = 'cheddi__confirm-blocked';
-            warning.textContent = ll(
-                'cheddi.confirm.blockedInvalid',
-                'Dieser Tool-Aufruf enthält ungültige Datensätze und kann nicht ausgeführt werden. Lehne ihn ab, damit der Assistent ihn korrigiert.',
-            );
+            warning.textContent = ll('cheddi.confirm.blockedInvalid');
             item.appendChild(warning);
         }
 
@@ -1443,18 +1316,18 @@ class ChatDrawer {
 
         const approveBtn = document.createElement('button');
         approveBtn.type = 'button';
-        approveBtn.className = 'cheddi__confirm-approve';
+        approveBtn.className = 'btn btn-primary btn-sm cheddi__confirm-approve';
         approveBtn.textContent = call.severity === 'destructive'
-            ? ll('cheddi.confirm.executeDestructive', 'Endgültig ausführen')
-            : ll('cheddi.confirm.execute', 'Ausführen');
+            ? ll('cheddi.confirm.executeDestructive')
+            : ll('cheddi.confirm.execute');
         if (blocked) {
             approveBtn.disabled = true;
-            approveBtn.title = ll('cheddi.confirm.blockedInvalidHint', 'Ungültige Datensätze im Payload');
+            approveBtn.title = ll('cheddi.confirm.blockedInvalidHint');
         }
         approveBtn.addEventListener('click', () => {
             if (call.severity === 'destructive' && approveBtn.dataset.armed !== 'true') {
                 approveBtn.dataset.armed = 'true';
-                approveBtn.textContent = ll('cheddi.confirm.executeDestructiveArmed', 'Wirklich endgültig ausführen?');
+                approveBtn.textContent = ll('cheddi.confirm.executeDestructiveArmed');
                 approveBtn.classList.add('cheddi__confirm-approve--armed');
                 return;
             }
@@ -1465,8 +1338,8 @@ class ChatDrawer {
 
         const declineBtn = document.createElement('button');
         declineBtn.type = 'button';
-        declineBtn.className = 'cheddi__confirm-decline';
-        declineBtn.textContent = ll('cheddi.confirm.decline', 'Ablehnen');
+        declineBtn.className = 'btn btn-default btn-sm cheddi__confirm-decline';
+        declineBtn.textContent = ll('cheddi.confirm.decline');
         declineBtn.addEventListener('click', () => {
             decisions.set(call.id, false);
             this.markItemDecided(item, 'declined');

@@ -61,6 +61,10 @@ export function currentPageId() {
     return null;
 }
 
+export function readTurnContext() {
+    return detectOpenRecord();
+}
+
 export function readBackendContext() {
     const moduleName = (typeof TYPO3 !== 'undefined' && TYPO3.ModuleMenu)
         ? (document.querySelector('[data-module-name]')?.dataset?.moduleName ?? '')

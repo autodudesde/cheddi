@@ -1,20 +1,42 @@
 :root {
+    /* Only the --typo3-component-* group is defined in v12, v13 and v14 alike, and it is the one
+       group v12's single dark-mode block remaps. Everything else here derives from it. */
     --cheddi-bg: var(--typo3-component-bg, #fff);
-    --cheddi-fg: var(--typo3-component-color, var(--typo3-text-color-base, #1a1a1a));
-    --cheddi-muted-fg: var(--typo3-text-color-variant, #6f6f6f);
+    --cheddi-fg: var(--typo3-component-color, #1a1a1a);
+    --cheddi-muted-fg: var(--typo3-component-secondary-color, #6f6f6f);
     --cheddi-border-color: var(--typo3-component-border-color, rgba(127, 127, 127, 0.32));
-    --cheddi-surface-2: rgba(127, 127, 127, 0.12);
-    --cheddi-hover: rgba(127, 127, 127, 0.18);
-    --cheddi-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
-    --cheddi-radius: 12px;
+    --cheddi-hover-bg: var(--typo3-component-hover-bg, rgba(127, 127, 127, 0.18));
+    --cheddi-hover-fg: var(--typo3-component-hover-color, inherit);
+    --cheddi-surface-2: var(--typo3-component-disabled-bg, rgba(127, 127, 127, 0.12));
+    --cheddi-radius: var(--typo3-component-border-radius, 4px);
+    --cheddi-radius-pill: 999px;
+    --cheddi-font-size: var(--typo3-component-font-size, 12px);
+    --cheddi-font-size-sm: calc(var(--cheddi-font-size) - 1px);
+    --cheddi-font-size-lg: calc(var(--cheddi-font-size) + 2px);
+    --cheddi-line-height: var(--typo3-component-line-height, 1.5);
+    --cheddi-spacing: var(--typo3-spacing, 1rem);
+    --cheddi-link: var(--typo3-component-link-color, inherit);
+    --cheddi-focus-color: var(--typo3-component-focus-border-color, var(--cheddi-fg));
+    /* v13 and v14 know a dialog shadow of their own, v12 only the strong one. */
+    --cheddi-shadow: var(--typo3-component-box-shadow-dialog,
+                     var(--typo3-component-box-shadow-strong, 0 8px 32px rgba(0, 0, 0, 0.28)));
+    /* Modals live in the browser top layer, so this only orders the drawer against page content. */
     --cheddi-z: 1040;
+
+    /* State colours come from Bootstrap, which is 5.3.2 in v12, v13 and v14 alike. The -rgb pairs
+       exist next to them and are what the tinted backgrounds below are mixed from. */
+    --cheddi-danger: var(--bs-danger, #c8412c);
+    --cheddi-danger-rgb: var(--bs-danger-rgb, 200, 65, 44);
+    --cheddi-warning: var(--bs-warning, #e8a33d);
+    --cheddi-warning-rgb: var(--bs-warning-rgb, 232, 163, 61);
+    --cheddi-success: var(--bs-success, #2a8c3e);
+    --cheddi-success-rgb: var(--bs-success-rgb, 42, 140, 62);
 
     /* The drawer is injected on every backend page, but the --ai-suite-* variables only exist on
        AI Suite module pages. Resolving them once here keeps one accent for the whole drawer. */
     --cheddi-accent: var(--ai-suite-primary-color, #F09C42);
     --cheddi-accent-border: var(--ai-suite-border-color, #F09C42);
     --cheddi-accent-fg: var(--ai-suite-button-font-color, #000);
-    --cheddi-danger: #c8412c;
 }
 
 #cheddi-drawer {
@@ -78,11 +100,15 @@ body.cheddi-resizing-composer * {
 .cheddi__bubble:hover,
 .cheddi__bubble:focus-visible {
     filter: brightness(0.95);
-    outline: 2px solid var(--cheddi-accent);
+    outline: 2px solid var(--cheddi-focus-color);
     outline-offset: 2px;
 }
 
 .cheddi__drawer {
+    /* Width is set inline from the persisted state, so the badges degrade on the drawer, not the
+       viewport - a narrow drawer on a wide screen is the common case. */
+    container-type: inline-size;
+    container-name: cheddi-drawer;
     position: fixed;
     right: 24px;
     bottom: 24px;
@@ -114,35 +140,35 @@ body.cheddi-resizing-composer * {
     background: linear-gradient(135deg,
         transparent 0%,
         transparent 35%,
-        var(--cheddi-accent-border) 35%,
-        var(--cheddi-accent-border) 45%,
+        var(--cheddi-border-color) 35%,
+        var(--cheddi-border-color) 45%,
         transparent 45%,
         transparent 55%,
-        var(--cheddi-accent-border) 55%,
-        var(--cheddi-accent-border) 65%,
+        var(--cheddi-border-color) 55%,
+        var(--cheddi-border-color) 65%,
         transparent 65%);
     border-top-left-radius: var(--cheddi-radius);
 }
 
 .cheddi__header {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px 8px 28px; /* leave space for resize handle */
+    flex-direction: column;
+    gap: 6px;
+    /* Left padding keeps the first row clear of the resize grip in the corner. */
+    padding: 8px 12px 8px 28px;
     border-bottom: 1px solid var(--cheddi-border-color);
-    background-color: var(--cheddi-bg);
+}
+
+.cheddi__header-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
 .cheddi__model-select {
-    flex: 0 1 auto;
-    max-width: 60%;
-    padding: 3px 6px;
-    font-size: 12px;
-    color: var(--cheddi-fg);
-    background-color: var(--cheddi-bg);
-    border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
-    cursor: pointer;
+    flex: 1 1 auto;
+    width: auto;
 }
 
 .cheddi__model-select[hidden] {
@@ -154,18 +180,90 @@ body.cheddi-resizing-composer * {
     opacity: 0.7;
 }
 
-.cheddi__header-credits {
+.cheddi__status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/*
+ * Outlined, not filled: --cheddi-surface-2 resolves to the backend's *disabled* background, which
+ * made three perfectly live status readouts look switched off.
+ */
+.cheddi__status-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
+    font-weight: normal;
+    color: var(--cheddi-fg);
+    background-color: transparent;
+    border: 1px solid var(--cheddi-border-color);
+}
+
+.cheddi__status-badge[hidden] {
+    display: none;
+}
+
+/* The workspace name is the only part that may be cut; every badge carries the full text as title. */
+.cheddi__status-badge--mode {
+    flex: 0 1 auto;
+}
+
+.cheddi__status-badge--credits {
     flex: 0 0 auto;
-    margin-left: auto;
-    font-size: 13px;
+}
+
+.cheddi__status-badge--live {
+    color: var(--cheddi-warning);
+    border-color: rgba(var(--cheddi-warning-rgb), 0.5);
+    background-color: rgba(var(--cheddi-warning-rgb), 0.12);
+}
+
+.cheddi__status-badge--low {
+    color: var(--cheddi-warning);
+    border-color: rgba(var(--cheddi-warning-rgb), 0.5);
+}
+
+/* Label and value are told apart by weight, not by fading one of them out. */
+.cheddi__status-label {
+    flex: 0 0 auto;
+    font-weight: normal;
     color: var(--cheddi-muted-fg);
 }
 
-.cheddi__header-credits[hidden] {
+.cheddi__status-label[hidden] {
     display: none;
+}
+
+.cheddi__status-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.cheddi__credits-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cheddi__credits-part + .cheddi__credits-part::before {
+    content: "\00b7";
+    opacity: 0.5;
+    margin-right: 2px;
+}
+
+/* Digits keep their column so the badge does not jitter while the numbers change. */
+.cheddi__credits-number {
+    font-variant-numeric: tabular-nums;
 }
 
 .cheddi__header-credits-icon {
@@ -175,53 +273,61 @@ body.cheddi-resizing-composer * {
     object-fit: contain;
 }
 
-.cheddi__header-credits[hidden] + .cheddi__header-actions {
+.cheddi__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
     margin-left: auto;
 }
 
-.cheddi__header-credits--low {
-    color: #8c5a1a;
-    font-weight: 600;
+.cheddi__header-menu {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+/*
+ * The word labels are the first thing to go on a narrow drawer, the numbers never: a truncated
+ * count reads as a different count, a missing label only reads as terse.
+ */
+@container cheddi-drawer (max-width: 420px) {
+    .cheddi__status-badge--credits .cheddi__status-label {
+        display: none;
+    }
+}
+
+@container cheddi-drawer (max-width: 340px) {
+    .cheddi__status-badge--mode .cheddi__status-label {
+        display: none;
+    }
 }
 
 .cheddi__header-button {
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 28px;
     height: 28px;
     padding: 0;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    color: var(--cheddi-fg);
-    font-size: 16px;
     line-height: 1;
-    cursor: pointer;
 }
 
-.cheddi__header-button:hover,
-.cheddi__header-button:focus-visible {
-    border-color: var(--cheddi-accent-border);
-    outline: none;
-}
 
-.cheddi__header-actions {
-    position: relative;
-    flex: 0 0 auto;
-}
 
 .cheddi__actions-menu {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
     z-index: 1;
+    display: block;
     margin: 0;
-    padding: 4px 0;
     min-width: 200px;
     list-style: none;
-    background-color: var(--cheddi-bg);
-    border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.cheddi__actions-menu[hidden] {
+    display: none;
 }
 
 .cheddi__actions-menu[hidden] {
@@ -234,87 +340,49 @@ body.cheddi-resizing-composer * {
 
 .cheddi__actions-menu button {
     width: 100%;
-    padding: 6px 12px;
-    background: transparent;
-    border: none;
     text-align: left;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
 }
 
-.cheddi__actions-menu button:hover,
-.cheddi__actions-menu button:focus-visible {
-    background-color: var(--cheddi-hover);
-    outline: none;
-}
-
-.cheddi__orientation {
+.cheddi__intro {
     flex: 0 0 auto;
-    font-size: 12px;
-    color: var(--cheddi-fg);
-    border-bottom: 1px solid var(--cheddi-border-color);
+    margin: 12px 12px 0 12px;
+    padding: 12px;
+    background-color: var(--cheddi-surface-2);
+    border-radius: var(--cheddi-radius);
+    font-size: var(--cheddi-font-size);
+    line-height: var(--cheddi-line-height);
 }
 
-.cheddi__orientation[hidden] {
+.cheddi__intro[hidden] {
     display: none;
 }
 
-.cheddi__orientation-summary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    cursor: pointer;
-    list-style: none;
-    user-select: none;
-    color: var(--cheddi-muted-fg);
+.cheddi__intro-title {
+    margin: 0 0 6px 0;
     font-weight: 600;
 }
 
-.cheddi__orientation-summary:hover {
-    color: var(--cheddi-fg);
+.cheddi__intro-model {
+    margin: 0 0 6px 0;
 }
 
-.cheddi__orientation-summary::-webkit-details-marker {
-    display: none;
-}
-
-.cheddi__orientation-summary::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    transform: rotate(-45deg);
-    transition: transform 0.15s ease;
-    flex: 0 0 auto;
-}
-
-.cheddi__orientation[open] .cheddi__orientation-summary::before {
-    transform: rotate(45deg);
-}
-
-.cheddi__orientation-body {
-    margin: 0 12px 10px 12px;
-    padding: 8px 12px;
+.cheddi__intro-list {
+    margin: 0;
+    padding: 0;
     list-style: none;
-    line-height: 1.5;
-    background-color: var(--cheddi-surface-2);
-    border-radius: 8px;
 }
 
-.cheddi__orientation-body li {
+.cheddi__intro-list li {
     position: relative;
     padding-left: 16px;
+    color: var(--cheddi-muted-fg);
 }
 
-.cheddi__orientation-body li + li {
+.cheddi__intro-list li + li {
     margin-top: 4px;
 }
 
-.cheddi__orientation-body li::before {
+.cheddi__intro-list li::before {
     content: "";
     position: absolute;
     left: 2px;
@@ -322,23 +390,7 @@ body.cheddi-resizing-composer * {
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background-color: var(--cheddi-accent);
-}
-
-.cheddi__orientation-more {
-    display: block;
-    margin: -4px 12px 10px 12px;
-    padding: 0 12px;
-    border: 0;
-    background: none;
-    color: var(--cheddi-accent);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.cheddi__orientation-more:hover {
-    text-decoration: underline;
+    background-color: var(--cheddi-muted-fg);
 }
 
 .cheddi__messages {
@@ -384,14 +436,14 @@ body.cheddi-resizing-composer * {
 
 .cheddi__nav-heading {
     flex: 0 0 100%;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--cheddi-muted-fg);
 }
 
 .cheddi__nav-more {
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
     color: var(--cheddi-muted-fg);
 }
 
@@ -400,22 +452,6 @@ body.cheddi-resizing-composer * {
     align-items: center;
     gap: 4px;
     max-width: 100%;
-    padding: 4px 10px;
-    font-size: 12px;
-    line-height: 1.4;
-    border: 1px solid var(--cheddi-accent-border);
-    border-radius: 12px;
-    background-color: transparent;
-    color: var(--cheddi-fg);
-    cursor: pointer;
-}
-
-.cheddi__nav-link:hover,
-.cheddi__nav-link:focus-visible {
-    background-color: var(--cheddi-accent);
-    border-color: var(--cheddi-accent-border);
-    color: var(--cheddi-accent-fg);
-    outline: none;
 }
 
 .cheddi__nav-icon {
@@ -437,7 +473,7 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__sources-heading {
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
     font-weight: 600;
     opacity: 0.75;
 }
@@ -445,17 +481,17 @@ body.cheddi-resizing-composer * {
 .cheddi__sources-list {
     margin: 0;
     padding-left: 18px;
-    font-size: 13px;
+    font-size: var(--cheddi-font-size-lg);
 }
 
 .cheddi__sources-list a {
-    color: var(--cheddi-accent);
+    color: var(--cheddi-link);
     word-break: break-word;
 }
 
 .cheddi__source-content > summary {
     cursor: pointer;
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
     opacity: 0.75;
     margin-top: 2px;
 }
@@ -465,27 +501,27 @@ body.cheddi-resizing-composer * {
     padding: 8px;
     max-height: 320px;
     overflow: auto;
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
     line-height: 1.45;
     white-space: pre-wrap;
     word-break: break-word;
-    background: rgba(0, 0, 0, 0.04);
-    border-radius: 4px;
+    background: var(--cheddi-surface-2);
+    border-radius: var(--cheddi-radius);
 }
 
 .cheddi__bubble-user,
 .cheddi__bubble-assistant {
     max-width: 90%;
     padding: 6px 10px;
-    border-radius: 10px;
+    border-radius: var(--cheddi-radius);
     line-height: 1.4;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
 
 .cheddi__bubble-user {
-    background-color: var(--cheddi-accent);
-    color: var(--cheddi-accent-fg);
+    background-color: var(--cheddi-surface-2);
+    color: var(--cheddi-fg);
     border-top-right-radius: 2px;
 }
 
@@ -506,20 +542,20 @@ body.cheddi-resizing-composer * {
 .cheddi__bubble-assistant pre {
     background-color: var(--cheddi-surface-2);
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: var(--cheddi-radius);
     overflow-x: auto;
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__bubble-assistant code {
     background-color: var(--cheddi-surface-2);
     padding: 1px 4px;
-    border-radius: 3px;
-    font-size: 12px;
+    border-radius: var(--cheddi-radius);
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__bubble-assistant a {
-    color: var(--cheddi-accent);
+    color: var(--cheddi-link);
 }
 
 .cheddi__tool-call {
@@ -527,9 +563,9 @@ body.cheddi-resizing-composer * {
     margin-left: 16px;
     padding: 4px 8px;
     border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
+    border-radius: var(--cheddi-radius);
     background-color: var(--cheddi-surface-2);
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__tool-call-summary {
@@ -539,7 +575,7 @@ body.cheddi-resizing-composer * {
 
 .cheddi__tool-call-summary--done::after {
     content: ' ✓';
-    color: #2a8c3e;
+    color: var(--cheddi-success);
 }
 
 .cheddi__tool-call-summary--failed::after {
@@ -551,22 +587,22 @@ body.cheddi-resizing-composer * {
     margin: 6px 0 0;
     padding: 6px 8px;
     background-color: var(--cheddi-surface-2);
-    border-radius: 4px;
+    border-radius: var(--cheddi-radius);
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
 }
 
+/* A container of cards, not a message: neutral chrome rather than a callout. */
 .cheddi__confirm-block {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--cheddi-accent-border);
-    border-radius: 8px;
-    background-color: rgba(240, 156, 66, 0.06);
     display: flex;
     flex-direction: column;
     gap: 10px;
-    font-size: 13px;
+    padding: 10px 12px;
+    border: 1px solid var(--cheddi-border-color);
+    border-radius: var(--cheddi-radius);
+    background-color: var(--cheddi-surface-2);
 }
 
 .cheddi__confirm-intro {
@@ -575,14 +611,14 @@ body.cheddi-resizing-composer * {
 
 .cheddi__confirm-target {
     margin-top: 2px;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     color: var(--cheddi-muted-fg);
 }
 
 .cheddi__confirm-item {
     padding: 8px 10px;
     border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
+    border-radius: var(--cheddi-radius);
     background-color: var(--cheddi-bg);
     display: flex;
     flex-direction: column;
@@ -591,17 +627,17 @@ body.cheddi-resizing-composer * {
 
 .cheddi__confirm-item[data-cheddi-severity="destructive"] {
     border-color: var(--cheddi-danger);
-    background-color: rgba(200, 65, 44, 0.06);
+    background-color: rgba(var(--cheddi-danger-rgb), 0.06);
 }
 
 .cheddi__confirm-item--approved {
-    border-color: #2a8c3e;
-    background-color: rgba(42, 140, 62, 0.06);
+    border-color: var(--cheddi-success);
+    background-color: rgba(var(--cheddi-success-rgb), 0.06);
 }
 
 .cheddi__confirm-item--declined {
-    border-color: var(--cheddi-muted-fg, #6f6f6f);
-    background-color: var(--cheddi-hover);
+    border-color: var(--cheddi-muted-fg);
+    background-color: var(--cheddi-hover-bg);
     opacity: 0.7;
 }
 
@@ -614,12 +650,9 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__confirm-severity-badge {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--cheddi-danger);
-    background-color: rgba(200, 65, 44, 0.1);
-    padding: 2px 6px;
-    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .cheddi__confirm-item--blocked {
@@ -627,11 +660,11 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__confirm-blocked {
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
     color: var(--cheddi-danger);
-    background-color: rgba(200, 65, 44, 0.1);
+    background-color: rgba(var(--cheddi-danger-rgb), 0.1);
     padding: 6px 8px;
-    border-radius: 3px;
+    border-radius: var(--cheddi-radius);
 }
 
 .cheddi__preview {
@@ -643,8 +676,8 @@ body.cheddi-resizing-composer * {
 .cheddi__preview-record {
     padding: 8px 10px;
     background-color: var(--cheddi-surface-2);
-    border-radius: 4px;
-    font-size: 12px;
+    border-radius: var(--cheddi-radius);
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__preview-record-header {
@@ -655,25 +688,25 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__preview-action {
-    font-size: 10px;
+    font-size: var(--cheddi-font-size-sm);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     padding: 2px 6px;
-    border-radius: 3px;
-    background-color: rgba(120, 120, 120, 0.15);
+    border-radius: var(--cheddi-radius);
+    background-color: var(--cheddi-surface-2);
     color: var(--cheddi-muted-fg);
     flex-shrink: 0;
 }
 
 .cheddi__preview-action--create {
-    color: #2c7a3f;
-    background-color: rgba(44, 122, 63, 0.12);
+    color: var(--cheddi-success);
+    background-color: rgba(var(--cheddi-success-rgb), 0.12);
 }
 
 .cheddi__preview-action--delete {
     color: var(--cheddi-danger);
-    background-color: rgba(200, 65, 44, 0.12);
+    background-color: rgba(var(--cheddi-danger-rgb), 0.12);
 }
 
 .cheddi__preview-title {
@@ -683,7 +716,7 @@ body.cheddi-resizing-composer * {
 
 .cheddi__preview-context,
 .cheddi__preview-more {
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     color: var(--cheddi-muted-fg);
 }
 
@@ -691,7 +724,7 @@ body.cheddi-resizing-composer * {
     margin: 6px 0 0;
     padding: 0;
     list-style: none;
-    font-size: 12px;
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__preview-pagetree > li {
@@ -700,7 +733,7 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__preview-note {
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     color: var(--cheddi-danger);
 }
 
@@ -746,13 +779,13 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__preview-unchanged {
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     font-style: italic;
 }
 
 .cheddi__confirm-item-details > summary {
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     color: var(--cheddi-muted-fg);
 }
 
@@ -760,10 +793,10 @@ body.cheddi-resizing-composer * {
     margin: 6px 0 0;
     padding: 6px 8px;
     background-color: var(--cheddi-surface-2);
-    border-radius: 4px;
+    border-radius: var(--cheddi-radius);
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
 }
 
 .cheddi__confirm-item-actions {
@@ -776,22 +809,20 @@ body.cheddi-resizing-composer * {
 .cheddi__confirm-decline {
     padding: 5px 12px;
     border: 1px solid;
-    border-radius: 6px;
+    border-radius: var(--cheddi-radius);
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--cheddi-font-size-lg);
     line-height: 1.3;
 }
 
 .cheddi__confirm-approve {
-    border-color: var(--cheddi-accent-border);
-    background-color: var(--cheddi-accent);
-    color: var(--cheddi-accent-fg);
     font-weight: 600;
 }
 
 .cheddi__confirm-approve--armed {
     border-color: var(--cheddi-danger);
     background-color: var(--cheddi-danger);
+    /* Stays white in both colour schemes: this sits on the saturated danger fill. */
     color: #fff;
 }
 
@@ -803,7 +834,7 @@ body.cheddi-resizing-composer * {
 
 .cheddi__confirm-decline:hover,
 .cheddi__confirm-decline:focus-visible {
-    background-color: var(--cheddi-hover);
+    background-color: var(--cheddi-hover-bg);
     color: var(--cheddi-fg);
     outline: none;
 }
@@ -833,11 +864,11 @@ body.cheddi-resizing-composer * {
     max-width: 90%;
     margin: 2px 0;
     padding: 6px 10px;
-    border-radius: 10px;
+    border-radius: var(--cheddi-radius);
     border-top-left-radius: 2px;
     background-color: var(--cheddi-surface-2);
     color: var(--cheddi-muted-fg);
-    font-size: 13px;
+    font-size: var(--cheddi-font-size-lg);
 }
 
 .cheddi__thinking-dots {
@@ -849,7 +880,7 @@ body.cheddi-resizing-composer * {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: var(--cheddi-accent);
+    background-color: var(--cheddi-muted-fg);
     animation: cheddi-bounce 1.2s infinite ease-in-out both;
 }
 
@@ -888,8 +919,8 @@ body.cheddi-resizing-composer * {
     padding: 6px 10px;
     background-color: var(--cheddi-surface-2);
     border: 1px dashed var(--cheddi-border-color);
-    border-radius: 6px;
-    font-size: 12px;
+    border-radius: var(--cheddi-radius);
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__summary-marker {
@@ -914,63 +945,61 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__message--system {
-    align-items: center;
-    text-align: center;
-    color: var(--cheddi-muted-fg);
-    font-size: 12px;
-    padding: 4px 8px;
+    width: 90%;
+    margin: 4px auto;
+    font-size: var(--cheddi-font-size);
 }
 
 .cheddi__message--warning {
     width: 90%;
     margin: 4px auto;
-    padding: 6px 10px;
-    background-color: rgba(240, 156, 66, 0.15);
-    border: 1px solid var(--cheddi-accent-border);
-    border-radius: 6px;
-    color: #8c5a1a;
-    font-weight: 500;
+    text-align: left;
 }
 
 .cheddi__message--error {
-    color: var(--cheddi-danger);
+    width: 90%;
+    margin: 4px auto;
+    text-align: left;
 }
 
-.cheddi__quick-actions {
+.cheddi__context-notice {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 8px 12px 0;
+    align-items: center;
+    gap: 8px;
+    margin: 0 12px;
+    font-size: var(--cheddi-font-size);
 }
 
-.cheddi__quick-actions[hidden] {
+.cheddi__context-notice[hidden] {
     display: none;
 }
 
-.cheddi__quick-action {
-    padding: 3px 9px;
-    font-size: 12px;
-    border: 1px solid var(--cheddi-border-color);
-    border-radius: 12px;
-    background-color: var(--cheddi-surface-2);
-    color: var(--cheddi-muted-fg);
-    cursor: pointer;
+.cheddi__context-notice--critical {
+    border-color: var(--cheddi-danger);
 }
 
-.cheddi__quick-action:hover,
-.cheddi__quick-action:focus-visible {
-    background-color: var(--cheddi-hover);
-    border-color: var(--cheddi-accent-border);
-    color: var(--cheddi-fg);
-    outline: none;
+.cheddi__context-notice-text {
+    flex: 1;
+}
+
+.cheddi__context-notice-action {
+    flex: none;
+}
+
+.cheddi__context-notice-action:disabled {
+    cursor: default;
+    opacity: 0.6;
 }
 
 .cheddi__attachment-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 8px 12px 0;
-    background-color: var(--cheddi-bg);
+    margin-bottom: 8px;
+}
+
+.cheddi__attachment-chips[hidden] {
+    display: none;
 }
 
 .cheddi__chip {
@@ -978,15 +1007,12 @@ body.cheddi-resizing-composer * {
     align-items: center;
     gap: 6px;
     max-width: 100%;
-    padding: 3px 8px;
+    font-weight: normal;
     border: 1px solid var(--cheddi-border-color);
-    border-radius: 12px;
-    font-size: 12px;
-    line-height: 1.4;
 }
 
 .cheddi__chip--warning {
-    border-color: #F09C42;
+    border-color: var(--cheddi-warning);
 }
 
 .cheddi__chip-label {
@@ -998,72 +1024,86 @@ body.cheddi-resizing-composer * {
 
 .cheddi__chip-hint {
     opacity: 0.75;
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
 }
 
 .cheddi__chip-remove {
-    border: 0;
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
     padding: 0 2px;
-    font-size: 14px;
     line-height: 1;
-    cursor: pointer;
 }
 
 .cheddi__input-area {
     display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    padding: 8px 12px;
+    padding: 8px 12px 12px;
     border-top: 1px solid var(--cheddi-border-color);
     background-color: var(--cheddi-bg);
 }
 
-.cheddi__attachment-button,
-.cheddi__send-button {
-    flex: 0 0 auto;
-    height: 36px;
-    padding: 0 12px;
+/*
+ * Chips, text field and the tool row sit in one bordered box, so every composer action reads as
+ * belonging to the message being written. The box carries the border, the textarea inside it does
+ * not - two nested frames looked like two input fields.
+ */
+.cheddi__composer {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px;
     border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
+    border-radius: var(--cheddi-radius);
+    background-color: var(--cheddi-bg);
+}
+
+.cheddi__composer:focus-within {
+    border-color: var(--cheddi-focus-color);
+}
+
+.cheddi__composer-field {
+    position: relative;
+}
+
+.cheddi__composer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.cheddi__composer-tools {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cheddi__tool-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    border-color: transparent;
     background-color: transparent;
     color: var(--cheddi-muted-fg);
-    cursor: pointer;
-    font-size: 13px;
-    line-height: 1;
 }
 
-.cheddi__attachment-button {
-    width: 36px;
-    padding: 0;
-    font-size: 18px;
+.cheddi__tool-button:hover:not([disabled]) {
+    background-color: var(--cheddi-hover-bg);
+    color: var(--cheddi-hover-fg);
 }
 
-.cheddi__attachment-button:hover,
-.cheddi__attachment-button:focus-visible {
-    background-color: var(--cheddi-hover);
-    color: var(--cheddi-fg);
-    outline: none;
+.cheddi__tool-button[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
-/*
- * Attachment sits on top of send in a single column, which frees the left half of the
- * composer row for the textarea. Two 36px buttons plus the gap add up to the composer's
- * 80px default, so the column and the text field line up.
- */
-.cheddi__input-actions {
-    display: flex;
+.cheddi__send-button {
     flex: 0 0 auto;
-    flex-direction: column;
-    gap: 8px;
+    margin-left: auto;
 }
 
-/* Match the send button's width so the column reads as one block. */
-.cheddi__input-actions .cheddi__attachment-button {
-    width: auto;
-}
-
-.cheddi__attachment-button[disabled],
 .cheddi__send-button[disabled] {
     opacity: 0.5;
     cursor: not-allowed;
@@ -1076,9 +1116,11 @@ body.cheddi-resizing-composer * {
     font-weight: 600;
 }
 
-.cheddi__composer {
-    position: relative;
-    flex: 1 1 auto;
+/* Icon-only tools once the row would otherwise wrap. */
+@container cheddi-drawer (max-width: 420px) {
+    .cheddi__tool-button-label {
+        display: none;
+    }
 }
 
 /* Mirrors .cheddi__resize-handle, but drags only along the vertical axis. */
@@ -1094,14 +1136,14 @@ body.cheddi-resizing-composer * {
     background: linear-gradient(135deg,
         transparent 0%,
         transparent 35%,
-        var(--cheddi-accent-border) 35%,
-        var(--cheddi-accent-border) 45%,
+        var(--cheddi-border-color) 35%,
+        var(--cheddi-border-color) 45%,
         transparent 45%,
         transparent 55%,
-        var(--cheddi-accent-border) 55%,
-        var(--cheddi-accent-border) 65%,
+        var(--cheddi-border-color) 55%,
+        var(--cheddi-border-color) 65%,
         transparent 65%);
-    border-top-left-radius: 6px;
+    border-top-left-radius: var(--cheddi-radius);
 }
 
 .cheddi__textarea {
@@ -1110,20 +1152,18 @@ body.cheddi-resizing-composer * {
     /* Height is applied inline from the persisted state; these are the drag limits. */
     min-height: 72px;
     max-height: 320px;
-    padding: 8px 10px;
     /* The grip sits in the top-left corner, so keep the first line clear of it. */
     padding-left: 24px;
-    border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
     resize: none;
-    font: inherit;
-    color: inherit;
-    background-color: var(--cheddi-bg);
+    border-color: transparent;
+    background-color: transparent;
 }
 
+.cheddi__textarea:focus,
 .cheddi__textarea:focus-visible {
-    outline: 2px solid var(--cheddi-accent);
-    outline-offset: -1px;
+    outline: none;
+    box-shadow: none;
+    border-color: transparent;
 }
 
 .cheddi__sessions-panel {
@@ -1152,7 +1192,7 @@ body.cheddi-resizing-composer * {
 
 .cheddi__sessions-panel-title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--cheddi-font-size-lg);
     font-weight: 600;
 }
 
@@ -1166,20 +1206,10 @@ body.cheddi-resizing-composer * {
 .cheddi__sessions-primary {
     flex: 0 0 auto;
     margin: 8px;
-    padding: 8px 10px;
-    background: transparent;
-    border: 1px solid var(--cheddi-border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    color: inherit;
-    font: inherit;
-    font-weight: 600;
-    text-align: center;
 }
 
 .cheddi__sessions-primary:hover {
-    background-color: var(--cheddi-hover);
-    border-color: var(--cheddi-accent-border);
+    background-color: var(--cheddi-hover-bg);
 }
 
 .cheddi__sessions-list {
@@ -1194,25 +1224,92 @@ body.cheddi-resizing-composer * {
     padding: 16px;
     text-align: center;
     color: var(--cheddi-muted-fg);
-    font-size: 13px;
+    font-size: var(--cheddi-font-size-lg);
 }
 
 .cheddi__sessions-item {
     display: flex;
     align-items: stretch;
-    margin: 0 8px 4px;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    padding: 0;
+    background-color: transparent;
+}
+
+/* No positioning context of its own: the menu below is measured against the composer. */
+.cheddi__templates {
+    flex: 0 0 auto;
+}
+
+.cheddi__templates[hidden] {
+    display: none;
+}
+
+/*
+ * Opens upwards and spans the composer, whose box is the nearest positioned ancestor: a menu
+ * dropping down from a control this low would open past the bottom edge of the drawer, and one
+ * anchored to the icon button would come out one icon wide.
+ */
+.cheddi__templates-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 8px;
+    right: 8px;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 320px;
+    padding: 8px;
+}
+
+.cheddi__templates-menu[hidden] {
+    display: none;
+}
+
+.cheddi__templates-list {
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.cheddi__templates-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: normal;
+}
+
+.cheddi__templates-item-title {
+    font-weight: 600;
+}
+
+.cheddi__templates-item-preview {
+    font-size: var(--cheddi-font-size-sm);
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__templates-empty {
+    padding: 6px 10px;
+    font-size: var(--cheddi-font-size-sm);
+    color: var(--cheddi-muted-fg);
+}
+
+.cheddi__sessions-item--disabled {
+    opacity: 0.5;
+}
+
+.cheddi__sessions-item--disabled:hover {
+    background-color: transparent;
+    border-color: transparent;
 }
 
 .cheddi__sessions-item:hover {
-    background-color: var(--cheddi-hover);
-    border-color: var(--cheddi-border-color);
+    background-color: var(--cheddi-hover-bg);
 }
 
 .cheddi__sessions-item--current {
-    background-color: rgba(240, 156, 66, 0.08);
-    border-color: var(--cheddi-accent-border);
+    background-color: var(--cheddi-hover-bg);
+    font-weight: 600;
 }
 
 .cheddi__sessions-item-open {
@@ -1249,7 +1346,6 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__sessions-item:hover .cheddi__sessions-item-chevron {
-    color: var(--cheddi-accent-border);
     transform: translateX(2px);
 }
 
@@ -1262,19 +1358,20 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__sessions-item-meta {
-    font-size: 11px;
+    font-size: var(--cheddi-font-size-sm);
     color: var(--cheddi-muted-fg);
     margin-top: 2px;
 }
 
 .cheddi__sessions-item-delete {
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 36px;
     padding: 0;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
+    border-color: transparent;
+    background-color: transparent;
     color: var(--cheddi-muted-fg);
     opacity: 0;
     transition: opacity 0.1s ease;
@@ -1313,13 +1410,25 @@ body.cheddi-resizing-composer * {
     overscroll-behavior: contain;
 }
 
-.cheddi-help-modal__section + .cheddi-help-modal__section {
-    margin-top: 20px;
+.cheddi-help-modal__situation {
+    margin-bottom: 20px;
 }
 
-.cheddi-help-modal__section h3 {
+.cheddi-help-modal__situation h3 {
     margin: 0 0 8px 0;
     font-size: 1.05rem;
+}
+
+.cheddi-help-modal__situation .callout + .callout {
+    margin-top: 6px;
+}
+
+.cheddi-help-modal__callout-text {
+    align-self: center;
+}
+
+.cheddi-help-modal__section {
+    padding-top: 16px;
 }
 
 .cheddi-help-modal__section p {

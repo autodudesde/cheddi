@@ -20,7 +20,10 @@ use AutoDudes\AiSuiteMcp\Mcp\Service\RateLimiterService;
 use AutoDudes\Cheddi\Domain\Model\Dto\TurnResult;
 use AutoDudes\Cheddi\Service\Chat\AttachmentService;
 use AutoDudes\Cheddi\Service\Chat\ChatCatalogService;
+use AutoDudes\Cheddi\Service\Chat\ChatCreditsService;
 use AutoDudes\Cheddi\Service\Chat\ChatHelpService;
+use AutoDudes\Cheddi\Service\Chat\ChatModelPolicy;
+use AutoDudes\Cheddi\Service\Chat\ChatProgressService;
 use AutoDudes\Cheddi\Service\Chat\ChatService;
 use AutoDudes\Cheddi\Service\Chat\GdprModelPolicy;
 use Psr\Http\Message\ResponseInterface;
@@ -34,10 +37,24 @@ final class ChatController
 {
     private const FEATURE_FLAG = 'tx_aisuite_features:enable_cheddi_interface';
 
+    private const MODEL_REJECTION_MESSAGES = [
+        ChatModelPolicy::REASON_NOT_CHAT => 'Selected model is not a chat model.',
+        ChatModelPolicy::REASON_NOT_PERMITTED => 'Selected chat model is not allowed for this BE user group.',
+        ChatModelPolicy::REASON_GDPR_BLOCKED => 'GDPR mode: only data-protection-compliant models may be used.',
+        ChatModelPolicy::REASON_MISSING_KEY => 'Selected chat model has no API key configured.',
+    ];
+
+    private const RATE_BUCKET_TURN = 'turn';
+    private const RATE_BUCKET_CONTINUE = 'continue';
+    private const RATE_BUCKET_CONFIRM = 'confirm';
+
     public function __construct(
         private readonly ChatService $chatService,
         private readonly ChatCatalogService $chatCatalogService,
+        private readonly ChatCreditsService $chatCreditsService,
         private readonly ChatHelpService $chatHelpService,
+        private readonly ChatModelPolicy $modelPolicy,
+        private readonly ChatProgressService $progressService,
         private readonly BackendUserService $backendUserService,
         private readonly SettingsFactory $settingsFactory,
         private readonly GdprModelPolicy $gdprModelPolicy,
@@ -54,7 +71,7 @@ final class ChatController
         }
 
         $params = $this->parsedBody($request);
-        $limited = $this->guardRateLimit($this->stringParam($params, 'sessionUuid'));
+        $limited = $this->guardRateLimit($this->stringParam($params, 'sessionUuid'), self::RATE_BUCKET_TURN);
         if (null !== $limited) {
             return $limited;
         }
@@ -64,15 +81,8 @@ final class ChatController
             return $this->badRequest('Missing or empty `text` field.');
         }
         $model = $this->stringParam($params, 'model');
-        if ($this->gdprModelPolicy->isForced($this->settingsFactory->mergeExtConfAndUserGroupSettings())) {
-            if ('' === $model) {
-                $model = $this->gdprModelPolicy->defaultModel();
-            } elseif (!$this->gdprModelPolicy->isCompliant($model)) {
-                return new JsonResponse(
-                    ['error' => ['message' => 'GDPR mode: only data-protection-compliant models may be used.', 'chatErrorCode' => 'gdprModelBlocked']],
-                    403,
-                );
-            }
+        if ('' === $model && $this->gdprModelPolicy->isForced($this->settingsFactory->mergeExtConfAndUserGroupSettings())) {
+            $model = $this->gdprModelPolicy->defaultModel();
         }
         $modelDenied = $this->guardModelPermission($model);
         if (null !== $modelDenied) {
@@ -99,7 +109,7 @@ final class ChatController
         if ('' === $sessionUuid) {
             return $this->badRequest('Missing `sessionUuid` for continueTurn.');
         }
-        $limited = $this->guardRateLimit($sessionUuid);
+        $limited = $this->guardRateLimit($sessionUuid, self::RATE_BUCKET_CONTINUE);
         if (null !== $limited) {
             return $limited;
         }
@@ -116,7 +126,7 @@ final class ChatController
             return $denied;
         }
 
-        return new JsonResponse(['sessions' => $this->chatService->listSessions()]);
+        return $this->neverCached(new JsonResponse(['sessions' => $this->chatService->listSessions()]));
     }
 
     public function loadSessionAction(ServerRequestInterface $request): ResponseInterface
@@ -161,14 +171,29 @@ final class ChatController
         return new JsonResponse(['deleted' => true]);
     }
 
-    public function availableModelsAction(ServerRequestInterface $request): ResponseInterface
+    public function statusAction(ServerRequestInterface $request): ResponseInterface
     {
         $denied = $this->guardPermission();
         if (null !== $denied) {
             return $denied;
         }
 
-        return new JsonResponse($this->chatCatalogService->getModelCatalog());
+        $catalog = $this->chatCatalogService->getModelCatalog();
+        $refresh = '1' === $this->stringParam($this->parsedBody($request), 'refreshCredits');
+
+        return $this->neverCached(new JsonResponse([
+            'models' => $catalog['models'],
+            'orientation' => $catalog['orientation'],
+            'credits' => $refresh
+                ? $this->chatCreditsService->refreshCredits()
+                : $this->chatCreditsService->getCredits(),
+            'templates' => $this->chatCatalogService->getStarterTemplates(),
+            'attachments' => [
+                'maxPerMessage' => $this->attachmentService->maxAttachmentsPerMessage(),
+                'accept' => $this->attachmentService->acceptAttribute(),
+                'maxBytes' => $this->attachmentService->maxUploadBytes(),
+            ],
+        ]));
     }
 
     public function helpAction(ServerRequestInterface $request): ResponseInterface
@@ -181,17 +206,7 @@ final class ChatController
         return new JsonResponse($this->chatHelpService->getHelp());
     }
 
-    public function availableTemplatesAction(ServerRequestInterface $request): ResponseInterface
-    {
-        $denied = $this->guardPermission();
-        if (null !== $denied) {
-            return $denied;
-        }
-
-        return new JsonResponse(['templates' => $this->chatCatalogService->getStarterTemplates()]);
-    }
-
-    public function availableLanguagesAction(ServerRequestInterface $request): ResponseInterface
+    public function summarizeHistoryAction(ServerRequestInterface $request): ResponseInterface
     {
         $denied = $this->guardPermission();
         if (null !== $denied) {
@@ -199,9 +214,31 @@ final class ChatController
         }
 
         $params = $this->parsedBody($request);
-        $pageId = (int) $this->stringParam($params, 'pageId');
+        $sessionUuid = $this->stringParam($params, 'sessionUuid');
+        if ('' === $sessionUuid) {
+            return $this->badRequest('Missing `sessionUuid` for summarize.');
+        }
 
-        return new JsonResponse(['languages' => $this->chatCatalogService->getAvailableLanguages($pageId)]);
+        $limited = $this->guardRateLimit($sessionUuid, self::RATE_BUCKET_TURN);
+        if (null !== $limited) {
+            return $limited;
+        }
+
+        return $this->turnResultToResponse($this->chatService->summarizeHistory($sessionUuid));
+    }
+
+    public function turnProgressAction(ServerRequestInterface $request): ResponseInterface
+    {
+        // the poll must not consume the turn budget it reports on.
+        $denied = $this->guardPermission();
+        if (null !== $denied) {
+            return $denied;
+        }
+
+        $params = $this->parsedBody($request);
+        $sessionUuid = $this->stringParam($params, 'sessionUuid');
+
+        return new JsonResponse(['progress' => $this->progressService->read($sessionUuid)]);
     }
 
     public function applyConfirmationsAction(ServerRequestInterface $request): ResponseInterface
@@ -216,7 +253,7 @@ final class ChatController
         if ('' === $sessionUuid) {
             return $this->badRequest('Missing `sessionUuid` for confirm.');
         }
-        $limited = $this->guardRateLimit($sessionUuid);
+        $limited = $this->guardRateLimit($sessionUuid, self::RATE_BUCKET_CONFIRM);
         if (null !== $limited) {
             return $limited;
         }
@@ -231,10 +268,10 @@ final class ChatController
         return $this->turnResultToResponse($result);
     }
 
-    private function guardRateLimit(string $sessionUuid): ?ResponseInterface
+    private function guardRateLimit(string $sessionUuid, string $bucket): ?ResponseInterface
     {
         $beUser = $this->backendUserService->getBackendUser();
-        $identifier = 'cheddi_turn_'.(int) ($beUser?->user['uid'] ?? 0);
+        $identifier = 'cheddi_'.$bucket.'_'.(int) ($beUser?->user['uid'] ?? 0);
 
         try {
             $this->rateLimiter->checkAndIncrement($identifier);
@@ -257,7 +294,7 @@ final class ChatController
     {
         if (!$this->backendUserService->checkPermissions(self::FEATURE_FLAG)) {
             return new JsonResponse(
-                ['error' => ['message' => 'Chat interface not enabled for this BE user group.']],
+                ['error' => ['message' => 'Chat interface not enabled for this BE user group.', 'chatErrorCode' => 'featureDisabled']],
                 403,
             );
         }
@@ -267,21 +304,20 @@ final class ChatController
 
     private function guardModelPermission(string $model): ?ResponseInterface
     {
-        if ('' === $model) {
+        $reason = $this->modelPolicy->reasonNotSelectable($model);
+        if (null === $reason) {
             return null;
         }
-        if (!$this->backendUserService->checkPermissions('tx_aisuite_models:'.$model)) {
-            return new JsonResponse(
-                ['error' => ['message' => 'Selected chat model is not allowed for this BE user group.']],
-                403,
-            );
-        }
 
-        return null;
+        return new JsonResponse(
+            ['error' => ['message' => self::MODEL_REJECTION_MESSAGES[$reason], 'chatErrorCode' => $reason]],
+            403,
+        );
     }
 
     private function turnResultToResponse(TurnResult $result): ResponseInterface
     {
+        $this->progressService->finishTurn($result->sessionUuid);
         $statusCode = TurnResult::STATUS_ERROR === $result->status ? 422 : 200;
 
         return new JsonResponse($result->toArray(), $statusCode);
@@ -289,7 +325,16 @@ final class ChatController
 
     private function badRequest(string $message): ResponseInterface
     {
-        return new JsonResponse(['error' => ['message' => $message]], 400);
+        return new JsonResponse(['error' => ['message' => $message, 'chatErrorCode' => 'badRequest']], 400);
+    }
+
+    private function neverCached(ResponseInterface $response): ResponseInterface
+    {
+        return $response
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            ->withHeader('Pragma', 'no-cache')
+            ->withHeader('Expires', '0')
+        ;
     }
 
     /**

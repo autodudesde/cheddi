@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\WorkspaceContextService;
+use AutoDudes\AiSuiteMcp\Mcp\Service\DataHandlerErrorFormatter;
 use AutoDudes\AiSuiteMcp\Mcp\Service\WorkspaceComparisonService;
 use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
 use Psr\Log\LoggerInterface;
@@ -25,12 +26,17 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class WorkspaceReviewService
 {
+    public const STATUS_ADDED = 'added';
+    public const STATUS_CHANGED = 'changed';
+    public const STATUS_REMOVED = 'removed';
+
     public function __construct(
         private readonly ChatChangeRepository $changeRepository,
         private readonly WorkspaceComparisonService $comparisonService,
         private readonly BackendUserService $backendUserService,
         private readonly WorkspaceContextService $workspaceContextService,
         private readonly LoggerInterface $logger,
+        private readonly DataHandlerErrorFormatter $dataHandlerErrorFormatter,
     ) {}
 
     /**
@@ -73,7 +79,7 @@ class WorkspaceReviewService
                 'pageId' => (int) $change['page_id'],
                 'action' => (string) $change['action'],
                 'label' => $label,
-                'status' => $status,
+                'status' => self::normaliseStatus($status),
                 'changedFields' => array_values(array_map('strval', $changedFields)),
             ];
         }
@@ -153,7 +159,7 @@ class WorkspaceReviewService
     {
         $liveUid = BackendUtility::getLiveVersionIdOfRecord($table, $workspaceRecordUid) ?? $workspaceRecordUid;
 
-        return $this->runCommand([
+        return $this->runCommand('publish', $table, $liveUid, [
             $table => [
                 $liveUid => ['version' => ['action' => 'publish', 'swapWith' => $workspaceRecordUid]],
             ],
@@ -162,7 +168,7 @@ class WorkspaceReviewService
 
     protected function discardRecord(string $table, int $workspaceRecordUid): ?string
     {
-        return $this->runCommand([
+        return $this->runCommand('discard', $table, $workspaceRecordUid, [
             $table => [
                 $workspaceRecordUid => ['discard' => true],
             ],
@@ -172,7 +178,7 @@ class WorkspaceReviewService
     /**
      * @param array<string, array<int, array<string, mixed>>> $cmd
      */
-    private function runCommand(array $cmd): ?string
+    private function runCommand(string $operation, string $table, int $uid, array $cmd): ?string
     {
         $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
         $dataHandler->start([], $cmd);
@@ -182,9 +188,18 @@ class WorkspaceReviewService
             return null;
         }
 
-        $message = implode(' | ', $dataHandler->errorLog);
+        $message = $this->dataHandlerErrorFormatter->toException($operation, $table, $uid, $dataHandler->errorLog)->getMessage();
         $this->logger->warning('ChEddi: workspace review command failed', ['error' => $message]);
 
         return $message;
+    }
+
+    private static function normaliseStatus(string $status): string
+    {
+        return match ($status) {
+            'added', 'create' => self::STATUS_ADDED,
+            'removed', 'delete' => self::STATUS_REMOVED,
+            default => self::STATUS_CHANGED,
+        };
     }
 }

@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
+use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Exception\ConnectException;
 use Psr\Http\Message\ResponseInterface;
@@ -29,12 +30,21 @@ class WebSearchRequestService
     public const RETRY_BACKOFF_SECONDS = 2;
     public const RETRY_MAX_ATTEMPTS = 2;
 
+    public const CONNECT_TIMEOUT_SECONDS = 10;
+    public const REQUEST_TIMEOUT_SECONDS = 120;
+
+    private const WEB_SEARCH_KEY_ENVELOPE = 'WebSearch';
+
+    private const CURL_TIMEOUT_ERRNO = 28;
+
     public function __construct(
         protected readonly RequestFactory $requestFactory,
         protected readonly SettingsFactory $settingsFactory,
         protected readonly LoggerInterface $logger,
         protected readonly GdprModelPolicy $gdprModelPolicy,
         protected readonly ModelService $modelService,
+        protected readonly WebResearchPolicy $webResearchPolicy,
+        protected readonly SystemDomainResolver $systemDomainResolver,
     ) {}
 
     /**
@@ -52,6 +62,8 @@ class WebSearchRequestService
 
         $endpoint = ((string) ($extConf['aiSuiteServer'] ?? '')).'api/webSearch';
         $options = [
+            'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'timeout' => self::REQUEST_TIMEOUT_SECONDS,
             'headers' => [
                 'Authorization' => 'Bearer '.((string) ($extConf['aiSuiteApiKey'] ?? '')),
                 'X-AiSuite-Source' => 'chat',
@@ -59,10 +71,11 @@ class WebSearchRequestService
             'form_params' => [
                 'query' => $query,
                 'maxSearches' => $maxSearches,
-                'keys' => $this->modelService->fetchKeysByModelType($extConf, ['chat']),
-                'request_system_domain' => GeneralUtility::getIndpEnv('HTTP_HOST'),
+                'keys' => $this->keysFor($extConf),
+                'request_system_domain' => $this->systemDomainResolver->resolve(),
                 'typo3_version' => GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion(),
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
+                'webResearch' => json_encode($this->webResearchPolicy->researchScope()),
             ],
         ];
 
@@ -126,13 +139,19 @@ class WebSearchRequestService
                 $this->logger->warning('Web search 5xx — retrying once', ['attempt' => $attempt, 'statusCode' => $statusCode]);
                 $this->sleepBackoff();
             } catch (ConnectException $e) {
-                if ($attempt >= self::RETRY_MAX_ATTEMPTS) {
+                // A timeout is not retried.
+                if ($this->isTimeout($e) || $attempt >= self::RETRY_MAX_ATTEMPTS) {
                     throw $e;
                 }
                 $this->logger->warning('Web search connection failed — retrying once', ['attempt' => $attempt, 'exception' => $e->getMessage()]);
                 $this->sleepBackoff();
             }
         }
+    }
+
+    private function isTimeout(ConnectException $exception): bool
+    {
+        return self::CURL_TIMEOUT_ERRNO === (int) ($exception->getHandlerContext()['errno'] ?? 0);
     }
 
     /**
@@ -161,6 +180,23 @@ class WebSearchRequestService
         }
 
         return $sources;
+    }
+
+    /**
+     * @param array<string, mixed> $extConf
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function keysFor(array $extConf): array
+    {
+        $keys = $this->modelService->fetchKeysByModelType($extConf, ['chat']);
+
+        $keyField = $this->webResearchPolicy->webSearchKeyField();
+        if ('' !== $keyField) {
+            $keys[self::WEB_SEARCH_KEY_ENVELOPE] = [$keyField => trim((string) ($extConf[$keyField] ?? ''))];
+        }
+
+        return $keys;
     }
 
     /**

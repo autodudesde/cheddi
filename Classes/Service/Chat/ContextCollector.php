@@ -29,6 +29,7 @@ class ContextCollector
         ServerRequestInterface $request,
         bool $webResearchAvailable = false,
         bool $webPageReadingAvailable = false,
+        bool $nativeWebResearchAvailable = false,
     ): string {
         $parts = [
             'You are "ChEddi", a friendly assistant for content editors inside the TYPO3 backend '
@@ -61,6 +62,8 @@ class ContextCollector
                 .'Use plain, non-technical wording an editor knows from the TYPO3 backend '
                 .'(pages, content elements, languages, files) — never expose database table '
                 .'names, field names, record UIDs, JSON or tool names in your prose. '
+                .'Everything you write is shown to the editor exactly as it is, so an answer carries '
+                .'prose only — no internal or system XML tags. '
                 .'Before any change, briefly state in one sentence what you are about to do. '
                 .'After a change, confirm in plain language what happened. '
                 .'Keep answers short and actionable. When a request leaves a detail open, pick the '
@@ -83,7 +86,14 @@ class ContextCollector
                 .'looking for it by hand, and never quote table names or UIDs at them.',
         ];
 
-        if ($webResearchAvailable) {
+        if ($nativeWebResearchAvailable) {
+            $parts[] = 'You can research the open web yourself: search when the answer needs '
+                .'information that is not already in the content or the conversation, and use '
+                .'readWebPage to read a page the editor named. Always base your answer on the '
+                .'sources you actually retrieved, name those sources to the editor, and never '
+                .'invent facts or URLs. Turning researched content into pages or content elements '
+                .'follows the normal path — compose it, then let the editor approve the change on the card.';
+        } elseif ($webResearchAvailable) {
             $parts[] = 'You can research the open web: use searchWeb to find current information and '
                 .'readWebPage to read a page the editor named. Only research when the answer needs '
                 .'information that is not already in the content or the conversation. Always base your '
@@ -126,6 +136,13 @@ class ContextCollector
         $table = $this->stringOrEmpty($context['recordTable'] ?? null);
         $uid = $this->intOrNull($context['recordUid'] ?? null);
         if ('' === $table || null === $uid || $uid <= 0) {
+            return null;
+        }
+        if (1 !== preg_match('/^[a-z0-9_]+$/', $table) || !isset($GLOBALS['TCA'][$table])) {
+            $this->logger->notice('ChEddi: the drawer named a table that does not exist', [
+                'recordTable' => $table,
+            ]);
+
             return null;
         }
 

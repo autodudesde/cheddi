@@ -40,6 +40,7 @@ class ChatMessage
         public int $tstamp = 0,
         public string $attachments = '',
         public string $providerItems = '',
+        public string $sources = '',
     ) {}
 
     /**
@@ -60,6 +61,7 @@ class ChatMessage
             tstamp: (int) ($row['tstamp'] ?? 0),
             attachments: (string) ($row['attachments'] ?? ''),
             providerItems: (string) ($row['provider_items'] ?? ''),
+            sources: (string) ($row['sources'] ?? ''),
         );
     }
 }
