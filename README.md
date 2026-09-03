@@ -1,26 +1,33 @@
 # TYPO3 + ChEddi
 
-> 🧪 **Beta (`0.1.0`).** The feature set and the HTTP contract (routes, the `TurnResult`
+> 🧪 **Beta (`0.2.2`).** The feature set and the HTTP contract (routes, the `TurnResult`
 > response envelope, the tool-severity classification) are stabilising, but smaller changes
 > are still possible between minor versions while the extension matures. Pin a version and
 > review the changelog before upgrading.
 
-A conversational backend assistant for TYPO3's [AI Suite](https://www.autodudes.de/).
-`cheddi` injects a resizable chat **drawer** into every TYPO3 backend page and lets
-editors talk to the AI Suite tools in natural language: read pages, generate or translate
-content, fill in metadata, generate images, all from the same MCP `ToolRegistry` that
-[`ai_suite_mcp`](../ai-suite-mcp) exposes, but driven from inside the backend instead of an
-external MCP client.
+An AI assistant that lives **inside the TYPO3 backend**. `cheddi` puts a resizable chat
+**drawer** on every backend page, and editors say in plain language what they need
+("translate this page into English", "write a meta description for the news list", "which
+pages have no image?"). ChEddi then works on the real records: page tree, content elements,
+translations, metadata, images, record CRUD, always as the logged-in backend user and with
+exactly that user's permissions.
 
-The model never mutates content silently: read-only tools run automatically, while every
-write or destructive tool call is surfaced inline for explicit confirmation before it is
-executed.
+Nothing changes behind the editor's back. Read-only steps run on their own, every write is
+surfaced inline and needs a click, destructive ones a second click. In the default workspace
+write mode the result lands in a draft the editor can publish or discard from the drawer.
+
+[AI Suite](https://www.autodudes.de/) is the technical foundation this builds on: it ships
+the extension infrastructure, the backend-group permission model, the TYPO3
+version-compatibility layer and the shared services, while
+[`ai_suite_mcp`](../ai-suite-mcp) contributes the MCP `ToolRegistry` whose tools ChEddi
+drives from inside the backend instead of from an external MCP client. Both are hard
+dependencies and Composer pulls them in for you.
 
 ## What you can do with it
 
 - 💬 **Chat from anywhere in the backend**: a floating bubble opens a drawer on top of the
   current module. The drawer is resizable and its size/open-state persist per browser.
-- 🧰 **Drive AI Suite tools by talking**: the assistant calls the same MCP tools an
+- 🧰 **Work on real records, not suggestions**: the assistant calls the same MCP tools an
   external client would (page tree, content generation, translation, metadata, image
   generation, record CRUD), gated to exactly what the current BE user is allowed to do.
 - ✅ **Confirm before anything changes**: read-only tools auto-run; write tools require a
@@ -94,8 +101,8 @@ These are deliberate design decisions, not bugs, and worth knowing before you de
 |---|---|---|
 | TYPO3 CMS | `12.4.11 – 14.3.x` | Backend extension; targets v12/v13/v14 in parallel branches |
 | PHP | `^8.1` | |
-| `autodudes/ai-suite` | `12.22.0 – 14.x` | Provides `SendRequestService`, `BackendUserService`, `ModelService`, `SettingsFactory`, `UuidService`, `AbstractRepository` |
-| `autodudes/ai-suite-mcp` | `0.7.0 – 1.0.0` | Provides the `ToolRegistry`, `McpPermissionService`, `McpUserContext` |
+| `autodudes/ai-suite` | `12.23.0 – 14.x` | Provides `SendRequestService`, `BackendUserService`, `ModelService`, `SettingsFactory`, `UuidService`, `AbstractRepository` |
+| `autodudes/ai-suite-mcp` | `0.8.0 – 1.0.0` | Provides the `ToolRegistry`, `McpPermissionService`, `McpUserContext` |
 | `typo3/cms-workspaces` | `12.4.11 – 14.3.x` | Required; the default `workspace` write mode routes confirmed changes through a draft |
 | `typo3/cms-scheduler` | `12.4.11 – 14.3.x` | Required. The session auto-delete command also runs straight from the CLI, but the dependency is hard |
 | `smalot/pdfparser`, `phpoffice/phpword`, `phpoffice/phpspreadsheet` | `^2.12`, `^1.4`, `^3.10` | Text extraction for attached PDF / Word / spreadsheet documents |

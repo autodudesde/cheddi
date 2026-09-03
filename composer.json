@@ -1,17 +1,21 @@
 {
   "name": "autodudes/cheddi",
   "type": "typo3-cms-extension",
-  "description": "ChEddi - Chat interface for EXT:ai_suite. Adds a conversational backend drawer that lets editors interact with AI Suite tools via natural language, powered by the MCP ToolRegistry.",
+  "description": "ChEddi: AI assistant for the TYPO3 backend. A chat drawer on every backend page where editors work on pages, content, translations, metadata and other data in plain language.",
   "homepage": "https://www.autodudes.de/",
   "license": [
     "GPL-2.0-or-later"
   ],
-  "version": "0.2.1",
+  "version": "0.2.2",
   "keywords": [
     "TYPO3 CMS",
-    "AI Suite",
-    "Chat",
-    "AI Assistant"
+    "backend",
+    "editor",
+    "assistant",
+    "chat",
+    "content",
+    "AI Assistant",
+    "AI Suite"
   ],
   "require": {
     "php": "^8.1",
