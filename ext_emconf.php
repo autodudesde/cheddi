@@ -6,12 +6,12 @@ $EM_CONF[$_EXTKEY] = [
     'category' => 'be',
     'author' => 'AutoDudes',
     'state' => 'beta',
-    'version' => '0.2.0',
+    'version' => '0.2.1',
     'constraints' => [
         'depends' => [
             'typo3' => '12.4.11-14.3.99',
-            'ai_suite' => '12.22.0-14.99.99',
-            'ai_suite_mcp' => '0.7.0-1.0.0',
+            'ai_suite' => '12.23.0-14.99.99',
+            'ai_suite_mcp' => '0.8.0-1.0.0',
             'workspaces' => '12.4.11-14.3.99',
             'scheduler' => '12.4.0-14.99.99',
         ],
