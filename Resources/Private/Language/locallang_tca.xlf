@@ -13,19 +13,22 @@
                 <source>Enable Web Research</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.enableWebResearchDescription">
-                <source>Allow ChEddi to search and read the open web for this group. The editor's query leaves the installation, so this is off by default; it is never available in GDPR mode.</source>
+                <source>Allow ChEddi to search and read the open web for this group. The editor's query leaves the installation, so this is off by default. In GDPR mode the search runs only through the server's EU search provider, where one serves the site's market.</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelOpenAiLuna">
                 <source>ChEddi model: OpenAI GPT-5.6 Luna</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelIonosQwen35">
-                <source>ChEddi model: IONOS Qwen3.5</source>
+                <source>ChEddi model: IONOS Qwen3.5-397B-A17B</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelClaudeHaiku45">
                 <source>ChEddi model: Claude Haiku 4.5</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelClaudeSonnet5">
                 <source>ChEddi model: Claude Sonnet 5</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeOpus5">
+                <source>ChEddi model: Claude Opus 5</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelChatDescription">
                 <source>Allow backend users of this group to select this chat model in ChEddi.</source>
@@ -34,7 +37,7 @@
                 <source>OpenAI GPT-5.6 Luna</source>
             </trans-unit>
             <trans-unit id="cheddi.model.IonosQwen35.label">
-                <source>IONOS Qwen3.5</source>
+                <source>IONOS Qwen3.5-397B-A17B</source>
             </trans-unit>
             <trans-unit id="cheddi.model.ClaudeHaiku45.label">
                 <source>Claude Haiku 4.5</source>
@@ -42,8 +45,11 @@
             <trans-unit id="cheddi.model.ClaudeSonnet5.label">
                 <source>Claude Sonnet 5</source>
             </trans-unit>
+            <trans-unit id="cheddi.model.ClaudeOpus5.label">
+                <source>Claude Opus 5</source>
+            </trans-unit>
             <trans-unit id="cheddi.promptTemplate.scopeCheddi">
-                <source>ChEddi (chat starter template)</source>
+                <source>ChEddi</source>
             </trans-unit>
             <trans-unit id="cheddi.tca.session">
                 <source>ChEddi chat session</source>

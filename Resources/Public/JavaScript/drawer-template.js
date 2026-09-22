@@ -13,7 +13,8 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
             <button type="button"
                 class="cheddi__bubble"
                 data-cheddi-bubble
-                aria-label="${ll('cheddi.ui.bubbleOpen')}">
+                aria-label="${ll('cheddi.ui.bubbleOpen')}"
+                title="${ll('cheddi.ui.bubbleOpen')}">
                 <img class="cheddi__bubble-icon"
                     src="${bubbleIconUrl}"
                     alt=""
@@ -52,6 +53,7 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                                     class="btn btn-default btn-sm cheddi__header-button"
                                     data-cheddi-actions-toggle
                                     aria-label="${ll('cheddi.ui.actionsMenu')}"
+                                    title="${ll('cheddi.ui.actionsMenu')}"
                                     aria-haspopup="menu"
                                     aria-expanded="false"><typo3-backend-icon identifier="actions-menu-alternative" size="small" aria-hidden="true"></typo3-backend-icon></button>
                                 <ul class="dropdown-menu cheddi__actions-menu"
@@ -81,13 +83,19 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                             </div>
                             <button type="button"
                                 class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-dock-toggle
+                                aria-label="${ll('cheddi.ui.dock')}"
+                                title="${ll('cheddi.ui.dock')}"><typo3-backend-icon identifier="actions-arrow-right" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
                                 data-cheddi-minimize
                                 aria-label="${ll('cheddi.ui.minimize')}"
                                 title="${ll('cheddi.ui.minimize')}"><typo3-backend-icon identifier="actions-minus" size="small" aria-hidden="true"></typo3-backend-icon></button>
                             <button type="button"
                                 class="btn btn-default btn-sm cheddi__header-button"
                                 data-cheddi-close
-                                aria-label="${ll('cheddi.ui.close')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                                aria-label="${ll('cheddi.ui.close')}"
+                                title="${ll('cheddi.ui.close')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
                         </div>
                     </div>
                     <div class="cheddi__header-row cheddi__header-row--model">
@@ -113,7 +121,8 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                         <button type="button"
                             class="btn btn-default btn-sm cheddi__header-button"
                             data-cheddi-close-sessions
-                            aria-label="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                            aria-label="${ll('cheddi.ui.panelClose')}"
+                            title="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
                     </header>
                     <button type="button"
                         class="btn btn-default btn-sm cheddi__sessions-primary"

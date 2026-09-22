@@ -17,6 +17,7 @@ use AutoDudes\Cheddi\Command\AutoDeleteChatSessionsCommand;
 use AutoDudes\Cheddi\EventListener\CollectChatStatisticsListener;
 use AutoDudes\Cheddi\EventListener\InjectChatDrawerListener;
 use AutoDudes\Cheddi\EventListener\WorkspacePublishListener;
+use AutoDudes\Cheddi\Mcp\Tool\CreateCsvDownloadTool;
 use AutoDudes\Cheddi\Mcp\Tool\ReadAttachmentTextTool;
 use AutoDudes\Cheddi\Mcp\Tool\ReadWebPageTool;
 use AutoDudes\Cheddi\Mcp\Tool\SearchWebTool;
@@ -40,7 +41,7 @@ return static function (ContainerConfigurator $configurator): void {
         __DIR__.'/../Classes/Mcp/Tool',
     ]);
 
-    foreach ([ReadAttachmentTextTool::class, SearchWebTool::class, ReadWebPageTool::class] as $chatTool) {
+    foreach ([ReadAttachmentTextTool::class, SearchWebTool::class, ReadWebPageTool::class, CreateCsvDownloadTool::class] as $chatTool) {
         $services->set($chatTool)
             ->autowire()
             ->autoconfigure(false)

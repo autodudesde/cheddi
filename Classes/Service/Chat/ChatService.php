@@ -26,6 +26,7 @@ use AutoDudes\Cheddi\Domain\Model\Dto\ChatTurnAnswer;
 use AutoDudes\Cheddi\Domain\Model\Dto\TurnResult;
 use AutoDudes\Cheddi\Domain\Repository\ChatMessageRepository;
 use AutoDudes\Cheddi\Domain\Repository\ChatSessionRepository;
+use AutoDudes\Cheddi\Mcp\Tool\CreateCsvDownloadTool;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 
@@ -45,6 +46,9 @@ class ChatService
 
     /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> */
     private array $navigationTargets = [];
+
+    /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> */
+    private array $foundTargets = [];
 
     public function __construct(
         protected readonly ChatSessionRepository $sessionRepository,
@@ -334,7 +338,9 @@ class ChatService
      *     uuid: string,
      *     title: string,
      *     model: string,
-     *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, sources?: list<array<string, mixed>>}>,
+     *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, sources?: list<array<string, mixed>>, createdAt: int}>,
+     *     pending: list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, creditCost: null|int, preview: null|array<string, mixed>}>,
+     *     confirmTarget: null|array{key: string, params?: array<string, int|string>},
      * }
      */
     public function loadSession(string $sessionUuid): ?array
@@ -349,16 +355,49 @@ class ChatService
         }
 
         $messages = array_map(
-            fn (ChatMessage $m): array => $this->messageToApiShape($m, withSources: true),
+            fn (ChatMessage $m): array => $this->messageToApiShape($m, withSources: true) + ['createdAt' => $m->crdate],
             $this->messageRepository->findBySession($session->uid),
         );
+
+        $pending = $this->pendingForSession($session->uid);
 
         return [
             'uuid' => $session->sessionUuid,
             'title' => $session->title,
             'model' => $session->model,
             'messages' => $messages,
+            'pending' => $pending,
+            'confirmTarget' => [] === $pending ? null : $this->confirmTarget(),
         ];
+    }
+
+    /**
+     * @return null|array<mixed>
+     */
+    public function findCsvDownloadArguments(string $sessionUuid, string $callId): ?array
+    {
+        $beUserUid = $this->resolveBeUserUid();
+        if (0 === $beUserUid || '' === $callId) {
+            return null;
+        }
+        $session = $this->sessionRepository->findByUuidForUser($sessionUuid, $beUserUid);
+        if (null === $session || $session->deleted) {
+            return null;
+        }
+
+        foreach ($this->messageRepository->findBySession($session->uid) as $message) {
+            if (ChatMessage::ROLE_ASSISTANT !== $message->role || '' === $message->toolCalls) {
+                continue;
+            }
+            $calls = json_decode($message->toolCalls, true);
+            foreach (is_array($calls) ? $calls : [] as $call) {
+                if (is_array($call) && $callId === ($call['id'] ?? null) && CreateCsvDownloadTool::NAME === ($call['name'] ?? null)) {
+                    return is_array($call['arguments'] ?? null) ? $call['arguments'] : null;
+                }
+            }
+        }
+
+        return null;
     }
 
     public function deleteSession(string $sessionUuid): bool
@@ -374,6 +413,32 @@ class ChatService
         $this->sessionRepository->softDelete($session->uid);
 
         return true;
+    }
+
+    /**
+     * @return list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, creditCost: null|int, preview: null|array<string, mixed>}>
+     */
+    private function pendingForSession(int $sessionUid): array
+    {
+        $pending = [];
+        foreach ($this->extractPendingToolCalls($sessionUid) as $call) {
+            $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments']);
+            // A read-only call is executed and answered within its own turn, so an unanswered one
+            // means the turn died mid-flight; it never had a card and must not grow one here.
+            if (Severity::ReadOnly === $severity) {
+                continue;
+            }
+            $pending[] = [
+                'id' => $call['id'],
+                'name' => $call['name'],
+                'arguments' => $call['arguments'],
+                'severity' => $severity->value,
+                'creditCost' => $this->toolBridge->creditCost($call['name']),
+                'preview' => $this->pendingPreviewService->build($call['name'], $call['arguments']),
+            ];
+        }
+
+        return $pending;
     }
 
     private function deriveTitleFromUserText(string $text): string
@@ -597,6 +662,7 @@ class ChatService
                     $this->withEmptyText($answer->sources),
                     $this->collectSourcesFromCurrentSequence($history),
                 ),
+                $this->foundTargets,
             )->withContextFill($this->contextFill($answer)));
         }
 
@@ -846,6 +912,7 @@ class ChatService
         $autoExecuted = [];
         $pending = [];
         $sources = [];
+        $downloads = [];
         $step = 0;
         $total = count($answer->toolCalls);
         foreach ($answer->toolCalls as $call) {
@@ -858,6 +925,10 @@ class ChatService
                 $this->rememberNavigationTargets($structured);
                 $callSources = $this->extractSources($structured);
                 $sources = [...$sources, ...$callSources];
+                $download = $this->downloadOf($call, $structured);
+                if (null !== $download) {
+                    $downloads[] = $download;
+                }
                 $this->messageRepository->append($session->uid, [
                     'role' => ChatMessage::ROLE_TOOL,
                     'content' => $result['content'],
@@ -898,7 +969,7 @@ class ChatService
                 $notices,
                 $autoExecuted,
                 $this->confirmTarget(),
-            )->withContextFill($this->contextFill($answer));
+            )->withContextFill($this->contextFill($answer))->withDownloads($downloads);
         }
 
         return TurnResult::continuing(
@@ -910,7 +981,26 @@ class ChatService
             $notices,
             $this->mergeSources($this->withEmptyText($answer->sources), array_values($sources)),
             $this->navigationTargets,
-        )->withContextFill($this->contextFill($answer));
+            $this->foundTargets,
+        )->withContextFill($this->contextFill($answer))->withDownloads($downloads);
+    }
+
+    /**
+     * @param array{id: string, name: string, arguments: array<string, mixed>} $call
+     *
+     * @return null|array{callId: string, filename: string, rowCount: int}
+     */
+    private function downloadOf(array $call, mixed $structured): ?array
+    {
+        if (CreateCsvDownloadTool::NAME !== $call['name'] || !is_array($structured) || !is_array($structured['download'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'callId' => $call['id'],
+            'filename' => (string) ($structured['download']['filename'] ?? ''),
+            'rowCount' => (int) ($structured['download']['rowCount'] ?? 0),
+        ];
     }
 
     private function rememberNavigationTargets(mixed $structured): void
@@ -921,6 +1011,10 @@ class ChatService
         $this->navigationTargets = $this->navigationTargetCollector->merge(
             $this->navigationTargets,
             $this->withSameOriginUrlsOnly($this->navigationTargetCollector->collect($structured)),
+        );
+        $this->foundTargets = $this->navigationTargetCollector->merge(
+            $this->foundTargets,
+            $this->withSameOriginUrlsOnly($this->navigationTargetCollector->collectFound($structured)),
         );
     }
 

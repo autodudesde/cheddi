@@ -1,9 +1,5 @@
 import { clampComposerHeight, clampSize, saveState } from '@autodudes/cheddi/state.js';
 
-/**
- * Pointer-drag resizing for the drawer and for the composer. Pure DOM work with no knowledge of the
- * conversation, which is why it takes the elements and the persisted size rather than the drawer.
- */
 export function bindComposerResize(elements, state, onComposerHeightChanged) {
     const handle = elements.composerResizeHandle;
     const textarea = elements.textarea;
@@ -55,7 +51,7 @@ export function bindComposerResize(elements, state, onComposerHeightChanged) {
     handle.addEventListener('pointerdown', onPointerDown);
 }
 
-export function bindResize(elements, state) {
+export function bindResize(elements, state, onComposerHeightChanged, onResized) {
     const handle = elements.resizeHandle;
     const drawer = elements.drawer;
 
@@ -82,9 +78,12 @@ export function bindResize(elements, state) {
             const proposedHeight = startHeight + (startY - moveEvent.clientY);
             const { width, height } = clampSize(proposedWidth, proposedHeight);
             state.width = width;
-            state.height = height;
             drawer.style.width = `${width}px`;
-            drawer.style.height = `${height}px`;
+            if (!state.docked) {
+                state.height = height;
+                drawer.style.height = `${height}px`;
+            }
+            onResized();
         };
 
         const onPointerUp = () => {
@@ -97,7 +96,6 @@ export function bindResize(elements, state) {
                 console.debug('[ChEddi] releasePointerCapture failed (already released).', err);
             }
             document.body.classList.remove('cheddi-resizing');
-            // A shorter drawer lowers the composer's ceiling, so re-clamp it.
             onComposerHeightChanged();
             saveState(state);
         };

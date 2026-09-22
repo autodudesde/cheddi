@@ -21,6 +21,8 @@
             <trans-unit id="cheddi.templates.needsRecord"><source>This template works on the record you are editing. Open one first.</source></trans-unit>
             <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source></trans-unit>
             <trans-unit id="cheddi.ui.panelClose"><source>Close panel</source></trans-unit>
+            <trans-unit id="cheddi.ui.dock"><source>Dock to the right</source></trans-unit>
+            <trans-unit id="cheddi.ui.undock"><source>Detach from the edge</source></trans-unit>
             <trans-unit id="cheddi.ui.minimize"><source>Minimize</source></trans-unit>
             <trans-unit id="cheddi.ui.close"><source>Close</source></trans-unit>
             <trans-unit id="cheddi.ui.textareaPlaceholder"><source>Type a question or instruction…</source></trans-unit>
@@ -80,6 +82,7 @@
             <trans-unit id="cheddi.notice.creditsExhausted"><source>Credits used up, please top up.</source></trans-unit>
             <trans-unit id="cheddi.notice.creditsExhaustedAborted"><source>Conversation aborted: credits used up.</source></trans-unit>
             <trans-unit id="cheddi.notice.navHeading"><source>Edit</source></trans-unit>
+            <trans-unit id="cheddi.notice.navHeadingFound"><source>Found: {table}</source></trans-unit>
             <trans-unit id="cheddi.notice.navLinkDefault"><source>Open in the backend</source></trans-unit>
             <trans-unit id="cheddi.notice.navMore"><source>+{count} more</source></trans-unit>
             <trans-unit id="cheddi.sources.heading"><source>Sources</source></trans-unit>
@@ -95,19 +98,17 @@
 
             <!-- Restored history: tool result placeholder + relative timestamps -->
             <trans-unit id="cheddi.history.toolStatus"><source>Tool: {status}</source></trans-unit>
-            <trans-unit id="cheddi.time.justNow"><source>just now</source></trans-unit>
-            <trans-unit id="cheddi.time.minutesAgo"><source>{count} min ago</source></trans-unit>
-            <trans-unit id="cheddi.time.hoursAgo"><source>{count} h ago</source></trans-unit>
-            <trans-unit id="cheddi.time.daysAgo"><source>{count} days ago</source></trans-unit>
+            <trans-unit id="cheddi.sessions.lastUsedAt"><source>Last used on {date} at {time}</source></trans-unit>
+            <trans-unit id="cheddi.sessions.lastUsedToday"><source>Last used today at {time}</source></trans-unit>
 
             <!-- Header status: how ChEddi operates (write mode / preview / GDPR) -->
+            <trans-unit id="cheddi.orientation.aiSystem"><source>You are interacting with an AI system. Its answers can be wrong, and responsibility for what gets published stays with you.</source></trans-unit>
             <trans-unit id="cheddi.orientation.gdprOn"><source>Data protection: GDPR mode active, only the compliant model is offered</source></trans-unit>
             <trans-unit id="cheddi.orientation.gdprOff"><source>Data protection: GDPR mode off</source></trans-unit>
             <trans-unit id="cheddi.orientation.writeLive"><source>Write mode: live, changes apply directly to the live site</source></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspace"><source>Write mode: draft, changes go to a workspace and not live</source></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspacePending"><source>Write mode: draft, a personal workspace is created for your first change and nothing goes live</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOn"><source>Web research: on, search queries leave this installation</source></trans-unit>
-            <trans-unit id="cheddi.orientation.webResearchOff"><source>Web research: off, ChEddi only works with content from this installation</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.default"><source>Web research: off, ChEddi only works with content from this installation</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.noPermission"><source>Web research: off, your backend group is not allowed to use it</source></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.noKey"><source>Web research: off, this plan runs on your own provider keys and the key for the search provider is missing</source></trans-unit>
@@ -117,6 +118,10 @@
             <trans-unit id="cheddi.orientation.retention"><source>Conversations are deleted after {days} days without activity.</source></trans-unit>
             <trans-unit id="cheddi.help.modalTitle"><source>How ChEddi works</source></trans-unit>
             <trans-unit id="cheddi.help.close"><source>Close</source></trans-unit>
+            <trans-unit id="cheddi.help.back"><source>Back to overview</source></trans-unit>
+            <trans-unit id="cheddi.help.previous"><source>Previous: {title}</source></trans-unit>
+            <trans-unit id="cheddi.help.next"><source>Next: {title}</source></trans-unit>
+            <trans-unit id="cheddi.help.pager"><source>Topics</source></trans-unit>
             <trans-unit id="cheddi.help.loadFailed"><source>The help text could not be loaded.</source></trans-unit>
 
             <!-- Compact operating context handed to the LLM (label + value) -->
@@ -155,6 +160,7 @@
             <trans-unit id="cheddi.confirm.targetWorkspaceNamed"><source>These changes go to the workspace "{workspace}" and not live.</source></trans-unit>
             <trans-unit id="cheddi.ui.workspaceBadgeHint"><source>Changes go to the workspace "{workspace}" (#{id})</source></trans-unit>
             <trans-unit id="cheddi.confirm.targetLive"><source>These changes apply directly to the live site.</source></trans-unit>
+            <trans-unit id="cheddi.confirm.executeAll"><source>Execute all</source></trans-unit>
             <trans-unit id="cheddi.confirm.declineAll"><source>Decline all</source></trans-unit>
             <trans-unit id="cheddi.confirm.destructiveBadge"><source>hard to undo</source></trans-unit>
             <trans-unit id="cheddi.confirm.creditsBadge"><source>costs {credits} credits</source></trans-unit>
@@ -213,7 +219,6 @@
             <trans-unit id="cheddi.tool.applyTaskResults"><source>Apply task result</source></trans-unit>
             <trans-unit id="cheddi.tool.previewRecords"><source>Create preview</source></trans-unit>
             <trans-unit id="cheddi.tool.writeRecords"><source>Save content</source></trans-unit>
-            <trans-unit id="cheddi.tool.replaceText"><source>Replace text</source></trans-unit>
             <trans-unit id="cheddi.tool.patchText"><source>Edit text</source></trans-unit>
             <trans-unit id="cheddi.tool.bulkReplaceText"><source>Replace text in bulk</source></trans-unit>
             <trans-unit id="cheddi.tool.copyRecords"><source>Copy records</source></trans-unit>
@@ -231,20 +236,18 @@
             <trans-unit id="cheddi.tool.translateFileMetadata"><source>Translate file metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.batchGenerateMetadata"><source>Batch: Generate SEO metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.batchGenerateFileMetadata"><source>Batch: Generate file metadata</source></trans-unit>
-            <trans-unit id="cheddi.tool.batchGenerateFolderMetadata"><source>Batch: Generate folder metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslatePage"><source>Batch: Translate pages</source></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslateFileMetadata"><source>Batch: Translate file metadata</source></trans-unit>
-            <trans-unit id="cheddi.tool.batchTranslateFolderMetadata"><source>Batch: Translate folder metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.auditSeo"><source>Run SEO audit</source></trans-unit>
             <trans-unit id="cheddi.tool.auditAccessibility"><source>Run accessibility audit</source></trans-unit>
-            <trans-unit id="cheddi.tool.auditQuestions"><source>Find questions readers ask</source></trans-unit>
-            <trans-unit id="cheddi.tool.auditContentGap"><source>Find content gaps</source></trans-unit>
-            <trans-unit id="cheddi.tool.auditTopicCluster"><source>Analyse topic cluster</source></trans-unit>
-            <trans-unit id="cheddi.tool.auditCompetitors"><source>Compare with competitors</source></trans-unit>
+            <trans-unit id="cheddi.tool.auditContent"><source>Analyse content coverage</source></trans-unit>
             <trans-unit id="cheddi.tool.readAuditResults"><source>Read audit results</source></trans-unit>
             <trans-unit id="cheddi.tool.readAttachmentText"><source>Read attachment</source></trans-unit>
             <trans-unit id="cheddi.tool.searchWeb"><source>Search the web</source></trans-unit>
             <trans-unit id="cheddi.tool.readWebPage"><source>Read web page</source></trans-unit>
+            <trans-unit id="cheddi.tool.createCsvDownload"><source>Create CSV download</source></trans-unit>
+            <trans-unit id="cheddi.download.button"><source>Download {filename}</source></trans-unit>
+            <trans-unit id="cheddi.download.rows"><source>{count} rows</source></trans-unit>
 
             <!-- Attachment section -->
             <trans-unit id="cheddi.attachment.add"><source>Attach a document</source></trans-unit>

@@ -35,3 +35,8 @@ $GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['ite
     'tx-cheddi',
     $chatModelLll.'cheddi.permissions.modelChatDescription',
 ];
+$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['ClaudeOpus5'] = [
+    $chatModelLll.'cheddi.permissions.modelClaudeOpus5',
+    'tx-cheddi',
+    $chatModelLll.'cheddi.permissions.modelChatDescription',
+];

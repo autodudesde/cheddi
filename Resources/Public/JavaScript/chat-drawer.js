@@ -5,7 +5,8 @@ import { readBackendContext } from '@autodudes/cheddi/backend-context.js';
 import { mapServerError, friendlyToolLabel } from '@autodudes/cheddi/labels.js';
 import { defaultThinkingPhases } from '@autodudes/cheddi/thinking-labels.js';
 import { ThinkingIndicator } from '@autodudes/cheddi/thinking-indicator.js';
-import { renderNavigationTargets } from '@autodudes/cheddi/navigation-targets.js';
+import { downloadFile, mergeNavigationGroups, renderNavigationTargets } from '@autodudes/cheddi/navigation-targets.js';
+import { formatFullDateTime, formatMessageTime, toIsoString } from '@autodudes/cheddi/time-format.js';
 import { SessionsPanel } from '@autodudes/cheddi/sessions-panel.js';
 import { renderCreditsBadge, renderModeBadge } from '@autodudes/cheddi/status-bar.js';
 import { orientationStatus, renderIntro } from '@autodudes/cheddi/intro-card.js';
@@ -22,6 +23,7 @@ import {
     saveState,
     clampSize,
     clampComposerHeight,
+    dockWidth,
     loadSessionUuid,
     saveSessionUuid,
     loadSessionModel,
@@ -29,7 +31,6 @@ import {
 } from '@autodudes/cheddi/state.js';
 
 const CHEDDI_ICON_URL = new URL('../Icons/cheddi.png', import.meta.url).href;
-// Unreachable by design: guards a `continuing` chain that never ends
 const AUTO_CONTINUE_SAFETY_LIMIT = 50;
 const CREDITS_REFRESH_DELAY_MS = 1200;
 const PROGRESS_POLL_INTERVAL_MS = 900;
@@ -40,7 +41,6 @@ const CALLOUT_VARIANTS = {
     error: 'callout-danger',
 };
 
-// v14 opens modals as a native <dialog>, v12 and v13 as a Bootstrap div carrying `.show`.
 function modalIsOpen() {
     return document.querySelector('dialog[open], .modal.show') !== null;
 }
@@ -49,7 +49,6 @@ function refreshPageTreeIfPagesChanged(touchedTables) {
     if (!Array.isArray(touchedTables) || !touchedTables.includes('pages')) {
         return;
     }
-    // The content frame is deliberately left alone: it may hold an unsaved edit form.
     top.document.dispatchEvent(new CustomEvent('typo3:pagetree:refresh'));
 }
 
@@ -129,8 +128,6 @@ class ChatDrawer {
 
     render() {
         this.mountPoint.hidden = false;
-        // The brand icon comes from the TYPO3 icon registry via PHP, so white-label installs
-        // get their own mark. Empty string = unresolvable, the template then omits the <img>.
         this.mountPoint.innerHTML = drawerMarkup({
             bubbleIconUrl: CHEDDI_ICON_URL,
             brandIconUrl: this.mountPoint.dataset.cheddiBrandIcon ?? '',
@@ -142,6 +139,7 @@ class ChatDrawer {
             resizeHandle: this.mountPoint.querySelector('[data-cheddi-resize]'),
             composerResizeHandle: this.mountPoint.querySelector('[data-cheddi-composer-resize]'),
             closeButton: this.mountPoint.querySelector('[data-cheddi-close]'),
+            dockToggle: this.mountPoint.querySelector('[data-cheddi-dock-toggle]'),
             minimizeButton: this.mountPoint.querySelector('[data-cheddi-minimize]'),
             messages: this.mountPoint.querySelector('[data-cheddi-messages]'),
             textarea: this.mountPoint.querySelector('[data-cheddi-textarea]'),
@@ -182,10 +180,40 @@ class ChatDrawer {
         const { width, height } = clampSize(this.state.width, this.state.height);
         this.state.width = width;
         this.state.height = height;
-        this.elements.drawer.style.width = `${width}px`;
-        this.elements.drawer.style.height = `${height}px`;
+        this.applyDockMode();
         this.applyComposerHeight();
         this.setOpen(this.state.open, { persist: false });
+    }
+
+    setDocked(docked, { persist = true } = {}) {
+        this.state.docked = docked;
+        this.applyDockMode();
+        if (persist) {
+            saveState(this.state);
+        }
+    }
+
+    applyDockMode() {
+        const width = this.state.docked && this.state.open
+            ? dockWidth(this.state.width, window.innerWidth)
+            : null;
+        const docked = null !== width;
+
+        this.elements.drawer.classList.toggle('cheddi__drawer--docked', docked);
+        this.elements.drawer.style.width = `${docked ? width : this.state.width}px`;
+        this.elements.drawer.style.height = docked ? '' : `${this.state.height}px`;
+
+        const shell = document.querySelector('.t3js-scaffold');
+        if (shell) {
+            shell.style.paddingRight = docked ? `${width}px` : '';
+        }
+
+        const label = this.state.docked ? ll('cheddi.ui.undock') : ll('cheddi.ui.dock');
+        this.elements.dockToggle.setAttribute('aria-label', label);
+        this.elements.dockToggle.title = label;
+        const icon = this.state.docked ? 'actions-arrow-left' : 'actions-arrow-right';
+        this.elements.dockToggle.innerHTML =
+            `<typo3-backend-icon identifier="${icon}" size="small" aria-hidden="true"></typo3-backend-icon>`;
     }
 
     applyComposerHeight() {
@@ -198,10 +226,16 @@ class ChatDrawer {
         this.elements.bubble.addEventListener('click', () => this.setOpen(true));
         this.elements.closeButton.addEventListener('click', () => this.setOpen(false));
         this.elements.minimizeButton.addEventListener('click', () => this.setOpen(false));
+        this.elements.dockToggle.addEventListener('click', () => this.setDocked(!this.state.docked));
         this.elements.sendButton.addEventListener('click', () => this.handlePrimaryAction());
         this.elements.summarizeButton.addEventListener('click', () => this.summarizeHistory());
         this.elements.textarea.addEventListener('keydown', (event) => this.onTextareaKeydown(event));
-        bindResize(this.elements, this.state);
+        bindResize(
+            this.elements,
+            this.state,
+            () => this.applyComposerHeight(),
+            () => this.applyDockMode(),
+        );
         bindComposerResize(this.elements, this.state, () => this.applyComposerHeight());
 
         this.elements.actionsToggle.addEventListener('click', (event) => {
@@ -287,7 +321,7 @@ class ChatDrawer {
 
     bindAutoMinimize() {
         this.boundDocumentPointerDown = (event) => {
-            if (!this.state.open || modalIsOpen()) {
+            if (!this.state.open || this.state.docked || modalIsOpen()) {
                 return;
             }
             if (this.elements.drawer.contains(event.target)
@@ -304,6 +338,7 @@ class ChatDrawer {
             }
             window.setTimeout(() => {
                 if (this.state.open
+                    && !this.state.docked
                     && !modalIsOpen()
                     && document.activeElement
                     && document.activeElement.tagName === 'IFRAME') {
@@ -312,6 +347,9 @@ class ChatDrawer {
             }, 0);
         };
         window.addEventListener('blur', this.boundWindowBlur);
+
+        this.boundWindowResize = () => this.applyDockMode();
+        window.addEventListener('resize', this.boundWindowResize);
     }
 
     closeOpenPanels() {
@@ -330,10 +368,6 @@ class ChatDrawer {
         this.elements.actionsToggle.setAttribute('aria-expanded', String(!isOpen));
     }
 
-    /**
-     * Reviewing only makes sense once a conversation exists and its writes land in
-     * a draft. In live mode there is nothing to publish or discard.
-     */
     updateReviewVisibility() {
         const button = this.elements.openReviewButton;
         if (!button) {
@@ -343,10 +377,6 @@ class ChatDrawer {
         button.hidden = !drafts || this.sessionUuid === null;
     }
 
-    /**
-     * The server appends a marker block for the model; the editor's own bubble should
-     * only show the file names, not the instructions meant for the model.
-     */
     describeSentMessage(text, attachments) {
         if (attachments.length === 0) {
             return text;
@@ -416,15 +446,11 @@ class ChatDrawer {
         this.handleSend();
     }
 
-    /**
-     * Models, operating context, workspace and templates are re-read on every open, never reused
-     * from the page load: the drawer outlives module switches, and an editor who just changed a
-     * template or a workspace must not be shown yesterday's list.
-     */
     setOpen(open, { persist = true } = {}) {
         this.state.open = open;
         this.elements.drawer.hidden = !open;
         this.elements.bubble.hidden = open;
+        this.applyDockMode();
         if (persist) {
             saveState(this.state);
         }
@@ -433,10 +459,6 @@ class ChatDrawer {
         }
     }
 
-    /**
-     * Grip sits in the composer's top-left corner, so dragging upwards grows the field,
-     * the same direction the drawer's own handle uses.
-     */
     async switchToSession(sessionUuid) {
         try {
             const session = await this.api.loadSession(sessionUuid);
@@ -457,6 +479,12 @@ class ChatDrawer {
             for (const message of session.messages ?? []) {
                 this.renderRestoredMessage(message);
             }
+
+            this.confirmTarget = session.confirmTarget ?? null;
+            if (Array.isArray(session.pending) && session.pending.length > 0) {
+                this.renderMessage({ role: 'pending', pending: session.pending });
+            }
+
             this.renderIntroCard();
 
             this.sessionsPanel.close();
@@ -474,15 +502,16 @@ class ChatDrawer {
     renderRestoredMessage(message) {
         switch (message.role) {
             case 'user':
-                this.renderMessage({ role: 'user', text: message.content ?? '' });
+                this.renderMessage({ role: 'user', text: message.content ?? '', createdAt: message.createdAt });
                 break;
             case 'assistant':
                 if (typeof message.content === 'string' && message.content !== '') {
-                    this.renderMessage({ role: 'assistant', text: message.content });
+                    this.renderMessage({ role: 'assistant', text: message.content, createdAt: message.createdAt });
                 }
                 for (const call of message.toolCalls ?? []) {
                     this.renderMessage({ role: 'tool-call', call });
                 }
+                this.renderDownloads(this.downloadsOfRestoredCalls(message.toolCalls));
                 this.renderRestoredSources(message);
                 break;
             case 'tool':
@@ -550,11 +579,6 @@ class ChatDrawer {
         this.renderIntroCard();
     }
 
-    /**
-     * Only the two states a refresh can actually recompute - a missing key and an empty model list.
-     * An exhausted balance is not one of them, so it keeps the composer locked until the editor
-     * starts a new conversation.
-     */
     resetAvailabilityState() {
         if (this.creditsExhausted) {
             return;
@@ -666,15 +690,6 @@ class ChatDrawer {
         select.hidden = false;
     }
 
-    /**
-     * The catalogue arrives ordered by the server with the default first, and it is already
-     * filtered by permission, GDPR mode and available keys — so its first entry is the model this
-     * installation should start on. Falling back to it removes the empty state entirely: an editor
-     * who never touches the dropdown gets a working chat instead of a rejected first message.
-     *
-     * Only applied when the current selection is not in the catalogue, so a deliberate choice is
-     * never overwritten mid-conversation.
-     */
     ensureModelSelection() {
         if (this.availableModels.length === 0) {
             return;
@@ -730,7 +745,6 @@ class ChatDrawer {
             return;
         }
 
-        // Uploads still in flight are not sent; the tray only hands over stored files.
         const attachments = this.attachmentTray ? this.attachmentTray.pending() : [];
 
         this.elements.textarea.value = '';
@@ -800,7 +814,18 @@ class ChatDrawer {
         return this.api.continueTurn({ sessionUuid: this.sessionUuid }, this.activeAbortController.signal);
     }
 
+    collectFoundTargets(result) {
+        if (Array.isArray(result?.navigationTargets) && result.navigationTargets.length > 0) {
+            this.chainTouchedRecords = true;
+        }
+        this.foundTargets = mergeNavigationGroups(this.foundTargets, result?.foundTargets);
+    }
+
     async processTurnResult(result, autoContinueDepth) {
+        if (autoContinueDepth === 0) {
+            this.foundTargets = [];
+            this.chainTouchedRecords = false;
+        }
         if (typeof result?.sessionUuid === 'string' && result.sessionUuid !== '') {
             this.sessionUuid = result.sessionUuid;
             saveSessionUuid(result.sessionUuid);
@@ -810,7 +835,6 @@ class ChatDrawer {
             if (typeof notice === 'string' && notice !== '') {
                 this.renderMessage({ role: 'system', kind: 'warning', text: notice });
             } else if (notice && typeof notice === 'object' && typeof notice.key === 'string') {
-                // Keyed notice: resolve to the editor's language here, with params interpolated.
                 this.renderMessage({
                     role: 'system',
                     kind: 'warning',
@@ -831,13 +855,19 @@ class ChatDrawer {
 
         refreshPageTreeIfPagesChanged(result?.touchedTables);
 
+        let continueAfterRender = false;
+
         switch (result?.status) {
             case 'final':
                 if (typeof result.text === 'string' && result.text !== '') {
                     this.renderMessage({ role: 'assistant', text: result.text });
                 }
-                // After the answer, not before it: the buttons belong to what was just described.
-                renderNavigationTargets(this.elements.messages, result.navigationTargets);
+                renderNavigationTargets(this.elements.messages, result.navigationTargets, this.navigationOptions());
+                this.collectFoundTargets(result);
+                if (!this.chainTouchedRecords) {
+                    renderNavigationTargets(this.elements.messages, this.foundTargets, this.navigationOptions({ found: true }));
+                }
+                this.foundTargets = [];
                 this.updateCredits(result.usage);
                 this.updateContextFill(result);
                 break;
@@ -846,7 +876,8 @@ class ChatDrawer {
                 if (typeof result.text === 'string' && result.text !== '') {
                     this.renderMessage({ role: 'assistant', text: result.text });
                 }
-                renderNavigationTargets(this.elements.messages, result.navigationTargets);
+                renderNavigationTargets(this.elements.messages, result.navigationTargets, this.navigationOptions());
+                this.collectFoundTargets(result);
                 for (const call of result.toolCalls ?? []) {
                     this.renderMessage({ role: 'tool-call', call });
                 }
@@ -862,8 +893,7 @@ class ChatDrawer {
                     });
                     break;
                 }
-                const next = await this.continueTurn();
-                await this.processTurnResult(next, autoContinueDepth + 1);
+                continueAfterRender = true;
                 break;
 
             case 'needsConfirm':
@@ -922,6 +952,24 @@ class ChatDrawer {
                     text: ll('cheddi.notice.unexpectedStatus', { status: String(result?.status ?? 'undefined') }),
                 });
         }
+
+        this.renderDownloads(result?.downloads);
+
+        if (continueAfterRender) {
+            const next = await this.continueTurn();
+            await this.processTurnResult(next, autoContinueDepth + 1);
+        }
+    }
+
+    navigationOptions(options = {}) {
+        return {
+            ...options,
+            onNavigate: () => {
+                if (!this.state.docked) {
+                    this.setOpen(false);
+                }
+            },
+        };
     }
 
     renderSources(sources) {
@@ -1048,14 +1096,9 @@ class ChatDrawer {
             this.creditsWarningShown = false;
         }
 
-        // The badge shows pack and plan, which only the status endpoint knows.
         this.scheduleCreditsRefresh();
     }
 
-    /**
-     * An answer without a fill level leaves the last known one standing: an error turn reports no
-     * window size, and treating that as "empty" hid the summarize offer exactly when it was needed.
-     */
     updateContextFill(result) {
         const level = result?.contextFill?.level;
         if (typeof level === 'string' && level !== '') {
@@ -1141,6 +1184,7 @@ class ChatDrawer {
                 bubble.className = 'cheddi__bubble-user';
                 bubble.textContent = message.text;
                 wrapper.appendChild(bubble);
+                wrapper.appendChild(this.makeTimeElement(message.createdAt));
                 break;
             }
             case 'assistant': {
@@ -1148,6 +1192,7 @@ class ChatDrawer {
                 body.className = 'cheddi__bubble-assistant';
                 body.innerHTML = renderMarkdown(message.text);
                 wrapper.appendChild(body);
+                wrapper.appendChild(this.makeTimeElement(message.createdAt));
                 break;
             }
             case 'tool-call':
@@ -1168,6 +1213,66 @@ class ChatDrawer {
                 break;
         }
         return wrapper;
+    }
+
+    downloadsOfRestoredCalls(calls) {
+        return (calls ?? [])
+            .filter((call) => call?.name === 'createCsvDownload' && Array.isArray(call?.arguments?.rows))
+            .map((call) => ({
+                callId: call.id,
+                filename: typeof call.arguments.filename === 'string' ? call.arguments.filename : '',
+                rowCount: call.arguments.rows.length,
+            }));
+    }
+
+    renderDownloads(downloads) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cheddi__message cheddi__message--system cheddi__nav-targets cheddi__downloads';
+
+        for (const download of downloads ?? []) {
+            const url = this.api.csvDownloadUrl(this.sessionUuid, download?.callId);
+            if (!url) {
+                continue;
+            }
+            const row = document.createElement('div');
+            row.className = 'cheddi__nav-group';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-default btn-sm cheddi__nav-link cheddi__download-link';
+            const icon = document.createElement('span');
+            icon.className = 'cheddi__nav-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.innerHTML = '<typo3-backend-icon identifier="actions-download" size="small" aria-hidden="true"></typo3-backend-icon>';
+            const label = document.createElement('span');
+            label.className = 'cheddi__nav-label';
+            label.textContent = ll('cheddi.download.button', { filename: String(download.filename || 'export.csv') });
+            button.append(icon, label);
+            button.addEventListener('click', () => downloadFile(url));
+
+            const meta = document.createElement('span');
+            meta.className = 'cheddi__nav-more';
+            meta.textContent = ll('cheddi.download.rows', { count: String(Number(download.rowCount) || 0) });
+
+            row.append(button, meta);
+            wrapper.appendChild(row);
+        }
+
+        if (wrapper.childElementCount === 0) {
+            return;
+        }
+        this.elements.messages.appendChild(wrapper);
+        this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+    }
+
+    makeTimeElement(createdAt) {
+        const unixSeconds = typeof createdAt === 'number' && createdAt > 0 ? createdAt : Math.floor(Date.now() / 1000);
+        const time = document.createElement('time');
+        time.className = 'cheddi__message-time';
+        time.dateTime = toIsoString(unixSeconds);
+        time.title = formatFullDateTime(unixSeconds);
+        time.textContent = formatMessageTime(unixSeconds);
+        return time;
     }
 
     makeSummaryBlock(summaryText, replacedCount) {
@@ -1233,23 +1338,58 @@ class ChatDrawer {
         }
 
         const decisions = new Map();
+        const items = new Map();
 
         pending.forEach((call) => {
-            container.appendChild(this.makeConfirmItem(call, decisions, pending, container));
+            const item = this.makeConfirmItem(call, decisions, pending, container, previewHasInvalidRecords(call.preview));
+            items.set(call.id, item);
+            container.appendChild(item);
         });
 
         if (pending.length > 1) {
             const bulk = document.createElement('div');
             bulk.className = 'cheddi__confirm-bulk';
 
+            const bulkApprovable = pending.filter(
+                (call) => 'destructive' !== call.severity && !previewHasInvalidRecords(call.preview),
+            );
+
+            if (bulkApprovable.length > 0) {
+                const allApprove = document.createElement('button');
+                allApprove.type = 'button';
+                allApprove.className = 'btn btn-primary btn-sm cheddi__confirm-approve';
+                allApprove.textContent = ll('cheddi.confirm.executeAll');
+                allApprove.addEventListener('click', () => {
+                    allApprove.disabled = true;
+                    bulkApprovable.forEach((call) => {
+                        if (decisions.has(call.id)) {
+                            return;
+                        }
+                        decisions.set(call.id, true);
+                        const item = items.get(call.id);
+                        if (item) {
+                            this.markItemDecided(item, 'approved');
+                        }
+                    });
+                    this.maybeSubmitAllDecisions(decisions, pending, container);
+                });
+                bulk.appendChild(allApprove);
+            }
+
             const allDecline = document.createElement('button');
             allDecline.type = 'button';
             allDecline.className = 'btn btn-default btn-sm cheddi__confirm-decline';
             allDecline.textContent = ll('cheddi.confirm.declineAll');
             allDecline.addEventListener('click', () => {
-                pending.forEach((call) => decisions.set(call.id, false));
-                container.querySelectorAll('.cheddi__confirm-item').forEach((item) => {
-                    this.markItemDecided(item, 'declined');
+                pending.forEach((call) => {
+                    if (decisions.has(call.id)) {
+                        return;
+                    }
+                    decisions.set(call.id, false);
+                    const item = items.get(call.id);
+                    if (item) {
+                        this.markItemDecided(item, 'declined');
+                    }
                 });
                 this.maybeSubmitAllDecisions(decisions, pending, container);
             });
@@ -1260,7 +1400,7 @@ class ChatDrawer {
         return container;
     }
 
-    makeConfirmItem(call, decisions, pending, container) {
+    makeConfirmItem(call, decisions, pending, container, blocked) {
         const item = document.createElement('div');
         item.className = 'cheddi__confirm-item';
         item.dataset.cheddiSeverity = call.severity;
@@ -1302,7 +1442,6 @@ class ChatDrawer {
         argsDetails.appendChild(args);
         item.appendChild(argsDetails);
 
-        const blocked = previewHasInvalidRecords(call.preview);
         if (blocked) {
             item.classList.add('cheddi__confirm-item--blocked');
             const warning = document.createElement('div');

@@ -36,6 +36,8 @@ final class TurnResult
      * @param list<string>                                                                                                                  $touchedTables
      * @param null|array{key: string, params?: array<string, string>}                                                                       $confirmTarget
      * @param null|array{ratio: float, level: string}                                                                                       $contextFill
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>                     $foundTargets
+     * @param list<array{callId: string, filename: string, rowCount: int}>                                                                  $downloads
      */
     private function __construct(
         public readonly string $status,
@@ -55,6 +57,8 @@ final class TurnResult
         public readonly array $touchedTables = [],
         public readonly ?array $confirmTarget = null,
         public readonly ?array $contextFill = null,
+        public readonly array $foundTargets = [],
+        public readonly array $downloads = [],
     ) {}
 
     /**
@@ -74,12 +78,21 @@ final class TurnResult
     }
 
     /**
+     * @param list<array{callId: string, filename: string, rowCount: int}> $downloads
+     */
+    public function withDownloads(array $downloads): self
+    {
+        return $this->copyWith(downloads: $downloads);
+    }
+
+    /**
      * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                   $toolCalls
      * @param array<string, mixed>                                                                                      $usage
      * @param null|array{summaryContent: string, replacedCount?: int}                                                   $historySummary
      * @param list<array{key: string, params?: array<string, int|string>}|string>                                       $notices
      * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $navigationTargets
      * @param list<array{title: string, url: string, snippet: string}>                                                  $sources
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $foundTargets
      */
     public static function final(
         string $sessionUuid,
@@ -91,6 +104,7 @@ final class TurnResult
         array $notices = [],
         array $navigationTargets = [],
         array $sources = [],
+        array $foundTargets = [],
     ): self {
         return new self(
             status: self::STATUS_FINAL,
@@ -105,6 +119,7 @@ final class TurnResult
             notices: $notices,
             sources: $sources,
             navigationTargets: $navigationTargets,
+            foundTargets: $foundTargets,
         );
     }
 
@@ -114,6 +129,7 @@ final class TurnResult
      * @param list<array{key: string, params?: array<string, int|string>}|string>                                       $notices
      * @param list<array{title: string, url: string, snippet: string}>                                                  $sources
      * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $navigationTargets
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $foundTargets
      */
     public static function continuing(
         string $sessionUuid,
@@ -124,6 +140,7 @@ final class TurnResult
         array $notices = [],
         array $sources = [],
         array $navigationTargets = [],
+        array $foundTargets = [],
     ): self {
         return new self(
             status: self::STATUS_CONTINUING,
@@ -138,6 +155,7 @@ final class TurnResult
             notices: $notices,
             sources: $sources,
             navigationTargets: $navigationTargets,
+            foundTargets: $foundTargets,
         );
     }
 
@@ -271,6 +289,12 @@ final class TurnResult
         if ([] !== $this->navigationTargets) {
             $result['navigationTargets'] = $this->navigationTargets;
         }
+        if ([] !== $this->foundTargets) {
+            $result['foundTargets'] = $this->foundTargets;
+        }
+        if ([] !== $this->downloads) {
+            $result['downloads'] = $this->downloads;
+        }
         if (null !== $this->confirmTarget) {
             $result['confirmTarget'] = $this->confirmTarget;
         }
@@ -282,10 +306,11 @@ final class TurnResult
     }
 
     /**
-     * @param null|list<string>                       $touchedTables
-     * @param null|array{ratio: float, level: string} $contextFill
+     * @param null|list<string>                                                 $touchedTables
+     * @param null|array{ratio: float, level: string}                           $contextFill
+     * @param null|list<array{callId: string, filename: string, rowCount: int}> $downloads
      */
-    private function copyWith(?array $touchedTables = null, ?array $contextFill = null): self
+    private function copyWith(?array $touchedTables = null, ?array $contextFill = null, ?array $downloads = null): self
     {
         return new self(
             status: $this->status,
@@ -305,6 +330,8 @@ final class TurnResult
             touchedTables: $touchedTables ?? $this->touchedTables,
             confirmTarget: $this->confirmTarget,
             contextFill: $contextFill ?? $this->contextFill,
+            foundTargets: $this->foundTargets,
+            downloads: $downloads ?? $this->downloads,
         );
     }
 }

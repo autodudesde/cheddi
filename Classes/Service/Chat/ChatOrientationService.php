@@ -131,6 +131,7 @@ class ChatOrientationService implements SingletonInterface
         $o = $this->getOrientation();
 
         $statements = [
+            ['tone' => self::TONE_INFO, 'text' => $this->translate('aiSystem')],
             'live' === $o['writeMode']
                 ? ['tone' => self::TONE_WARNING, 'text' => $this->translate('writeLive')]
                 : ['tone' => self::TONE_INFO, 'text' => $this->workspaceStatement($o['workspaceTitle'], $o['workspacePending'])],

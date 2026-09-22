@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.0" xmlns:t3="http://typo3.org/schemas/xliff">
+    <file source-language="en" target-language="de" datatype="plaintext" original="messages" date="2026-09-14T00:00:00Z" product-name="cheddi">
+        <header/>
+        <body>
+            <trans-unit id="cheddi.permissions.enableChatInterface"><source>Enable Chat Interface</source><target>Chat-Oberfläche aktivieren</target></trans-unit>
+            <trans-unit id="cheddi.permissions.enableChatInterfaceDescription"><source>Allow backend users of this group to use the ChEddi drawer in the TYPO3 backend.</source><target>Erlaubt Backend-Benutzern dieser Gruppe, ChEddi im TYPO3-Backend zu nutzen.</target></trans-unit>
+            <trans-unit id="cheddi.permissions.enableWebResearch"><source>Enable Web Research</source><target>Web-Recherche aktivieren</target></trans-unit>
+            <trans-unit id="cheddi.permissions.enableWebResearchDescription"><source>Allow ChEddi to search and read the open web for this group. The editor's query leaves the installation, so this is off by default. In GDPR mode the search runs only through the server's EU search provider, where one serves the site's market.</source><target>Erlaubt ChEddi, für diese Gruppe im offenen Web zu suchen und Seiten zu lesen. Die Suchanfrage verlässt dabei die Installation, deshalb ist die Funktion standardmäßig aus. Im DSGVO-Modus läuft die Suche nur über den EU-Suchanbieter des Servers, sofern er den Markt der Website bedient.</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelOpenAiLuna"><source>ChEddi model: OpenAI GPT-5.6 Luna</source><target>ChEddi-Modell: OpenAI GPT-5.6 Luna</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelIonosQwen35"><source>ChEddi model: IONOS Qwen3.5-397B-A17B</source><target>ChEddi-Modell: IONOS Qwen3.5-397B-A17B</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeHaiku45"><source>ChEddi model: Claude Haiku 4.5</source><target>ChEddi-Modell: Claude Haiku 4.5</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeSonnet5"><source>ChEddi model: Claude Sonnet 5</source><target>ChEddi-Modell: Claude Sonnet 5</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelClaudeOpus5"><source>ChEddi model: Claude Opus 5</source><target>ChEddi-Modell: Claude Opus 5</target></trans-unit>
+            <trans-unit id="cheddi.permissions.modelChatDescription"><source>Allow backend users of this group to select this chat model in ChEddi.</source><target>Erlaubt Backend-Benutzern dieser Gruppe, dieses Chat-Modell in ChEddi auszuwählen.</target></trans-unit>
+            <trans-unit id="cheddi.model.OpenAiLuna.label"><source>OpenAI GPT-5.6 Luna</source><target>OpenAI GPT-5.6 Luna</target></trans-unit>
+            <trans-unit id="cheddi.model.IonosQwen35.label"><source>IONOS Qwen3.5-397B-A17B</source><target>IONOS Qwen3.5-397B-A17B</target></trans-unit>
+            <trans-unit id="cheddi.model.ClaudeHaiku45.label"><source>Claude Haiku 4.5</source><target>Claude Haiku 4.5</target></trans-unit>
+            <trans-unit id="cheddi.model.ClaudeSonnet5.label"><source>Claude Sonnet 5</source><target>Claude Sonnet 5</target></trans-unit>
+            <trans-unit id="cheddi.model.ClaudeOpus5.label"><source>Claude Opus 5</source><target>Claude Opus 5</target></trans-unit>
+            <trans-unit id="cheddi.promptTemplate.scopeCheddi"><source>ChEddi</source><target>ChEddi</target></trans-unit>
+            <trans-unit id="cheddi.tca.session"><source>ChEddi chat session</source><target>ChEddi-Konversation</target></trans-unit>
+            <trans-unit id="cheddi.tca.session.sessionUuid"><source>Session UUID</source><target>Konversations-UUID</target></trans-unit>
+            <trans-unit id="cheddi.tca.session.beUser"><source>Backend user</source><target>Backend-Benutzer</target></trans-unit>
+            <trans-unit id="cheddi.tca.session.model"><source>Chat model</source><target>Chat-Modell</target></trans-unit>
+            <trans-unit id="cheddi.tca.session.lastActivity"><source>Last activity</source><target>Letzte Aktivität</target></trans-unit>
+        </body>
+    </file>
+</xliff>

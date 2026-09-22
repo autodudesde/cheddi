@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
+use Composer\Pcre\Preg;
 use PhpOffice\PhpSpreadsheet\IOFactory as SpreadsheetIOFactory;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
 use Psr\Log\LoggerInterface;
@@ -25,6 +26,29 @@ class DocumentExtractorService
     public const MAX_OUTPUT_CHARS = 50000;
 
     private const MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024;
+
+    private const FORMAT_TEXT = 'text';
+
+    private const FORMAT_PDF = 'pdf';
+
+    private const FORMAT_WORD = 'word';
+
+    private const FORMAT_SPREADSHEET = 'spreadsheet';
+
+    private const FORMAT_REQUIREMENTS = [
+        self::FORMAT_PDF => [
+            'class' => PdfParser::class,
+            'extensions' => ['iconv', 'mbstring', 'zlib'],
+        ],
+        self::FORMAT_WORD => [
+            'class' => WordIOFactory::class,
+            'extensions' => ['dom', 'gd', 'json', 'xml', 'zip'],
+        ],
+        self::FORMAT_SPREADSHEET => [
+            'class' => SpreadsheetIOFactory::class,
+            'extensions' => ['ctype', 'dom', 'fileinfo', 'gd', 'iconv', 'libxml', 'mbstring', 'simplexml', 'xml', 'xmlreader', 'xmlwriter', 'zip', 'zlib'],
+        ],
+    ];
 
     public function __construct(
         private readonly LoggerInterface $logger,
@@ -39,11 +63,11 @@ class DocumentExtractorService
     {
         $extension = strtolower($file->getExtension());
 
-        $text = match ($extension) {
-            'txt', 'csv', 'md', 'json', 'xml' => $this->readPlainText($file),
-            'pdf' => $this->readPdf($file),
-            'docx', 'doc', 'odt', 'rtf' => $this->readWord($file, $extension),
-            'xlsx', 'xls', 'ods' => $this->readSpreadsheet($file, $extension),
+        $text = match ($this->formatOf($extension)) {
+            self::FORMAT_TEXT => $this->readPlainText($file),
+            self::FORMAT_PDF => $this->readPdf($file),
+            self::FORMAT_WORD => $this->readWord($file, $extension),
+            self::FORMAT_SPREADSHEET => $this->readSpreadsheet($file, $extension),
             default => throw new \RuntimeException(sprintf('Files of type "%s" cannot be read as text.', $extension)),
         };
 
@@ -52,13 +76,32 @@ class DocumentExtractorService
 
     public function canExtract(string $extension): bool
     {
-        return match (strtolower($extension)) {
-            'txt', 'csv', 'md', 'json', 'xml' => true,
-            'pdf' => class_exists(PdfParser::class),
-            'docx', 'doc', 'odt', 'rtf' => class_exists(WordIOFactory::class),
-            'xlsx', 'xls', 'ods' => class_exists(SpreadsheetIOFactory::class),
-            default => false,
+        return match ($format = $this->formatOf($extension)) {
+            self::FORMAT_TEXT => true,
+            null => false,
+            default => null === $this->unavailabilityReason($format),
         };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function unavailableFormats(): array
+    {
+        $reasons = [];
+        foreach (array_keys(self::FORMAT_REQUIREMENTS) as $format) {
+            $reason = $this->unavailabilityReason($format);
+            if (null !== $reason) {
+                $reasons[$format] = $reason;
+            }
+        }
+
+        return $reasons;
+    }
+
+    protected function isPhpExtensionLoaded(string $extension): bool
+    {
+        return extension_loaded($extension);
     }
 
     protected function assertNotAZipBomb(string $path, string $label): void
@@ -95,6 +138,53 @@ class DocumentExtractorService
         return self::MAX_UNCOMPRESSED_BYTES;
     }
 
+    private function unavailabilityReason(string $format): ?string
+    {
+        $requirements = self::FORMAT_REQUIREMENTS[$format];
+        if (!class_exists($requirements['class'])) {
+            return 'the library is not installed';
+        }
+
+        $missing = array_values(array_filter(
+            $requirements['extensions'],
+            fn (string $extension): bool => !$this->isPhpExtensionLoaded($extension),
+        ));
+
+        return [] === $missing ? null : sprintf('the PHP extension(s) %s are missing', implode(', ', $missing));
+    }
+
+    private function assertFormatAvailable(string $format, string $label): void
+    {
+        $reason = $this->unavailabilityReason($format);
+        if (null !== $reason) {
+            throw new \RuntimeException(sprintf('%s cannot be read: %s.', $label, $reason));
+        }
+    }
+
+    private function loadPcreWhereTheCoreLacksIt(): void
+    {
+        if (class_exists(Preg::class)) {
+            return;
+        }
+
+        // Classic mode on cores that ship no composer/pcre (v12, v13 before 13.4.35), see Decisions.md
+        $autoloader = dirname(__DIR__, 3).'/Resources/Private/PHP/Compat/ComposerVendor/autoload.php';
+        if (is_file($autoloader)) {
+            require_once $autoloader;
+        }
+    }
+
+    private function formatOf(string $extension): ?string
+    {
+        return match (strtolower($extension)) {
+            'txt', 'csv', 'md', 'json', 'xml' => self::FORMAT_TEXT,
+            'pdf' => self::FORMAT_PDF,
+            'docx', 'doc', 'odt', 'rtf' => self::FORMAT_WORD,
+            'xlsx', 'xls', 'ods' => self::FORMAT_SPREADSHEET,
+            default => null,
+        };
+    }
+
     private function readPlainText(File $file): string
     {
         return $file->getContents();
@@ -102,9 +192,7 @@ class DocumentExtractorService
 
     private function readPdf(File $file): string
     {
-        if (!class_exists(PdfParser::class)) {
-            throw new \RuntimeException('PDF files cannot be read: the PDF library is not installed.');
-        }
+        $this->assertFormatAvailable(self::FORMAT_PDF, 'PDF files');
 
         try {
             return (new PdfParser())->parseContent($file->getContents())->getText();
@@ -120,9 +208,7 @@ class DocumentExtractorService
 
     private function readWord(File $file, string $extension): string
     {
-        if (!class_exists(WordIOFactory::class)) {
-            throw new \RuntimeException('Word documents cannot be read: the Office library is not installed.');
-        }
+        $this->assertFormatAvailable(self::FORMAT_WORD, 'Word documents');
 
         return $this->withTemporaryCopy($file, function (string $path) use ($extension): string {
             $reader = match ($extension) {
@@ -168,9 +254,8 @@ class DocumentExtractorService
 
     private function readSpreadsheet(File $file, string $extension): string
     {
-        if (!class_exists(SpreadsheetIOFactory::class)) {
-            throw new \RuntimeException('Spreadsheets cannot be read: the spreadsheet library is not installed.');
-        }
+        $this->assertFormatAvailable(self::FORMAT_SPREADSHEET, 'Spreadsheets');
+        $this->loadPcreWhereTheCoreLacksIt();
 
         return $this->withTemporaryCopy($file, static function (string $path): string {
             $reader = SpreadsheetIOFactory::createReaderForFile($path);

@@ -38,8 +38,6 @@ class ChatSettingsService implements SingletonInterface
         $this->surfaceOverrides->apply(
             $this->getRawHtmlWriteOverride(),
             $this->getExcludedTables(),
-            $this->getSearchAdditionalTables(),
-            $this->getSearchTablesExcludedFromAuto(),
         );
         $this->surfaceOverridesApplied = true;
     }
@@ -75,22 +73,6 @@ class ChatSettingsService implements SingletonInterface
     public function getExcludedTables(): array
     {
         return $this->list('chatExcludedTables');
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function getSearchAdditionalTables(): array
-    {
-        return $this->list('chatSearchAdditionalTables');
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function getSearchTablesExcludedFromAuto(): array
-    {
-        return $this->list('chatExcludeAdditionalTablesFromSearch');
     }
 
     public function getSessionLifetimeDays(): int

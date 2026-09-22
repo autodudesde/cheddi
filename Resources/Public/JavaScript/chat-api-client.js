@@ -80,6 +80,17 @@ export class ChatApiClient {
         return Array.isArray(payload?.sessions) ? payload.sessions : [];
     }
 
+    csvDownloadUrl(sessionUuid, callId) {
+        const base = this.optionalUrl('cheddi_download_csv');
+        if (!base || !sessionUuid || !callId) {
+            return null;
+        }
+        const url = new URL(base, window.location.origin);
+        url.searchParams.set('sessionUuid', sessionUuid);
+        url.searchParams.set('callId', callId);
+        return url.pathname + url.search;
+    }
+
     async loadSession(sessionUuid) {
         const url = this.optionalUrl('cheddi_session_load');
         if (!url) {

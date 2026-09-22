@@ -1,6 +1,4 @@
 :root {
-    /* Only the --typo3-component-* group is defined in v12, v13 and v14 alike, and it is the one
-       group v12's single dark-mode block remaps. Everything else here derives from it. */
     --cheddi-bg: var(--typo3-component-bg, #fff);
     --cheddi-fg: var(--typo3-component-color, #1a1a1a);
     --cheddi-muted-fg: var(--typo3-component-secondary-color, #6f6f6f);
@@ -17,23 +15,15 @@
     --cheddi-spacing: var(--typo3-spacing, 1rem);
     --cheddi-link: var(--typo3-component-link-color, inherit);
     --cheddi-focus-color: var(--typo3-component-focus-border-color, var(--cheddi-fg));
-    /* v13 and v14 know a dialog shadow of their own, v12 only the strong one. */
     --cheddi-shadow: var(--typo3-component-box-shadow-dialog,
                      var(--typo3-component-box-shadow-strong, 0 8px 32px rgba(0, 0, 0, 0.28)));
-    /* Modals live in the browser top layer, so this only orders the drawer against page content. */
     --cheddi-z: 1040;
-
-    /* State colours come from Bootstrap, which is 5.3.2 in v12, v13 and v14 alike. The -rgb pairs
-       exist next to them and are what the tinted backgrounds below are mixed from. */
     --cheddi-danger: var(--bs-danger, #c8412c);
     --cheddi-danger-rgb: var(--bs-danger-rgb, 200, 65, 44);
     --cheddi-warning: var(--bs-warning, #e8a33d);
     --cheddi-warning-rgb: var(--bs-warning-rgb, 232, 163, 61);
     --cheddi-success: var(--bs-success, #2a8c3e);
     --cheddi-success-rgb: var(--bs-success-rgb, 42, 140, 62);
-
-    /* The drawer is injected on every backend page, but the --ai-suite-* variables only exist on
-       AI Suite module pages. Resolving them once here keeps one accent for the whole drawer. */
     --cheddi-accent: var(--ai-suite-primary-color, #F09C42);
     --cheddi-accent-border: var(--ai-suite-border-color, #F09C42);
     --cheddi-accent-fg: var(--ai-suite-button-font-color, #000);
@@ -52,7 +42,6 @@ body.cheddi-resizing * {
     cursor: nwse-resize !important;
 }
 
-/* The composer only grows vertically, so it keeps the cursor for that axis. */
 body.cheddi-resizing-composer,
 body.cheddi-resizing-composer * {
     user-select: none !important;
@@ -105,8 +94,6 @@ body.cheddi-resizing-composer * {
 }
 
 .cheddi__drawer {
-    /* Width is set inline from the persisted state, so the badges degrade on the drawer, not the
-       viewport - a narrow drawer on a wide screen is the common case. */
     container-type: inline-size;
     container-name: cheddi-drawer;
     position: fixed;
@@ -122,6 +109,17 @@ body.cheddi-resizing-composer * {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.cheddi__drawer--docked {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: auto;
+    border-radius: 0;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
 }
 
 .cheddi__drawer[hidden] {
@@ -154,7 +152,6 @@ body.cheddi-resizing-composer * {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    /* Left padding keeps the first row clear of the resize grip in the corner. */
     padding: 8px 12px 8px 28px;
     border-bottom: 1px solid var(--cheddi-border-color);
 }
@@ -188,10 +185,6 @@ body.cheddi-resizing-composer * {
     min-width: 0;
 }
 
-/*
- * Outlined, not filled: --cheddi-surface-2 resolves to the backend's *disabled* background, which
- * made three perfectly live status readouts look switched off.
- */
 .cheddi__status-badge {
     display: inline-flex;
     align-items: center;
@@ -207,7 +200,6 @@ body.cheddi-resizing-composer * {
     display: none;
 }
 
-/* The workspace name is the only part that may be cut; every badge carries the full text as title. */
 .cheddi__status-badge--mode {
     flex: 0 1 auto;
 }
@@ -227,7 +219,6 @@ body.cheddi-resizing-composer * {
     border-color: rgba(var(--cheddi-warning-rgb), 0.5);
 }
 
-/* Label and value are told apart by weight, not by fading one of them out. */
 .cheddi__status-label {
     flex: 0 0 auto;
     font-weight: normal;
@@ -261,7 +252,6 @@ body.cheddi-resizing-composer * {
     margin-right: 2px;
 }
 
-/* Digits keep their column so the badge does not jitter while the numbers change. */
 .cheddi__credits-number {
     font-variant-numeric: tabular-nums;
 }
@@ -286,10 +276,6 @@ body.cheddi-resizing-composer * {
     flex: 0 0 auto;
 }
 
-/*
- * The word labels are the first thing to go on a narrow drawer, the numbers never: a truncated
- * count reads as a different count, a missing label only reads as terse.
- */
 @container cheddi-drawer (max-width: 420px) {
     .cheddi__status-badge--credits .cheddi__status-label {
         display: none;
@@ -416,6 +402,14 @@ body.cheddi-resizing-composer * {
 .cheddi__message--assistant,
 .cheddi__message--tool-call {
     align-items: flex-start;
+}
+
+.cheddi__message-time {
+    margin-top: 2px;
+    padding: 0 2px;
+    font-size: var(--cheddi-font-size-sm);
+    line-height: 1.2;
+    color: var(--cheddi-muted-fg);
 }
 
 .cheddi__nav-targets {
@@ -593,7 +587,6 @@ body.cheddi-resizing-composer * {
     font-size: var(--cheddi-font-size-sm);
 }
 
-/* A container of cards, not a message: neutral chrome rather than a callout. */
 .cheddi__confirm-block {
     width: 100%;
     display: flex;
@@ -755,8 +748,6 @@ body.cheddi-resizing-composer * {
     min-width: 0;
 }
 
-/* Line-based fields (bullets, table) keep their newlines: the editor has to see the same lines the
-   frontend will render as list items. */
 .cheddi__preview-value {
     white-space: pre-wrap;
     word-break: break-word;
@@ -822,7 +813,6 @@ body.cheddi-resizing-composer * {
 .cheddi__confirm-approve--armed {
     border-color: var(--cheddi-danger);
     background-color: var(--cheddi-danger);
-    /* Stays white in both colour schemes: this sits on the saturated danger fill. */
     color: #fff;
 }
 
@@ -1041,11 +1031,6 @@ body.cheddi-resizing-composer * {
     background-color: var(--cheddi-bg);
 }
 
-/*
- * Chips, text field and the tool row sit in one bordered box, so every composer action reads as
- * belonging to the message being written. The box carries the border, the textarea inside it does
- * not - two nested frames looked like two input fields.
- */
 .cheddi__composer {
     position: relative;
     flex: 1 1 auto;
@@ -1123,7 +1108,6 @@ body.cheddi-resizing-composer * {
     }
 }
 
-/* Mirrors .cheddi__resize-handle, but drags only along the vertical axis. */
 .cheddi__composer-resize {
     position: absolute;
     top: 0;
@@ -1149,10 +1133,8 @@ body.cheddi-resizing-composer * {
 .cheddi__textarea {
     display: block;
     width: 100%;
-    /* Height is applied inline from the persisted state; these are the drag limits. */
     min-height: 72px;
     max-height: 320px;
-    /* The grip sits in the top-left corner, so keep the first line clear of it. */
     padding-left: 24px;
     resize: none;
     border-color: transparent;
@@ -1196,13 +1178,10 @@ body.cheddi-resizing-composer * {
     font-weight: 600;
 }
 
-/* While the conversations panel is open, the text-field resize grip below it does nothing but bleed an
-   orange stripe into the panel — hide it until the panel is closed again. */
 .cheddi__sessions-panel:not([hidden]) ~ .cheddi__input-area .cheddi__composer-resize {
     display: none;
 }
 
-/* Context action at the top of the panel: back to the current chat, or start a new one when empty. */
 .cheddi__sessions-primary {
     flex: 0 0 auto;
     margin: 8px;
@@ -1234,7 +1213,6 @@ body.cheddi-resizing-composer * {
     background-color: transparent;
 }
 
-/* No positioning context of its own: the menu below is measured against the composer. */
 .cheddi__templates {
     flex: 0 0 auto;
 }
@@ -1243,11 +1221,6 @@ body.cheddi-resizing-composer * {
     display: none;
 }
 
-/*
- * Opens upwards and spans the composer, whose box is the nearest positioned ancestor: a menu
- * dropping down from a control this low would open past the bottom edge of the drawer, and one
- * anchored to the icon button would come out one icon wide.
- */
 .cheddi__templates-menu {
     position: absolute;
     bottom: calc(100% + 6px);
@@ -1336,7 +1309,6 @@ body.cheddi-resizing-composer * {
     min-width: 0;
 }
 
-/* Signals that the row opens the conversation. */
 .cheddi__sessions-item-chevron {
     flex: 0 0 auto;
     font-size: 18px;
@@ -1392,18 +1364,6 @@ body.cheddi-resizing-composer * {
     }
 }
 
-/*
- * The review modal lives outside the drawer, in TYPO3's own modal.
- *
- * The modal body already scrolls and grows into the dialog (flex-grow: 1, min-height: 0,
- * overflow-y: auto), so it must not be given a height of its own: a max-height stops it from
- * filling the dialog, and because .modal is transparent with a border, the leftover space shows
- * up as an empty bordered strip below the footer.
- *
- * What actually cut the list off is .table-fit: it carries overflow-y: hidden and, as a flex
- * child of the body, shrinks below its content height and clips the rest. Letting it scroll
- * keeps the intro and the module link in place while only the change list moves.
- */
 .cheddi-review-modal .table-fit {
     min-height: 0;
     overflow-y: auto;
@@ -1427,8 +1387,76 @@ body.cheddi-resizing-composer * {
     align-self: center;
 }
 
-.cheddi-help-modal__section {
-    padding-top: 16px;
+.cheddi-help-modal__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--typo3-component-spacing, 12px);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cheddi-help-modal__card-item {
+    display: flex;
+}
+
+.cheddi-help-modal__card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    text-align: left;
+    font: inherit;
+    color: var(--typo3-component-color, inherit);
+    background-color: var(--typo3-component-bg, transparent);
+    border: var(--typo3-component-border-width, 1px) solid var(--typo3-component-border-color, rgba(0, 0, 0, .15));
+    border-radius: var(--typo3-component-border-radius, 4px);
+    box-shadow: var(--typo3-component-box-shadow, none);
+    cursor: pointer;
+    transition: border-color .15s ease-in-out, background-color .15s ease-in-out;
+}
+
+.cheddi-help-modal__card:hover {
+    color: var(--typo3-component-hover-color, inherit);
+    background-color: var(--typo3-component-hover-bg, transparent);
+}
+
+.cheddi-help-modal__card:focus-visible {
+    outline: 2px solid var(--typo3-component-focus-border-color, currentColor);
+    outline-offset: 2px;
+}
+
+.cheddi-help-modal__card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.cheddi-help-modal__card-teaser {
+    color: var(--typo3-component-secondary-color, inherit);
+    font-size: var(--typo3-component-font-size, inherit);
+    line-height: var(--typo3-component-line-height, 1.4);
+}
+
+.cheddi-help-modal__icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--typo3-component-primary-color, inherit);
+}
+
+.cheddi-help-modal__topic-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0 12px 0;
+    font-size: 1.25rem;
+}
+
+.cheddi-help-modal__topic-title:focus {
+    outline: none;
 }
 
 .cheddi-help-modal__section p {
@@ -1438,4 +1466,35 @@ body.cheddi-resizing-composer * {
 .cheddi-help-modal__section ul {
     margin: 0 0 8px 0;
     padding-left: 20px;
+}
+
+.cheddi-help-modal__section li + li {
+    margin-top: 4px;
+}
+
+.cheddi-help-modal__pager {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: var(--typo3-component-border-width, 1px) solid var(--typo3-component-border-color, rgba(0, 0, 0, .15));
+}
+
+.cheddi-help-modal__next {
+    margin-left: auto;
+}
+
+.cheddi-help-modal__back .btn-sm,
+.cheddi-help-modal__pager .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cheddi-help-modal__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }

@@ -22,6 +22,7 @@ use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolAccessContext;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolGateway;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolInterface;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolRegistry;
+use AutoDudes\AiSuiteMcp\Mcp\Tool\Translation\SelfTranslatingToolInterface;
 use AutoDudes\Cheddi\Domain\Enum\Severity;
 use AutoDudes\Cheddi\Domain\Model\Dto\ChatToolContext;
 use AutoDudes\Cheddi\Mcp\Tool\ReadWebPageTool;
@@ -42,10 +43,8 @@ class ToolBridge
         'uploadMedia',
         'batchGenerateMetadata',
         'batchGenerateFileMetadata',
-        'batchGenerateFolderMetadata',
         'batchTranslatePage',
         'batchTranslateFileMetadata',
-        'batchTranslateFolderMetadata',
         'readTaskStatus',
         'readTaskResults',
         'applyTaskResults',
@@ -119,6 +118,7 @@ class ToolBridge
         $this->chatSettings->applyToMcpSurface();
 
         $this->userContext->setInlineBackendLinks(false);
+        $this->userContext->setReportFoundRecords(true);
 
         $chatTools = $this->availableChatTools($context->model);
         if (isset($chatTools[$toolName])) {
@@ -236,6 +236,10 @@ class ToolBridge
     private function isModelDiscoveryCall(ToolInterface $tool, array $arguments): bool
     {
         if (!in_array($tool->getRequiredScope(), self::BILLED_AI_SCOPES, true)) {
+            return false;
+        }
+
+        if ($tool instanceof SelfTranslatingToolInterface) {
             return false;
         }
 

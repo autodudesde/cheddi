@@ -18,7 +18,7 @@ use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
 use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use GuzzleHttp\Exception\BadResponseException;
-use GuzzleHttp\Exception\ConnectException;
+use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Http\RequestFactory;
@@ -34,8 +34,6 @@ class WebSearchRequestService
     public const REQUEST_TIMEOUT_SECONDS = 120;
 
     private const WEB_SEARCH_KEY_ENVELOPE = 'WebSearch';
-
-    private const CURL_TIMEOUT_ERRNO = 28;
 
     public function __construct(
         protected readonly RequestFactory $requestFactory,
@@ -138,20 +136,14 @@ class WebSearchRequestService
                 }
                 $this->logger->warning('Web search 5xx — retrying once', ['attempt' => $attempt, 'statusCode' => $statusCode]);
                 $this->sleepBackoff();
-            } catch (ConnectException $e) {
-                // A timeout is not retried.
-                if ($this->isTimeout($e) || $attempt >= self::RETRY_MAX_ATTEMPTS) {
+            } catch (NetworkExceptionInterface $e) {
+                if (NetworkTimeoutDetector::isTimeout($e) || $attempt >= self::RETRY_MAX_ATTEMPTS) {
                     throw $e;
                 }
                 $this->logger->warning('Web search connection failed — retrying once', ['attempt' => $attempt, 'exception' => $e->getMessage()]);
                 $this->sleepBackoff();
             }
         }
-    }
-
-    private function isTimeout(ConnectException $exception): bool
-    {
-        return self::CURL_TIMEOUT_ERRNO === (int) ($exception->getHandlerContext()['errno'] ?? 0);
     }
 
     /**

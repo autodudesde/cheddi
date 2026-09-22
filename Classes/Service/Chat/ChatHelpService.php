@@ -40,7 +40,7 @@ class ChatHelpService
     ) {}
 
     /**
-     * @return array{title: string, sections: list<array{title: string, blocks: list<array{type: string, text: string}>}>}
+     * @return array{title: string, sections: list<array{key: string, title: string, teaser: string, blocks: list<array{type: string, text: string}>}>}
      */
     public function getHelp(): array
     {
@@ -63,7 +63,9 @@ class ChatHelpService
                 continue;
             }
             $sections[] = [
+                'key' => $section,
                 'title' => $this->translate($section.'.title'),
+                'teaser' => $this->translate($section.'.teaser', $replacements),
                 'blocks' => $blocks,
             ];
         }

@@ -74,6 +74,10 @@ class ContextCollector
                 .'from, show that list to the editor and let them pick — do not pick a model yourself. '
                 .'If only one model is offered, use it directly. This applies to that tool answer alone, '
                 .'not to layout, wording or structure decisions, which you make yourself.',
+            'Translating is different: call translatePage and translateRecord without a model and '
+                .'translate the fields they hand back yourself, then write the result. Name a model '
+                .'only when the editor asked for one — never pick one on your own, and never offer '
+                .'the editor a choice of translation models unasked.',
             'Mass runs over many files, a whole folder or a page subtree — bulk metadata, bulk '
                 .'translation — do not run in this chat. They belong in the Workflow Manager, which the '
                 .'editor reaches from the AI Suite module. When the editor asks for one, name the module '

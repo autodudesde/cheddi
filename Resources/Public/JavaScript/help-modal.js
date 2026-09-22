@@ -11,11 +11,23 @@ const TONE_ICONS = {
     success: 'actions-check',
 };
 
+const SECTION_ICONS = {
+    what: 'actions-lightbulb',
+    flow: 'actions-message',
+    naming: 'actions-search',
+    write: 'actions-pencil',
+    privacy: 'actions-shield',
+    credits: 'actions-info',
+    attachments: 'actions-file-add',
+    limits: 'actions-exclamation-triangle',
+};
+
 export class HelpModal {
     constructor(apiClient, currentSituation = () => []) {
         this.api = apiClient;
         this.currentSituation = currentSituation;
         this.modal = null;
+        this.sections = [];
     }
 
     open() {
@@ -54,18 +66,37 @@ export class HelpModal {
             return;
         }
 
+        this.sections = sections;
+        this.showOverview();
+    }
+
+    showOverview(focusIndex = null) {
+        const body = this.modalBody();
+        if (!body) {
+            return;
+        }
+
         body.replaceChildren();
         const situation = this.buildCurrentSituation();
         if (situation) {
             body.append(situation);
         }
-        body.append(this.buildTabs(sections));
+
+        const grid = document.createElement('ul');
+        grid.className = 'cheddi-help-modal__cards';
+        this.sections.forEach((section, index) => grid.append(this.buildCard(section, index)));
+        body.append(grid);
+        body.scrollTop = 0;
+
+        if (focusIndex !== null) {
+            grid.querySelectorAll('.cheddi-help-modal__card')[focusIndex]?.focus();
+        }
     }
 
     /**
      * What holds for this installation right now - write mode, GDPR, web research, retention - is
-     * composed server-side and arrives with the status refresh. It stays above the tabs and outside
-     * them: it is the one part an editor has to see without looking for it.
+     * composed server-side and arrives with the status refresh. It stays above the topics and
+     * outside them: it is the one part an editor has to see without looking for it.
      */
     buildCurrentSituation() {
         const status = this.currentSituation();
@@ -112,69 +143,117 @@ export class HelpModal {
         return callout;
     }
 
-    /**
-     * Core classes for the look, our own click handling for the behaviour: v12 activates a tab with
-     * Bootstrap (`data-bs-toggle`), v14 with its own `tab.js` (`data-typo3-tab`). Driving the
-     * panels here keeps one implementation for every version instead of branching on it.
-     */
-    buildTabs(sections) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'cheddi-help-modal__tabs';
+    buildCard(section, index) {
+        const item = document.createElement('li');
+        item.className = 'cheddi-help-modal__card-item';
 
-        const nav = document.createElement('ul');
-        nav.className = 'nav nav-tabs';
-        nav.setAttribute('role', 'tablist');
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card cheddi-help-modal__card';
+        card.dataset.cheddiHelpTopic = typeof section?.key === 'string' ? section.key : String(index);
+        card.addEventListener('click', () => this.showTopic(index));
 
-        const panes = document.createElement('div');
-        panes.className = 'tab-content';
+        const header = document.createElement('span');
+        header.className = 'cheddi-help-modal__card-header';
+        header.append(this.sectionIcon(section, 'medium'));
+        const title = document.createElement('span');
+        title.className = 'cheddi-help-modal__card-title';
+        title.textContent = section?.title ?? '';
+        header.append(title);
+        card.append(header);
 
-        sections.forEach((section, index) => {
-            const paneId = `cheddi-help-pane-${index}`;
-            const tabId = `cheddi-help-tab-${index}`;
+        if (typeof section?.teaser === 'string' && section.teaser !== '') {
+            const teaser = document.createElement('span');
+            teaser.className = 'cheddi-help-modal__card-teaser';
+            teaser.textContent = section.teaser;
+            card.append(teaser);
+        }
 
-            const item = document.createElement('li');
-            item.className = 'nav-item';
-            item.setAttribute('role', 'presentation');
+        item.append(card);
 
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = index === 0 ? 'nav-link active' : 'nav-link';
-            button.id = tabId;
-            button.setAttribute('role', 'tab');
-            button.setAttribute('aria-controls', paneId);
-            button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-            button.textContent = section?.title ?? '';
-            button.addEventListener('click', () => this.activateTab(wrapper, index));
-            item.append(button);
-            nav.append(item);
-
-            const pane = this.buildSection(section);
-            pane.id = paneId;
-            pane.classList.add('tab-pane');
-            pane.setAttribute('role', 'tabpanel');
-            pane.setAttribute('aria-labelledby', tabId);
-            if (index === 0) {
-                pane.classList.add('active');
-            } else {
-                pane.hidden = true;
-            }
-            panes.append(pane);
-        });
-
-        wrapper.append(nav, panes);
-
-        return wrapper;
+        return item;
     }
 
-    activateTab(wrapper, active) {
-        wrapper.querySelectorAll('.nav-link').forEach((button, index) => {
-            button.classList.toggle('active', index === active);
-            button.setAttribute('aria-selected', index === active ? 'true' : 'false');
-        });
-        wrapper.querySelectorAll('.tab-pane').forEach((pane, index) => {
-            pane.classList.toggle('active', index === active);
-            pane.hidden = index !== active;
-        });
+    showTopic(index) {
+        const body = this.modalBody();
+        const section = this.sections[index];
+        if (!body || !section) {
+            return;
+        }
+
+        body.replaceChildren();
+
+        const topic = document.createElement('article');
+        topic.className = 'cheddi-help-modal__topic';
+
+        const back = this.navButton(ll('cheddi.help.back'), 'actions-arrow-left', () => this.showOverview(index));
+        back.classList.add('cheddi-help-modal__back');
+
+        const heading = document.createElement('h2');
+        heading.className = 'cheddi-help-modal__topic-title';
+        heading.tabIndex = -1;
+        heading.append(this.sectionIcon(section, 'medium'));
+        const headingText = document.createElement('span');
+        headingText.textContent = section.title ?? '';
+        heading.append(headingText);
+
+        topic.append(back, heading, this.buildSection(section), this.buildPager(index));
+        body.append(topic);
+        body.scrollTop = 0;
+        heading.focus();
+    }
+
+    buildPager(index) {
+        const pager = document.createElement('nav');
+        pager.className = 'cheddi-help-modal__pager';
+        pager.setAttribute('aria-label', ll('cheddi.help.pager'));
+
+        const previous = this.sections[index - 1];
+        if (previous) {
+            const button = this.navButton(ll('cheddi.help.previous', { title: previous.title ?? '' }), 'actions-arrow-left', () => this.showTopic(index - 1));
+            button.classList.add('cheddi-help-modal__previous');
+            pager.append(button);
+        }
+
+        const next = this.sections[index + 1];
+        if (next) {
+            const button = this.navButton(ll('cheddi.help.next', { title: next.title ?? '' }), 'actions-chevron-right', () => this.showTopic(index + 1), true);
+            button.classList.add('cheddi-help-modal__next');
+            pager.append(button);
+        }
+
+        return pager;
+    }
+
+    navButton(text, iconIdentifier, onClick, iconAfter = false) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-default btn-sm';
+
+        const icon = document.createElement('span');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = `<typo3-backend-icon identifier="${iconIdentifier}" size="small"></typo3-backend-icon>`;
+        const label = document.createElement('span');
+        label.textContent = text;
+
+        if (iconAfter) {
+            button.append(label, icon);
+        } else {
+            button.append(icon, label);
+        }
+        button.addEventListener('click', onClick);
+
+        return button;
+    }
+
+    sectionIcon(section, size) {
+        const identifier = Object.hasOwn(SECTION_ICONS, section?.key) ? SECTION_ICONS[section.key] : 'actions-info';
+        const icon = document.createElement('span');
+        icon.className = 'cheddi-help-modal__icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = `<typo3-backend-icon identifier="${identifier}" size="${size}"></typo3-backend-icon>`;
+
+        return icon;
     }
 
     modalBody() {

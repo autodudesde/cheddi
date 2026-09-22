@@ -43,6 +43,10 @@ return [
         'path' => '/cheddi/confirm',
         'target' => ChatController::class.'::applyConfirmationsAction',
     ],
+    'cheddi_download_csv' => [
+        'path' => '/cheddi/download/csv',
+        'target' => ChatController::class.'::downloadCsvAction',
+    ],
     'cheddi_status' => [
         'path' => '/cheddi/status',
         'target' => ChatController::class.'::statusAction',

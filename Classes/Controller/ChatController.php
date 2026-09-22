@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Controller;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\BackendUserService;
+use AutoDudes\AiSuite\Service\CsvExportService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\RateLimiterService;
 use AutoDudes\Cheddi\Domain\Model\Dto\TurnResult;
 use AutoDudes\Cheddi\Service\Chat\AttachmentService;
@@ -25,6 +26,7 @@ use AutoDudes\Cheddi\Service\Chat\ChatHelpService;
 use AutoDudes\Cheddi\Service\Chat\ChatModelPolicy;
 use AutoDudes\Cheddi\Service\Chat\ChatProgressService;
 use AutoDudes\Cheddi\Service\Chat\ChatService;
+use AutoDudes\Cheddi\Service\Chat\CsvDownloadPayload;
 use AutoDudes\Cheddi\Service\Chat\GdprModelPolicy;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -60,6 +62,8 @@ final class ChatController
         private readonly GdprModelPolicy $gdprModelPolicy,
         private readonly AttachmentService $attachmentService,
         private readonly RateLimiterService $rateLimiter,
+        private readonly CsvDownloadPayload $csvDownloadPayload,
+        private readonly CsvExportService $csvExportService,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -148,6 +152,29 @@ final class ChatController
         }
 
         return new JsonResponse(['session' => $session]);
+    }
+
+    public function downloadCsvAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $denied = $this->guardPermission();
+        if (null !== $denied) {
+            return $denied;
+        }
+
+        $params = $request->getQueryParams();
+        $sessionUuid = $this->stringParam($params, 'sessionUuid');
+        $callId = $this->stringParam($params, 'callId');
+        if ('' === $sessionUuid || '' === $callId) {
+            return $this->badRequest('Missing `sessionUuid` or `callId`.');
+        }
+
+        $arguments = $this->chatService->findCsvDownloadArguments($sessionUuid, $callId);
+        $payload = null === $arguments ? null : $this->csvDownloadPayload->normalize($arguments);
+        if (!is_array($payload)) {
+            return new JsonResponse(['error' => ['message' => 'Download not found.']], 404);
+        }
+
+        return $this->neverCached($this->csvExportService->download($payload['rows'], $payload['filename']));
     }
 
     public function deleteSessionAction(ServerRequestInterface $request): ResponseInterface

@@ -1,4 +1,5 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
+import { formatFullDateTime, formatLastUsed } from '@autodudes/cheddi/time-format.js';
 
 /**
  * The conversation list. It owns the panel markup and nothing else: switching to a session and
@@ -82,7 +83,8 @@ export class SessionsPanel {
 
         const meta = document.createElement('span');
         meta.className = 'cheddi__sessions-item-meta';
-        meta.textContent = formatRelativeTime(session.lastActivity);
+        meta.textContent = formatLastUsed(session.lastActivity);
+        meta.title = formatFullDateTime(session.lastActivity);
         text.appendChild(meta);
 
         openButton.appendChild(text);
@@ -124,24 +126,4 @@ export class SessionsPanel {
             console.error('[ChEddi] could not delete the conversation.', e);
         }
     }
-}
-
-export function formatRelativeTime(unixSeconds) {
-    if (typeof unixSeconds !== 'number' || unixSeconds <= 0) {
-        return '';
-    }
-    const diffSeconds = Math.floor(Date.now() / 1000) - unixSeconds;
-    if (diffSeconds < 60) {
-        return ll('cheddi.time.justNow');
-    }
-    if (diffSeconds < 3600) {
-        return ll('cheddi.time.minutesAgo', { count: Math.floor(diffSeconds / 60) });
-    }
-    if (diffSeconds < 86400) {
-        return ll('cheddi.time.hoursAgo', { count: Math.floor(diffSeconds / 3600) });
-    }
-    if (diffSeconds < 86400 * 7) {
-        return ll('cheddi.time.daysAgo', { count: Math.floor(diffSeconds / 86400) });
-    }
-    return new Date(unixSeconds * 1000).toLocaleDateString();
 }

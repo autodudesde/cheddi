@@ -6,6 +6,7 @@
             <trans-unit id="cheddi.help.title"><source>How ChEddi works</source></trans-unit>
 
             <trans-unit id="cheddi.help.what.title"><source>What ChEddi is</source></trans-unit>
+            <trans-unit id="cheddi.help.what.teaser"><source>What it can do for you</source></trans-unit>
             <trans-unit id="cheddi.help.what.p1"><source>ChEddi is an assistant inside your TYPO3 backend. It works with your permissions and only sees what you are allowed to see.</source></trans-unit>
             <trans-unit id="cheddi.help.what.i1"><source>Find, read and explain pages, content elements and files</source></trans-unit>
             <trans-unit id="cheddi.help.what.i2"><source>Create and change content, page trees and metadata</source></trans-unit>
@@ -14,6 +15,7 @@
             <trans-unit id="cheddi.help.what.i5"><source>…and many more use cases</source></trans-unit>
 
             <trans-unit id="cheddi.help.flow.title"><source>How a task runs</source></trans-unit>
+            <trans-unit id="cheddi.help.flow.teaser"><source>From your request to a confirmed change</source></trans-unit>
             <trans-unit id="cheddi.help.flow.p1"><source>You describe the goal, ChEddi works through it step by step.</source></trans-unit>
             <trans-unit id="cheddi.help.flow.i1"><source>It looks up the records your request refers to</source></trans-unit>
             <trans-unit id="cheddi.help.flow.i2"><source>It shows a preview with the old and the new value</source></trans-unit>
@@ -21,10 +23,12 @@
             <trans-unit id="cheddi.help.flow.i4"><source>Nothing is saved until you confirm, so you can stop at any point</source></trans-unit>
 
             <trans-unit id="cheddi.help.naming.title"><source>Tell it which page you mean</source></trans-unit>
+            <trans-unit id="cheddi.help.naming.teaser"><source>Name pages so nothing has to be guessed</source></trans-unit>
             <trans-unit id="cheddi.help.naming.p1"><source>ChEddi cannot see your screen. Words like "this page" or "here" do not identify anything.</source></trans-unit>
             <trans-unit id="cheddi.help.naming.p2"><source>Name the page by its title or its slug. If the name matches more than one page, ChEddi asks instead of guessing.</source></trans-unit>
 
             <trans-unit id="cheddi.help.write.title"><source>Live or draft</source></trans-unit>
+            <trans-unit id="cheddi.help.write.teaser"><source>Where confirmed changes end up</source></trans-unit>
             <trans-unit id="cheddi.help.write.p1"><source>Currently active in this installation: {mode}</source></trans-unit>
             <trans-unit id="cheddi.help.write.i1"><source>Live: every confirmed change is immediately visible on the website</source></trans-unit>
             <trans-unit id="cheddi.help.write.i2"><source>Draft: changes go to your workspace first and stay invisible to visitors</source></trans-unit>
@@ -33,22 +37,26 @@
             <trans-unit id="cheddi.help.write.modeWorkspace"><source>Draft</source></trans-unit>
 
             <trans-unit id="cheddi.help.privacy.title"><source>Data protection</source></trans-unit>
+            <trans-unit id="cheddi.help.privacy.teaser"><source>Which data leaves this installation</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i1"><source>GDPR mode restricts the choice to the model hosted in the EU. Switch it off and the other models become selectable again.</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i2"><source>Web research sends your search query to an external provider. It needs a backend group permission and is currently not available in GDPR mode.</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i3"><source>Attachments are read on the server and their text is sent to the model together with your message.</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i4"><source>Never write passwords, API keys or personal data of third parties into the chat.</source></trans-unit>
 
             <trans-unit id="cheddi.help.credits.title"><source>Models and credits</source></trans-unit>
+            <trans-unit id="cheddi.help.credits.teaser"><source>Choosing a model and what it costs</source></trans-unit>
             <trans-unit id="cheddi.help.credits.i1"><source>The model is fixed as soon as the conversation has its first answer. Use "New conversation" to switch.</source></trans-unit>
             <trans-unit id="cheddi.help.credits.i2"><source>Continuing a conversation costs less than starting a new one.</source></trans-unit>
             <trans-unit id="cheddi.help.credits.i3"><source>One conversation per topic is cheaper than one long conversation about everything.</source></trans-unit>
 
             <trans-unit id="cheddi.help.attachments.title"><source>Attachments</source></trans-unit>
+            <trans-unit id="cheddi.help.attachments.teaser"><source>Working with files you attach</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document. ChEddi extracts its text and works with that.</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.i1"><source>Text based documents work best, images are not analysed here</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.i2"><source>An attachment is removed together with its conversation, unless it has meanwhile been placed on a page</source></trans-unit>
 
             <trans-unit id="cheddi.help.limits.title"><source>Limits and tips</source></trans-unit>
+            <trans-unit id="cheddi.help.limits.teaser"><source>What ChEddi cannot do, and tips</source></trans-unit>
             <trans-unit id="cheddi.help.limits.i1"><source>One goal per message. Several unrelated instructions at once make the result harder to check.</source></trans-unit>
             <trans-unit id="cheddi.help.limits.i2"><source>Some bulk runs are covered by the AI Suite backend module itself: metadata and translation for whole page trees or file folders. Those belong there rather than in the chat.</source></trans-unit>
             <trans-unit id="cheddi.help.limits.i3"><source>If ChEddi claims it has no tools available, start a new conversation.</source></trans-unit>

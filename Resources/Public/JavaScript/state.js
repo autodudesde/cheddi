@@ -19,10 +19,13 @@ const COMPOSER_LIMITS = {
 
 const DEFAULT_STATE = {
     open: false,
+    docked: false,
     width: 480,
     height: 720,
     composerHeight: 80,
 };
+
+const MIN_CONTENT_WIDTH = 640;
 
 export function loadState() {
     try {
@@ -33,6 +36,7 @@ export function loadState() {
         const parsed = JSON.parse(raw);
         return {
             open: Boolean(parsed.open),
+            docked: Boolean(parsed.docked),
             width: Number.isFinite(parsed.width) ? parsed.width : DEFAULT_STATE.width,
             height: Number.isFinite(parsed.height) ? parsed.height : DEFAULT_STATE.height,
             composerHeight: Number.isFinite(parsed.composerHeight)
@@ -113,4 +117,10 @@ export function saveSessionModel(model) {
     } catch (e) {
         console.warn('[ChEddi] could not persist the session model.', e);
     }
+}
+
+export function dockWidth(width, viewportWidth) {
+    const available = viewportWidth - MIN_CONTENT_WIDTH;
+
+    return available >= SIZE_LIMITS.minWidth ? Math.min(width, available) : null;
 }

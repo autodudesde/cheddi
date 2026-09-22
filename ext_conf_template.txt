@@ -7,12 +7,11 @@
 # customsubcategory=chatsessions=Sessions
 # customsubcategory=chatwrites=Write target
 # customsubcategory=chataccess=Tool and table access
-# customsubcategory=chatsearch=Content search
 # customsubcategory=websources=Sources
 # customsubcategory=webscope=Scope
 # customsubcategory=chatlogging=Log files
 
-# cat=cheddichat/chatmodels; type=options[Inherit from AI Suite=inherit,Yes=1,No=0]; label=GDPR compliant mode:Only offer GDPR-compliant models in the chat (restricts the model list to libraries marked as GDPR-compliant on the AI Suite server, and blocks web search). "Inherit" (default) follows the AI Suite setting (ai_suite: forceGdpa). This setting can only tighten, never widen: with AI Suite on "Yes" the chat stays restricted even when set to "No" here.
+# cat=cheddichat/chatmodels; type=options[Inherit from AI Suite=inherit,Yes=1,No=0]; label=GDPR compliant mode:Only offer GDPR-compliant models in the chat (restricts the model list to ChEddi's GDPR-compliant chat models, currently IONOS Qwen3.5; web search then runs only through the server's EU search provider, where one serves the site's market). "Inherit" (default) follows the AI Suite setting (ai_suite: forceGdpa). This setting can only tighten, never widen: with AI Suite on "Yes" the chat stays restricted even when set to "No" here.
 chatForceGdpa = inherit
 
 # cat=cheddichat/chatsessions; type=int+; label=Session lifetime (days):Days a chat session may stay inactive before the auto-delete scheduler soft-deletes it. Soft-deleted sessions are hard-deleted seven days later, together with their messages, their workspace change log and their attachments. An attachment survives when it left the "cheddi" upload folder or is referenced elsewhere.
@@ -29,12 +28,6 @@ chatExcludedTools =
 
 # cat=cheddiaccess/chataccess; type=string; label=Excluded tables:Comma-separated tables ChEddi must never read or write, on top of the MCP list (ai_suite_mcp: mcpExcludedTables). Empty (default) = exactly the MCP list; entries here are added to it and never remove one. TYPO3 backend permissions still apply additionally, and the exclusion also blocks admins.
 chatExcludedTables =
-
-# cat=cheddiaccess/chatsearch; type=string; label=Additional searchable tables:Comma-separated tables searchContent sweeps for ChEddi on top of the MCP list (ai_suite_mcp: mcpSearchAdditionalTables) and the automatically detected IRRE child tables. Empty (default) = exactly what MCP searches. Use it for standalone record tables that are not children of anything, e.g. tx_news_domain_model_news. Excluded tables and backend permissions still apply.
-chatSearchAdditionalTables =
-
-# cat=cheddiaccess/chatsearch; type=string; label=Exclude auto-detected tables from search:Comma-separated tables ChEddi removes from the automatically detected IRRE child tables, on top of the MCP list (ai_suite_mcp: mcpExcludeAdditionalTablesFromSearch). Use it to silence noisy or irrelevant child tables in the chat. This only affects the auto-detected set: a table listed under "Additional searchable tables" is searched regardless. To block a table from ChEddi entirely, use "Excluded tables" instead.
-chatExcludeAdditionalTablesFromSearch =
 
 # cat=cheddiweb/websources; type=string; label=Trusted sources:Comma-separated domains web research is restricted to, e.g. "gesetze-im-internet.de,ihk.de". Empty (default, recommended) searches the open web. This is a hard filter, not a ranking preference: a question whose answer lives nowhere on the list returns no sources at all, and an assistant with no sources falls back on what it remembers. Use it only where the subject really is confined to a known set of sources, keep the list short, and review it - a forgotten list narrows every research from then on. The block list below is the safer instrument for most installations. Takes precedence over it: both providers accept only one of the two. At most 10 domains are sent; anything beyond that is dropped and logged.
 chatWebResearchAllowedDomains =

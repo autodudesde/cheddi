@@ -20,6 +20,8 @@
             <trans-unit id="cheddi.templates.needsRecord"><source>This template works on the record you are editing. Open one first.</source><target>Diese Vorlage arbeitet mit dem Datensatz, den du bearbeitest. Bitte zuerst einen öffnen.</target></trans-unit>
             <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source><target>Konversationen</target></trans-unit>
             <trans-unit id="cheddi.ui.panelClose"><source>Close panel</source><target>Panel schließen</target></trans-unit>
+            <trans-unit id="cheddi.ui.dock"><source>Dock to the right</source><target>Rechts andocken</target></trans-unit>
+            <trans-unit id="cheddi.ui.undock"><source>Detach from the edge</source><target>Vom Rand lösen</target></trans-unit>
             <trans-unit id="cheddi.ui.minimize"><source>Minimize</source><target>Minimieren</target></trans-unit>
             <trans-unit id="cheddi.ui.close"><source>Close</source><target>Schließen</target></trans-unit>
             <trans-unit id="cheddi.ui.textareaPlaceholder"><source>Type a question or instruction…</source><target>Frage oder Anweisung tippen…</target></trans-unit>
@@ -76,6 +78,7 @@
             <trans-unit id="cheddi.notice.creditsExhausted"><source>Credits used up, please top up.</source><target>Credits aufgebraucht, bitte aufladen.</target></trans-unit>
             <trans-unit id="cheddi.notice.creditsExhaustedAborted"><source>Conversation aborted: credits used up.</source><target>Konversation abgebrochen: Credits aufgebraucht.</target></trans-unit>
             <trans-unit id="cheddi.notice.navHeading"><source>Edit</source><target>Bearbeiten</target></trans-unit>
+            <trans-unit id="cheddi.notice.navHeadingFound"><source>Found: {table}</source><target>Gefunden: {table}</target></trans-unit>
             <trans-unit id="cheddi.notice.navLinkDefault"><source>Open in the backend</source><target>Im Backend öffnen</target></trans-unit>
             <trans-unit id="cheddi.notice.navMore"><source>+{count} more</source><target>+{count} weitere</target></trans-unit>
             <trans-unit id="cheddi.sources.heading"><source>Sources</source><target>Quellen</target></trans-unit>
@@ -90,20 +93,18 @@
             <trans-unit id="cheddi.error.nothingToSummarize"><source>There is nothing to summarize yet.</source><target>Es gibt noch nichts zusammenzufassen.</target></trans-unit>
 
             <trans-unit id="cheddi.history.toolStatus"><source>Tool: {status}</source><target>Tool: {status}</target></trans-unit>
-            <trans-unit id="cheddi.time.justNow"><source>just now</source><target>gerade eben</target></trans-unit>
-            <trans-unit id="cheddi.time.minutesAgo"><source>{count} min ago</source><target>vor {count} min</target></trans-unit>
-            <trans-unit id="cheddi.time.hoursAgo"><source>{count} h ago</source><target>vor {count} h</target></trans-unit>
-            <trans-unit id="cheddi.time.daysAgo"><source>{count} days ago</source><target>vor {count} Tagen</target></trans-unit>
+            <trans-unit id="cheddi.sessions.lastUsedAt"><source>Last used on {date} at {time}</source><target>Zuletzt genutzt am {date} um {time}</target></trans-unit>
+            <trans-unit id="cheddi.sessions.lastUsedToday"><source>Last used today at {time}</source><target>Zuletzt genutzt heute um {time}</target></trans-unit>
 
             <trans-unit id="cheddi.orientation.gdprOn"><source>Data protection: GDPR mode active, only the compliant model is offered</source><target>Datenschutz: DSGVO-Modus aktiv, es wird nur das datenschutzkonforme Modell angeboten</target></trans-unit>
+            <trans-unit id="cheddi.orientation.aiSystem"><source>You are interacting with an AI system. Its answers can be wrong, and responsibility for what gets published stays with you.</source><target>Du interagierst mit einem KI-System. Seine Antworten können falsch sein, und die Verantwortung für das, was veröffentlicht wird, bleibt bei dir.</target></trans-unit>
             <trans-unit id="cheddi.orientation.gdprOff"><source>Data protection: GDPR mode off</source><target>Datenschutz: DSGVO-Modus aus</target></trans-unit>
             <trans-unit id="cheddi.orientation.writeLive"><source>Write mode: live, changes apply directly to the live site</source><target>Schreibmodus: live, Änderungen wirken direkt auf der Live-Seite</target></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspace"><source>Write mode: draft, changes go to a workspace and not live</source><target>Schreibmodus: Entwurf, Änderungen landen im Workspace und nicht live</target></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspacePending"><source>Write mode: draft, a personal workspace is created for your first change and nothing goes live</source><target>Schreibmodus: Entwurf, für die erste Änderung wird automatisch ein persönlicher Workspace angelegt und nichts geht live</target></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOn"><source>Web research: on, search queries leave this installation</source><target>Web-Recherche: an, Suchanfragen verlassen diese Installation</target></trans-unit>
-            <trans-unit id="cheddi.orientation.webResearchOff"><source>Web research: off, ChEddi only works with content from this installation</source><target>Web-Recherche: aus, ChEddi arbeitet nur mit Inhalten dieser Installation</target></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.default"><source>Web research: off, ChEddi only works with content from this installation</source><target>Web-Recherche: aus, ChEddi arbeitet nur mit Inhalten dieser Installation</target></trans-unit>
-            <trans-unit id="cheddi.orientation.webResearchOff.noPermission"><source>Web research: off, your backend group is not allowed to use it</source><target>Web-Recherche: aus, Ihre Backend-Gruppe darf sie nicht nutzen</target></trans-unit>
+            <trans-unit id="cheddi.orientation.webResearchOff.noPermission"><source>Web research: off, your backend group is not allowed to use it</source><target>Web-Recherche: aus, deine Backend-Gruppe darf sie nicht nutzen</target></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.noKey"><source>Web research: off, this plan runs on your own provider keys and the key for the search provider is missing</source><target>Web-Recherche: aus, dieser Tarif läuft mit eigenen Anbieter-Schlüsseln und der Schlüssel für den Suchanbieter fehlt</target></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.gdprNoProvider"><source>Web research: off, GDPR mode is active and this server has no EU search provider</source><target>Web-Recherche: aus, der DSGVO-Modus ist aktiv und dieser Server hat keinen EU-Suchanbieter</target></trans-unit>
             <trans-unit id="cheddi.orientation.webResearchOff.gdprMarket"><source>Web research: off, GDPR mode is active and the EU search provider does not serve this site's language region</source><target>Web-Recherche: aus, der DSGVO-Modus ist aktiv und der EU-Suchanbieter bedient die Sprachregion dieser Website nicht</target></trans-unit>
@@ -111,6 +112,10 @@
             <trans-unit id="cheddi.orientation.retention"><source>Conversations are deleted after {days} days without activity.</source><target>Konversationen werden nach {days} Tagen ohne Aktivität gelöscht.</target></trans-unit>
             <trans-unit id="cheddi.help.modalTitle"><source>How ChEddi works</source><target>Wie ChEddi arbeitet</target></trans-unit>
             <trans-unit id="cheddi.help.close"><source>Close</source><target>Schließen</target></trans-unit>
+            <trans-unit id="cheddi.help.back"><source>Back to overview</source><target>Zurück zur Übersicht</target></trans-unit>
+            <trans-unit id="cheddi.help.previous"><source>Previous: {title}</source><target>Zurück: {title}</target></trans-unit>
+            <trans-unit id="cheddi.help.next"><source>Next: {title}</source><target>Weiter: {title}</target></trans-unit>
+            <trans-unit id="cheddi.help.pager"><source>Topics</source><target>Themen</target></trans-unit>
             <trans-unit id="cheddi.help.loadFailed"><source>The help text could not be loaded.</source><target>Der Hilfetext konnte nicht geladen werden.</target></trans-unit>
 
             <!-- Compact operating context handed to the LLM (label + value) -->
@@ -142,6 +147,7 @@
             <trans-unit id="cheddi.confirm.targetWorkspaceNamed"><source>These changes go to the workspace "{workspace}" and not live.</source><target>Diese Änderungen landen im Workspace „{workspace}“ und nicht live.</target></trans-unit>
             <trans-unit id="cheddi.ui.workspaceBadgeHint"><source>Changes go to the workspace "{workspace}" (#{id})</source><target>Änderungen landen im Workspace „{workspace}“ (#{id})</target></trans-unit>
             <trans-unit id="cheddi.confirm.targetLive"><source>These changes apply directly to the live site.</source><target>Diese Änderungen wirken direkt auf der Live-Seite.</target></trans-unit>
+            <trans-unit id="cheddi.confirm.executeAll"><source>Execute all</source><target>Alle ausführen</target></trans-unit>
             <trans-unit id="cheddi.confirm.declineAll"><source>Decline all</source><target>Alle ablehnen</target></trans-unit>
             <trans-unit id="cheddi.confirm.destructiveBadge"><source>hard to undo</source><target>schwer umkehrbar</target></trans-unit>
             <trans-unit id="cheddi.confirm.creditsBadge"><source>costs {credits} credits</source><target>kostet {credits} Credits</target></trans-unit>
@@ -198,7 +204,6 @@
             <trans-unit id="cheddi.tool.applyTaskResults"><source>Apply task result</source><target>Aufgabenergebnis anwenden</target></trans-unit>
             <trans-unit id="cheddi.tool.previewRecords"><source>Create preview</source><target>Vorschau erstellen</target></trans-unit>
             <trans-unit id="cheddi.tool.writeRecords"><source>Save content</source><target>Inhalte speichern</target></trans-unit>
-            <trans-unit id="cheddi.tool.replaceText"><source>Replace text</source><target>Text ersetzen</target></trans-unit>
             <trans-unit id="cheddi.tool.patchText"><source>Edit text</source><target>Text bearbeiten</target></trans-unit>
             <trans-unit id="cheddi.tool.bulkReplaceText"><source>Replace text in bulk</source><target>Text mehrfach ersetzen</target></trans-unit>
             <trans-unit id="cheddi.tool.copyRecords"><source>Copy records</source><target>Datensätze kopieren</target></trans-unit>
@@ -216,20 +221,18 @@
             <trans-unit id="cheddi.tool.translateFileMetadata"><source>Translate file metadata</source><target>Datei-Metadaten übersetzen</target></trans-unit>
             <trans-unit id="cheddi.tool.batchGenerateMetadata"><source>Batch: Generate SEO metadata</source><target>Stapel: SEO-Metadaten erzeugen</target></trans-unit>
             <trans-unit id="cheddi.tool.batchGenerateFileMetadata"><source>Batch: Generate file metadata</source><target>Stapel: Datei-Metadaten erzeugen</target></trans-unit>
-            <trans-unit id="cheddi.tool.batchGenerateFolderMetadata"><source>Batch: Generate folder metadata</source><target>Stapel: Ordner-Metadaten erzeugen</target></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslatePage"><source>Batch: Translate pages</source><target>Stapel: Seiten übersetzen</target></trans-unit>
             <trans-unit id="cheddi.tool.batchTranslateFileMetadata"><source>Batch: Translate file metadata</source><target>Stapel: Datei-Metadaten übersetzen</target></trans-unit>
-            <trans-unit id="cheddi.tool.batchTranslateFolderMetadata"><source>Batch: Translate folder metadata</source><target>Stapel: Ordner-Metadaten übersetzen</target></trans-unit>
             <trans-unit id="cheddi.tool.auditSeo"><source>Run SEO audit</source><target>SEO-Audit durchführen</target></trans-unit>
             <trans-unit id="cheddi.tool.auditAccessibility"><source>Run accessibility audit</source><target>Barrierefreiheits-Audit durchführen</target></trans-unit>
-            <trans-unit id="cheddi.tool.auditQuestions"><source>Find questions readers ask</source><target>Fragen der Leser ermitteln</target></trans-unit>
-            <trans-unit id="cheddi.tool.auditContentGap"><source>Find content gaps</source><target>Inhaltslücken finden</target></trans-unit>
-            <trans-unit id="cheddi.tool.auditTopicCluster"><source>Analyse topic cluster</source><target>Themencluster analysieren</target></trans-unit>
-            <trans-unit id="cheddi.tool.auditCompetitors"><source>Compare with competitors</source><target>Mit Wettbewerbern vergleichen</target></trans-unit>
+            <trans-unit id="cheddi.tool.auditContent"><source>Analyse content coverage</source><target>Inhaltsabdeckung analysieren</target></trans-unit>
             <trans-unit id="cheddi.tool.readAuditResults"><source>Read audit results</source><target>Audit-Ergebnisse lesen</target></trans-unit>
             <trans-unit id="cheddi.tool.readAttachmentText"><source>Read attachment</source><target>Anhang lesen</target></trans-unit>
             <trans-unit id="cheddi.tool.searchWeb"><source>Search the web</source><target>Im Web suchen</target></trans-unit>
             <trans-unit id="cheddi.tool.readWebPage"><source>Read web page</source><target>Webseite lesen</target></trans-unit>
+            <trans-unit id="cheddi.tool.createCsvDownload"><source>Create CSV download</source><target>CSV-Download erstellen</target></trans-unit>
+            <trans-unit id="cheddi.download.button"><source>Download {filename}</source><target>{filename} herunterladen</target></trans-unit>
+            <trans-unit id="cheddi.download.rows"><source>{count} rows</source><target>{count} Zeilen</target></trans-unit>
 
             <trans-unit id="cheddi.attachment.add"><source>Attach a document</source><target>Dokument anhängen</target></trans-unit>
             <trans-unit id="cheddi.attachment.remove"><source>Remove attachment</source><target>Anhang entfernen</target></trans-unit>
