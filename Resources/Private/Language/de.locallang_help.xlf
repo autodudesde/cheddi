@@ -24,7 +24,7 @@
 
             <trans-unit id="cheddi.help.naming.title"><source>Tell it which page you mean</source><target>Sag ihm, welche Seite du meinst</target></trans-unit>
             <trans-unit id="cheddi.help.naming.teaser"><source>Name pages so nothing has to be guessed</source><target>Seiten so benennen, dass nichts geraten wird</target></trans-unit>
-            <trans-unit id="cheddi.help.naming.p1"><source>ChEddi cannot see your screen. Words like "this page" or "here" do not identify anything.</source><target>ChEddi sieht deinen Bildschirm nicht. Formulierungen wie "diese Seite" oder "hier" identifizieren nichts.</target></trans-unit>
+            <trans-unit id="cheddi.help.naming.p1"><source>ChEddi cannot see your screen. Words like "this page" or "here" do not identify anything.</source><target>ChEddi sieht deinen Bildschirm nicht. Formulierungen wie „diese Seite“ oder „hier“ identifizieren nichts.</target></trans-unit>
             <trans-unit id="cheddi.help.naming.p2"><source>Name the page by its title or its slug. If the name matches more than one page, ChEddi asks instead of guessing.</source><target>Benenne die Seite über ihren Titel oder ihren Slug. Passt der Name auf mehrere Seiten, fragt ChEddi nach, statt zu raten.</target></trans-unit>
 
             <trans-unit id="cheddi.help.write.title"><source>Live or draft</source><target>Live oder Entwurf</target></trans-unit>
@@ -32,7 +32,7 @@
             <trans-unit id="cheddi.help.write.p1"><source>Currently active in this installation: {mode}</source><target>In dieser Installation aktiv: {mode}</target></trans-unit>
             <trans-unit id="cheddi.help.write.i1"><source>Live: every confirmed change is immediately visible on the website</source><target>Live: jede bestätigte Änderung ist sofort auf der Website sichtbar</target></trans-unit>
             <trans-unit id="cheddi.help.write.i2"><source>Draft: changes go to your workspace first and stay invisible to visitors</source><target>Entwurf: Änderungen landen zuerst in deinem Workspace und bleiben für Besucher unsichtbar</target></trans-unit>
-            <trans-unit id="cheddi.help.write.p2"><source>Drafts are collected per conversation. Open them from the actions menu under "Changes of this conversation" and publish or discard them there.</source><target>Entwürfe werden pro Konversation gesammelt. Über das Aktionsmenü unter "Änderungen dieser Konversation" kannst du sie ansehen und dort veröffentlichen oder verwerfen.</target></trans-unit>
+            <trans-unit id="cheddi.help.write.p2"><source>Drafts are collected per conversation. Open them from the actions menu under "Changes of this conversation" and publish or discard them there.</source><target>Entwürfe werden pro Konversation gesammelt. Über das Aktionsmenü unter „Änderungen dieser Konversation“ kannst du sie ansehen und dort veröffentlichen oder verwerfen.</target></trans-unit>
             <trans-unit id="cheddi.help.write.modeLive"><source>Live</source><target>Live</target></trans-unit>
             <trans-unit id="cheddi.help.write.modeWorkspace"><source>Draft</source><target>Entwurf</target></trans-unit>
 
@@ -45,8 +45,8 @@
 
             <trans-unit id="cheddi.help.credits.title"><source>Models and credits</source><target>Modelle und Credits</target></trans-unit>
             <trans-unit id="cheddi.help.credits.teaser"><source>Choosing a model and what it costs</source><target>Modellwahl und was sie kostet</target></trans-unit>
-            <trans-unit id="cheddi.help.credits.i1"><source>The model is fixed as soon as the conversation has its first answer. Use "New conversation" to switch.</source><target>Das Modell steht ab der ersten Antwort der Konversation fest. Über "Neue Konversation" wechselst du es.</target></trans-unit>
-            <trans-unit id="cheddi.help.credits.i2"><source>Continuing a conversation costs less than starting a new one.</source><target>Ein fortgesetztes Gespräch kostet weniger als ein neues.</target></trans-unit>
+            <trans-unit id="cheddi.help.credits.i1"><source>The model is fixed as soon as the conversation has its first answer. Use "New conversation" to switch.</source><target>Das Modell steht ab der ersten Antwort der Konversation fest. Über „Neue Konversation“ wechselst du es.</target></trans-unit>
+            <trans-unit id="cheddi.help.credits.i2"><source>Continuing a conversation costs less than starting a new one.</source><target>Eine fortgesetzte Konversation kostet weniger als eine neue.</target></trans-unit>
             <trans-unit id="cheddi.help.credits.i3"><source>One conversation per topic is cheaper than one long conversation about everything.</source><target>Eine Konversation je Thema ist günstiger als eine lange Konversation über alles.</target></trans-unit>
 
             <trans-unit id="cheddi.help.attachments.title"><source>Attachments</source><target>Anhänge</target></trans-unit>
@@ -58,7 +58,7 @@
             <trans-unit id="cheddi.help.limits.title"><source>Limits and tips</source><target>Grenzen und Tipps</target></trans-unit>
             <trans-unit id="cheddi.help.limits.teaser"><source>What ChEddi cannot do, and tips</source><target>Was ChEddi nicht kann, und Tipps</target></trans-unit>
             <trans-unit id="cheddi.help.limits.i1"><source>One goal per message. Several unrelated instructions at once make the result harder to check.</source><target>Ein Ziel pro Nachricht. Mehrere unabhängige Anweisungen auf einmal machen das Ergebnis schwerer prüfbar.</target></trans-unit>
-            <trans-unit id="cheddi.help.limits.i2"><source>Some bulk runs are covered by the AI Suite backend module itself: metadata and translation for whole page trees or file folders. Those belong there rather than in the chat.</source><target>Manche Massenläufe deckt das AI-Suite-Backend-Modul selbst ab: Metadaten und Übersetzung für ganze Seitenbäume oder Dateiordner. Die gehören dorthin statt in den Chat.</target></trans-unit>
+            <trans-unit id="cheddi.help.limits.i2"><source>Some bulk runs are covered by the AI Suite backend module itself: metadata and translation for whole page trees or file folders. Those belong there rather than in the chat.</source><target>Manche Massenläufe deckt das AI Suite-Backend-Modul selbst ab: Metadaten und Übersetzung für ganze Seitenbäume oder Dateiordner. Die gehören dorthin statt in den Chat.</target></trans-unit>
             <trans-unit id="cheddi.help.limits.i3"><source>If ChEddi claims it has no tools available, start a new conversation.</source><target>Behauptet ChEddi, ihm stünden keine Werkzeuge zur Verfügung, starte eine neue Konversation.</target></trans-unit>
             <trans-unit id="cheddi.help.limits.i4"><source>Conversations are deleted after {days} days without activity.</source><target>Konversationen werden nach {days} Tagen ohne Aktivität gelöscht.</target></trans-unit>
         </body>

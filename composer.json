@@ -6,7 +6,7 @@
   "license": [
     "GPL-2.0-or-later"
   ],
-  "version": "0.3.0",
+  "version": "0.3.1",
   "keywords": [
     "TYPO3 CMS",
     "backend",
@@ -20,7 +20,7 @@
   "require": {
     "php": "^8.1",
     "autodudes/ai-suite": "^12.24.0 || ^13.18.0 || ^14.6.0",
-    "autodudes/ai-suite-mcp": "^0.9",
+    "autodudes/ai-suite-mcp": "^0.9 || ^0.10",
     "typo3/cms-core": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-workspaces": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-reports": "^12.4.11 || ^13.4.1 || ^14.3.0",

@@ -6,7 +6,7 @@
             <trans-unit id="cheddi.ui.drawerLabel"><source>ChEddi</source><target>ChEddi</target></trans-unit>
             <trans-unit id="cheddi.ui.resize"><source>Resize drawer</source><target>Fenster anpassen</target></trans-unit>
             <trans-unit id="cheddi.ui.resizeComposer"><source>Resize input field</source><target>Eingabefeld anpassen</target></trans-unit>
-            <trans-unit id="cheddi.ui.actionsMenu"><source>Actions menu</source><target>Aktionen-Menü</target></trans-unit>
+            <trans-unit id="cheddi.ui.actionsMenu"><source>Actions menu</source><target>Aktionsmenü</target></trans-unit>
             <trans-unit id="cheddi.ui.bubbleOpen"><source>Open ChEddi</source><target>ChEddi öffnen</target></trans-unit>
             <trans-unit id="cheddi.ui.modelSelect"><source>Select ChEddi model</source><target>ChEddi-Modell wählen</target></trans-unit>
             <trans-unit id="cheddi.ui.newConversation"><source>New conversation</source><target>Neue Konversation</target></trans-unit>
@@ -24,7 +24,7 @@
             <trans-unit id="cheddi.ui.undock"><source>Detach from the edge</source><target>Vom Rand lösen</target></trans-unit>
             <trans-unit id="cheddi.ui.minimize"><source>Minimize</source><target>Minimieren</target></trans-unit>
             <trans-unit id="cheddi.ui.close"><source>Close</source><target>Schließen</target></trans-unit>
-            <trans-unit id="cheddi.ui.textareaPlaceholder"><source>Type a question or instruction…</source><target>Frage oder Anweisung tippen…</target></trans-unit>
+            <trans-unit id="cheddi.ui.textareaPlaceholder"><source>Type a question or instruction…</source><target>Frage oder Anweisung tippen …</target></trans-unit>
             <trans-unit id="cheddi.ui.send"><source>Send</source><target>Senden</target></trans-unit>
             <trans-unit id="cheddi.ui.cancel"><source>Cancel</source><target>Abbrechen</target></trans-unit>
             <trans-unit id="cheddi.ui.locked"><source>Locked</source><target>Gesperrt</target></trans-unit>
@@ -41,7 +41,7 @@
             <trans-unit id="cheddi.error.aiModelInstanceNotFound"><source>The selected model is not available. Please choose a different model.</source><target>Das gewählte Modell ist nicht verfügbar. Bitte wähle ein anderes Modell.</target></trans-unit>
             <trans-unit id="cheddi.error.modelNotChat"><source>This model cannot be used for chat. Please pick one of the offered chat models.</source><target>Dieses Modell lässt sich nicht für den Chat verwenden. Bitte wähle eines der angebotenen Chat-Modelle.</target></trans-unit>
             <trans-unit id="cheddi.error.modelNotPermitted"><source>Your backend group is not allowed to use this chat model. Please pick another one.</source><target>Deine Backend-Gruppe darf dieses Chat-Modell nicht verwenden. Bitte wähle ein anderes.</target></trans-unit>
-            <trans-unit id="cheddi.error.featureDisabled"><source>The chat is not enabled for your backend group. Please ask an administrator.</source><target>Der Chat ist für deine Backend-Gruppe nicht freigeschaltet. Bitte wende dich an eine Administratorin.</target></trans-unit>
+            <trans-unit id="cheddi.error.featureDisabled"><source>The chat is not enabled for your backend group. Please ask an administrator.</source><target>Der Chat ist für deine Backend-Gruppe nicht freigeschaltet. Bitte wende dich an deinen Administrator.</target></trans-unit>
             <trans-unit id="cheddi.error.badRequest"><source>ChEddi sent an incomplete request. Please reload the backend and try the action again.</source><target>ChEddi hat eine unvollständige Anfrage gesendet. Bitte lade das Backend neu und wiederhole die Aktion.</target></trans-unit>
             <trans-unit id="cheddi.error.gdprModelBlocked"><source>Only the GDPR-compliant model is allowed in this system. Please select the GDPR model.</source><target>In diesem System ist nur das DSGVO-konforme Modell erlaubt. Bitte wähle das DSGVO-Modell.</target></trans-unit>
             <trans-unit id="cheddi.error.chatUnavailableForPlan"><source>ChEddi is not yet available for your plan. Please contact your provider.</source><target>ChEddi ist für deinen Tarif noch nicht verfügbar. Bitte wende dich an deinen Anbieter.</target></trans-unit>
@@ -51,27 +51,27 @@
             <trans-unit id="cheddi.error.serverUnreachable"><source>The server aborted the request. This is usually a server-side error. Please check the TYPO3 log.</source><target>Der Server hat die Anfrage abgebrochen. Das ist meist ein serverseitiger Fehler. Bitte prüfe das TYPO3-Log.</target></trans-unit>
             <trans-unit id="cheddi.error.serverError"><source>The server did not return a valid response. Please check the TYPO3 log.</source><target>Der Server hat keine gültige Antwort geliefert. Bitte prüfe das TYPO3-Log.</target></trans-unit>
             <trans-unit id="cheddi.error.noOpenTurn"><source>This conversation has nothing left to continue. Please ask a new question.</source><target>In dieser Konversation gibt es nichts fortzusetzen. Bitte stelle eine neue Frage.</target></trans-unit>
-            <trans-unit id="cheddi.error.requestRateLimited"><source>The AI Suite Server received too many requests from this installation. Please wait a moment and try again.</source><target>Der AI-Suite-Server hat zu viele Anfragen aus dieser Installation erhalten. Bitte warte einen Moment und versuche es erneut.</target></trans-unit>
+            <trans-unit id="cheddi.error.requestRateLimited"><source>The AI Suite Server received too many requests from this installation. Please wait a moment and try again.</source><target>Der AI Suite-Server hat zu viele Anfragen aus dieser Installation erhalten. Bitte warte einen Moment und versuche es erneut.</target></trans-unit>
             <trans-unit id="cheddi.error.rateLimited"><source>Too many requests in a short time. Please wait a moment and try again.</source><target>Zu viele Anfragen in kurzer Zeit. Bitte warte einen Moment und versuche es erneut.</target></trans-unit>
-            <trans-unit id="cheddi.error.apiKeyMissing"><source>No AI Suite API key is configured. Please enter your key in the extension configuration. If you don't have a key yet, you can get one at https://www.autodudes.de</source><target>Es ist kein AI Suite API-Schlüssel konfiguriert. Bitte hinterlege deinen Schlüssel in der Erweiterungskonfiguration. Falls du noch keinen Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.</target></trans-unit>
-            <trans-unit id="cheddi.error.missingApiKey"><source>The request reached the AI Suite Server without an API key. Please check the key in the extension configuration.</source><target>Die Anfrage kam ohne API-Key beim AI-Suite-Server an. Bitte den Key in der Extension-Konfiguration prüfen.</target></trans-unit>
-            <trans-unit id="cheddi.error.invalidApiKey"><source>The AI Suite Server did not accept the API key of this installation. Please check the key in the extension configuration.</source><target>Der AI-Suite-Server hat den API-Key dieser Installation nicht akzeptiert. Bitte den Key in der Extension-Konfiguration prüfen.</target></trans-unit>
-            <trans-unit id="cheddi.error.apiKeyNotFound"><source>The AI Suite Server does not know the API key of this installation. Please check the key in the extension configuration.</source><target>Der AI-Suite-Server kennt den API-Key dieser Installation nicht. Bitte den Key in der Extension-Konfiguration prüfen.</target></trans-unit>
-            <trans-unit id="cheddi.error.apiKeyExpired"><source>The API key of this installation has expired. Please renew it at your provider.</source><target>Der API-Key dieser Installation ist abgelaufen. Bitte beim Anbieter erneuern.</target></trans-unit>
-            <trans-unit id="cheddi.error.apiRouteNotFound"><source>The AI Suite Server does not know this route. Usually the extension is newer than the server it talks to.</source><target>Der AI-Suite-Server kennt diese Route nicht. Meist ist die Extension neuer als der Server, mit dem sie spricht.</target></trans-unit>
-            <trans-unit id="cheddi.error.thirdPartyApi"><source>The AI provider did not answer. Please try again in a moment; the details are in the server log.</source><target>Der KI-Anbieter hat nicht geantwortet. Bitte gleich noch einmal versuchen, die Einzelheiten stehen im Server-Log.</target></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyMissing"><source>No AI Suite API key is configured. Please enter your key in the extension configuration. If you don't have a key yet, you can get one at https://www.autodudes.de</source><target>Es ist kein AI Suite-API-Schlüssel konfiguriert. Bitte hinterlege deinen Schlüssel in der Erweiterungskonfiguration. Falls du noch keinen Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.</target></trans-unit>
+            <trans-unit id="cheddi.error.missingApiKey"><source>The request reached the AI Suite Server without an API key. Please check the key in the extension configuration.</source><target>Die Anfrage kam ohne API-Key beim AI Suite-Server an. Prüfe bitte den Key in der Extension-Konfiguration.</target></trans-unit>
+            <trans-unit id="cheddi.error.invalidApiKey"><source>The AI Suite Server did not accept the API key of this installation. Please check the key in the extension configuration.</source><target>Der AI Suite-Server hat den API-Key dieser Installation nicht akzeptiert. Prüfe bitte den Key in der Extension-Konfiguration.</target></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyNotFound"><source>The AI Suite Server does not know the API key of this installation. Please check the key in the extension configuration.</source><target>Der AI Suite-Server kennt den API-Key dieser Installation nicht. Prüfe bitte den Key in der Extension-Konfiguration.</target></trans-unit>
+            <trans-unit id="cheddi.error.apiKeyExpired"><source>The API key of this installation has expired. Please renew it at your provider.</source><target>Der API-Key dieser Installation ist abgelaufen. Erneuere ihn bitte beim Anbieter.</target></trans-unit>
+            <trans-unit id="cheddi.error.apiRouteNotFound"><source>The AI Suite Server does not know this route. Usually the extension is newer than the server it talks to.</source><target>Der AI Suite-Server kennt diese Route nicht. Meist ist die Extension neuer als der Server, mit dem sie spricht.</target></trans-unit>
+            <trans-unit id="cheddi.error.thirdPartyApi"><source>The AI provider did not answer. Please try again in a moment; the details are in the server log.</source><target>Der KI-Anbieter hat nicht geantwortet. Versuche es bitte gleich noch einmal, die Einzelheiten stehen im Server-Log.</target></trans-unit>
             <trans-unit id="cheddi.error.webSearchUnavailable"><source>Web research is not available for this installation under its current data-protection settings.</source><target>Web-Recherche steht für diese Installation unter den aktuellen Datenschutz-Einstellungen nicht zur Verfügung.</target></trans-unit>
             <trans-unit id="cheddi.error.unknown"><source>Unknown error.</source><target>Unbekannter Fehler.</target></trans-unit>
 
             <trans-unit id="cheddi.notice.modelUnavailable"><source>Note: Your previously selected chat model is no longer available. Please pick a model above. This may be because data-protection (GDPR) mode was activated, which only allows the compliant models.</source><target>Hinweis: Dein zuvor gewähltes Chat-Modell ist nicht (mehr) verfügbar. Bitte wähle oben ein Modell aus. Möglicherweise wurde der DSGVO-Modus aktiviert, der nur die datenschutzkonformen Modelle zulässt.</target></trans-unit>
             <trans-unit id="cheddi.notice.selectModelFirst"><source>Please select a chat model above first.</source><target>Bitte wähle zuerst oben ein Chat-Modell aus.</target></trans-unit>
-            <trans-unit id="cheddi.notice.noModels"><source>No chat model is enabled. Please contact your administrator.</source><target>Kein Chat-Modell freigeschaltet. Bitte an die Administration wenden.</target></trans-unit>
-            <trans-unit id="cheddi.notice.apiKeyMissing.title"><source>Please enter your AI Suite API key in the extension configuration.</source><target>Bitte hinterlege deinen AI Suite API-Schlüssel in der Erweiterungskonfiguration.</target></trans-unit>
+            <trans-unit id="cheddi.notice.noModels"><source>No chat model is enabled. Please contact your administrator.</source><target>Kein Chat-Modell freigeschaltet. Wende dich bitte an die Administration.</target></trans-unit>
+            <trans-unit id="cheddi.notice.apiKeyMissing.title"><source>Please enter your AI Suite API key in the extension configuration.</source><target>Bitte hinterlege deinen AI Suite-API-Schlüssel in der Erweiterungskonfiguration.</target></trans-unit>
             <trans-unit id="cheddi.notice.apiKeyMissing.message"><source>If you don't have an API key yet, you can get one at https://www.autodudes.de</source><target>Wenn du noch keinen API-Schlüssel hast, kannst du dir einen unter https://www.autodudes.de anlegen.</target></trans-unit>
-            <trans-unit id="cheddi.notice.modelLocked"><source>The model is fixed per conversation. Start a new conversation to change it. Credits are charged per answer, and continuing a conversation costs less than starting a new one.</source><target>Das Modell ist pro Konversation festgelegt. Starte eine neue Konversation, um es zu wechseln. Credits fallen pro Antwort an, und ein fortgesetztes Gespräch kostet weniger als ein neues.</target></trans-unit>
+            <trans-unit id="cheddi.notice.modelLocked"><source>The model is fixed per conversation. Start a new conversation to change it. Credits are charged per answer, and continuing a conversation costs less than starting a new one.</source><target>Das Modell ist pro Konversation festgelegt. Starte eine neue Konversation, um es zu wechseln. Credits fallen pro Antwort an, und eine fortgesetzte Konversation kostet weniger als ein neues.</target></trans-unit>
             <trans-unit id="cheddi.notice.activeModel"><source>This conversation runs on {model}. Start a new conversation to change it.</source><target>Diese Konversation läuft auf {model}. Starte eine neue Konversation, um zu wechseln.</target></trans-unit>
-            <trans-unit id="cheddi.notice.toolCapReached"><source>Maximum number of automatic tool calls reached. Please ask a new question.</source><target>Maximale Anzahl automatischer Tool-Calls erreicht. Bitte neue Frage stellen.</target></trans-unit>
-            <trans-unit id="cheddi.notice.toolCapReachedAbort"><source>Tool-call limit reached, the turn was aborted. Please ask a new question.</source><target>Tool-Aufruf-Limit erreicht, der Turn wurde abgebrochen. Bitte neue Frage stellen.</target></trans-unit>
+            <trans-unit id="cheddi.notice.toolCapReached"><source>Maximum number of automatic tool calls reached. Please ask a new question.</source><target>Maximale Anzahl automatischer Tool-Calls erreicht. Stelle bitte eine neue Frage.</target></trans-unit>
+            <trans-unit id="cheddi.notice.toolCapReachedAbort"><source>Tool-call limit reached, the turn was aborted. Please ask a new question.</source><target>Tool-Aufruf-Limit erreicht, der Turn wurde abgebrochen. Stelle bitte eine neue Frage.</target></trans-unit>
             <trans-unit id="cheddi.notice.toolCapSoftWarning"><source>{used} of {limit} allowed tool calls used in this sequence. The turn is aborted at {limit}.</source><target>{used} von {limit} erlaubten Tool-Aufrufen in dieser Sequenz verwendet. Bei {limit} wird der Turn abgebrochen.</target></trans-unit>
             <trans-unit id="cheddi.notice.turnAborted"><source>Turn aborted{reason}.</source><target>Turn abgebrochen{reason}.</target></trans-unit>
             <trans-unit id="cheddi.notice.requestAborted"><source>Request aborted.</source><target>Anfrage abgebrochen.</target></trans-unit>
@@ -86,15 +86,15 @@
             <trans-unit id="cheddi.notice.lowBalance"><source>Your balance is almost used up, please top up credits, otherwise ChEddi will soon be unable to continue.</source><target>Dein Guthaben ist fast aufgebraucht, bitte lade Credits auf, sonst kann ChEddi bald nicht weiterarbeiten.</target></trans-unit>
             <trans-unit id="cheddi.notice.lowBalanceRemaining"><source>{count} credits left, please top up in time.</source><target>Noch {count} Credits, bitte rechtzeitig aufladen.</target></trans-unit>
             <trans-unit id="cheddi.notice.unexpectedStatus"><source>Unexpected status: {status}</source><target>Unerwarteter Status: {status}</target></trans-unit>
-            <trans-unit id="cheddi.context.notice"><source>This conversation is getting long. A summary makes room again.</source><target>Dieses Gespräch wird lang. Eine Zusammenfassung schafft wieder Platz.</target></trans-unit>
-            <trans-unit id="cheddi.context.warning"><source>This conversation is so long that the next message will fail. Summarize it to keep working.</source><target>Dieses Gespräch ist so lang, dass der nächste Beitrag scheitern wird. Fasse es zusammen, um weiterzuarbeiten.</target></trans-unit>
+            <trans-unit id="cheddi.context.notice"><source>This conversation is getting long. A summary makes room again.</source><target>Diese Konversation wird lang. Eine Zusammenfassung schafft wieder Platz.</target></trans-unit>
+            <trans-unit id="cheddi.context.warning"><source>This conversation is so long that the next message will fail. Summarize it to keep working.</source><target>Diese Konversation ist so lang, dass der nächste Beitrag scheitern wird. Fasse sie zusammen, um weiterzuarbeiten.</target></trans-unit>
             <trans-unit id="cheddi.context.summarizeButton"><source>Summarize</source><target>Zusammenfassen</target></trans-unit>
-            <trans-unit id="cheddi.context.summarizing"><source>Summarizing the conversation</source><target>Fasse das Gespräch zusammen</target></trans-unit>
+            <trans-unit id="cheddi.context.summarizing"><source>Summarizing the conversation</source><target>Konversation wird zusammengefasst</target></trans-unit>
             <trans-unit id="cheddi.error.nothingToSummarize"><source>There is nothing to summarize yet.</source><target>Es gibt noch nichts zusammenzufassen.</target></trans-unit>
 
             <trans-unit id="cheddi.history.toolStatus"><source>Tool: {status}</source><target>Tool: {status}</target></trans-unit>
             <trans-unit id="cheddi.sessions.lastUsedAt"><source>Last used on {date} at {time}</source><target>Zuletzt genutzt am {date} um {time}</target></trans-unit>
-            <trans-unit id="cheddi.sessions.lastUsedToday"><source>Last used today at {time}</source><target>Zuletzt genutzt heute um {time}</target></trans-unit>
+            <trans-unit id="cheddi.sessions.lastUsedToday"><source>Last used today at {time}</source><target>Heute zuletzt genutzt um {time}</target></trans-unit>
 
             <trans-unit id="cheddi.orientation.gdprOn"><source>Data protection: GDPR mode active, only the compliant model is offered</source><target>Datenschutz: DSGVO-Modus aktiv, es wird nur das datenschutzkonforme Modell angeboten</target></trans-unit>
             <trans-unit id="cheddi.orientation.aiSystem"><source>You are interacting with an AI system. Its answers can be wrong, and responsibility for what gets published stays with you.</source><target>Du interagierst mit einem KI-System. Seine Antworten können falsch sein, und die Verantwortung für das, was veröffentlicht wird, bleibt bei dir.</target></trans-unit>
@@ -139,8 +139,8 @@
             <trans-unit id="cheddi.summary.collapsed"><source>── Earlier messages summarised ──</source><target>── Frühere Nachrichten zusammengefasst ──</target></trans-unit>
             <trans-unit id="cheddi.summary.collapsedCount"><source>── {count} earlier messages summarised ──</source><target>── {count} frühere Nachrichten zusammengefasst ──</target></trans-unit>
 
-            <trans-unit id="cheddi.confirm.introOne"><source>One tool call needs your confirmation:</source><target>Ein Tool-Aufruf braucht Deine Bestätigung:</target></trans-unit>
-            <trans-unit id="cheddi.confirm.introMany"><source>{count} tool calls need your confirmation:</source><target>{count} Tool-Aufrufe brauchen Deine Bestätigung:</target></trans-unit>
+            <trans-unit id="cheddi.confirm.introOne"><source>One tool call needs your confirmation:</source><target>Ein Tool-Aufruf braucht deine Bestätigung:</target></trans-unit>
+            <trans-unit id="cheddi.confirm.introMany"><source>{count} tool calls need your confirmation:</source><target>{count} Tool-Aufrufe brauchen deine Bestätigung:</target></trans-unit>
             <trans-unit id="cheddi.confirm.targetWorkspace"><source>These changes go to a draft (workspace) and not live.</source><target>Diese Änderungen landen im Entwurf (Workspace) und nicht live.</target></trans-unit>
             <trans-unit id="cheddi.confirm.targetWorkspacePending"><source>A personal draft workspace is created for these changes; they do not go live.</source><target>Für diese Änderungen wird ein persönlicher Entwurfs-Workspace angelegt; sie gehen nicht live.</target></trans-unit>
             <trans-unit id="cheddi.orientation.writeWorkspaceNamed"><source>Write mode: draft, changes go to the workspace "{workspace}" and not live</source><target>Schreibmodus: Entwurf, Änderungen landen im Workspace „{workspace}“ und nicht live</target></trans-unit>
@@ -173,9 +173,9 @@
             <trans-unit id="cheddi.preview.unchanged"><source>unchanged</source><target>unverändert</target></trans-unit>
             <trans-unit id="cheddi.preview.becomes"><source>becomes</source><target>wird zu</target></trans-unit>
             <trans-unit id="cheddi.preview.empty"><source>(empty)</source><target>(leer)</target></trans-unit>
-            <trans-unit id="cheddi.preview.moreFields"><source>+ {count} more field(s)</source><target>+ {count} weitere Felder</target></trans-unit>
-            <trans-unit id="cheddi.preview.moreRecords"><source>+ {count} more record(s), see the technical details</source><target>+ {count} weitere Datensätze, siehe technische Details</target></trans-unit>
-            <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source><target>{count} neue Seiten</target></trans-unit>
+            <trans-unit id="cheddi.preview.moreFields"><source>+ {count} more field(s)</source><target>+ {count} Feld(er) mehr</target></trans-unit>
+            <trans-unit id="cheddi.preview.moreRecords"><source>+ {count} more record(s), see the technical details</source><target>+ {count} Datensatz/-sätze mehr, siehe technische Details</target></trans-unit>
+            <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source><target>{count} neue Seite(n)</target></trans-unit>
             <trans-unit id="cheddi.preview.pageTree.under"><source>Below: {parent}</source><target>Unterhalb von: {parent}</target></trans-unit>
             <trans-unit id="cheddi.preview.translations"><source>+ one translation each in: {languages}</source><target>+ je eine Übersetzung in: {languages}</target></trans-unit>
 
@@ -244,12 +244,12 @@
             <trans-unit id="cheddi.attachment.notFound"><source>File not found</source><target>Datei nicht gefunden</target></trans-unit>
             <trans-unit id="cheddi.attachment.metadataOnly"><source>Text cannot be read from this file</source><target>Aus dieser Datei kann kein Text gelesen werden</target></trans-unit>
 
-            <trans-unit id="cheddi.review.menu"><source>Changes of this conversation</source><target>Änderungen dieser Unterhaltung</target></trans-unit>
-            <trans-unit id="cheddi.review.title"><source>Changes of this conversation</source><target>Änderungen dieser Unterhaltung</target></trans-unit>
+            <trans-unit id="cheddi.review.menu"><source>Changes of this conversation</source><target>Änderungen dieser Konversation</target></trans-unit>
+            <trans-unit id="cheddi.review.title"><source>Changes of this conversation</source><target>Änderungen dieser Konversation</target></trans-unit>
             <trans-unit id="cheddi.review.intro"><source>These records were changed in your draft workspace. Publish them to make them live, or discard them to undo them.</source><target>Diese Inhalte wurden in deinem Entwurf geändert. Veröffentliche sie, um sie live zu schalten, oder verwirf sie, um sie rückgängig zu machen.</target></trans-unit>
-            <trans-unit id="cheddi.review.empty"><source>This conversation has not changed any records yet.</source><target>Diese Unterhaltung hat noch keine Inhalte geändert.</target></trans-unit>
+            <trans-unit id="cheddi.review.empty"><source>This conversation has not changed any records yet.</source><target>Diese Konversation hat noch keine Inhalte geändert.</target></trans-unit>
             <trans-unit id="cheddi.review.unavailable"><source>Draft workspaces are not available, so changes cannot be reviewed here.</source><target>Entwürfe sind nicht verfügbar, daher können Änderungen hier nicht geprüft werden.</target></trans-unit>
-            <trans-unit id="cheddi.review.loadFailed"><source>The changes of this conversation could not be loaded.</source><target>Die Änderungen dieser Unterhaltung konnten nicht geladen werden.</target></trans-unit>
+            <trans-unit id="cheddi.review.loadFailed"><source>The changes of this conversation could not be loaded.</source><target>Die Änderungen dieser Konversation konnten nicht geladen werden.</target></trans-unit>
             <trans-unit id="cheddi.review.publish"><source>Publish</source><target>Veröffentlichen</target></trans-unit>
             <trans-unit id="cheddi.review.discard"><source>Discard</source><target>Verwerfen</target></trans-unit>
             <trans-unit id="cheddi.review.publishAll"><source>Publish all</source><target>Alle veröffentlichen</target></trans-unit>
@@ -266,7 +266,7 @@
             <trans-unit id="cheddi.review.statusModified"><source>Changed</source><target>Geändert</target></trans-unit>
             <trans-unit id="cheddi.review.statusDeleted"><source>Deleted</source><target>Gelöscht</target></trans-unit>
 
-            <trans-unit id="cheddi.statistics.heading"><source>ChEddi Chat Assistant</source><target>ChEddi Chat-Assistent</target></trans-unit>
+            <trans-unit id="cheddi.statistics.heading"><source>ChEddi Chat Assistant</source><target>ChEddi-Chat-Assistent</target></trans-unit>
             <trans-unit id="cheddi.statistics.emptyTitle"><source>ChEddi usage</source><target>ChEddi-Nutzung</target></trans-unit>
             <trans-unit id="cheddi.statistics.emptyText"><source>No ChEddi usage recorded for the selected month.</source><target>Für den gewählten Monat ist keine ChEddi-Nutzung erfasst.</target></trans-unit>
             <trans-unit id="cheddi.statistics.byModelTitle"><source>Credits by model</source><target>Credits nach Modell</target></trans-unit>
@@ -279,7 +279,7 @@
             <trans-unit id="cheddi.ui.modeLiveHint"><source>Changes take effect on the live site immediately.</source><target>Änderungen wirken sofort auf der Live-Seite.</target></trans-unit>
             <trans-unit id="cheddi.ui.helpButton"><source>How ChEddi works here</source><target>Wie ChEddi hier arbeitet</target></trans-unit>
             <trans-unit id="cheddi.ui.guidelines"><source>Editorial rules</source><target>Redaktionsregeln</target></trans-unit>
-            <trans-unit id="cheddi.ui.guidelinesSoon"><source>Editorial rules for ChEddi - coming soon</source><target>Redaktionsregeln für ChEddi - folgt in Kürze</target></trans-unit>
+            <trans-unit id="cheddi.ui.guidelinesSoon"><source>Editorial rules for ChEddi - coming soon</source><target>Redaktionsregeln für ChEddi: folgen in Kürze</target></trans-unit>
             <trans-unit id="cheddi.credits.pack"><source>Pack</source><target>Pack</target></trans-unit>
             <trans-unit id="cheddi.credits.plan"><source>Plan</source><target>Plan</target></trans-unit>
             <trans-unit id="cheddi.credits.packHint"><source>Pack: {count} credits left</source><target>Pack: {count} Credits übrig</target></trans-unit>
