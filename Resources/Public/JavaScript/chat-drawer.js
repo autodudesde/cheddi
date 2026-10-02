@@ -303,22 +303,6 @@ class ChatDrawer {
         this.bindAutoMinimize();
     }
 
-    destroy() {
-        if (this.boundDocumentClick) {
-            document.removeEventListener('click', this.boundDocumentClick);
-        }
-        if (this.boundDocumentPointerDown) {
-            document.removeEventListener('pointerdown', this.boundDocumentPointerDown);
-        }
-        if (this.boundWindowBlur) {
-            window.removeEventListener('blur', this.boundWindowBlur);
-        }
-        this.thinking?.hide();
-        if (this.activeAbortController) {
-            this.activeAbortController.abort();
-        }
-    }
-
     bindAutoMinimize() {
         this.boundDocumentPointerDown = (event) => {
             if (!this.state.open || this.state.docked || modalIsOpen()) {

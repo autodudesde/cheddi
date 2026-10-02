@@ -48,12 +48,4 @@ final class GdprModelPolicy
     {
         return self::DEFAULT_MODEL;
     }
-
-    /**
-     * @return list<string>
-     */
-    public function compliantModels(): array
-    {
-        return self::COMPLIANT_MODELS;
-    }
 }

@@ -13,10 +13,8 @@
             <trans-unit id="cheddi.ui.newConversation"><source>New conversation</source></trans-unit>
             <trans-unit id="cheddi.ui.conversationsMenu"><source>Conversations</source></trans-unit>
             <trans-unit id="cheddi.ui.templatesMenu"><source>Templates</source></trans-unit>
-            <trans-unit id="cheddi.templates.loading"><source>Loading templates …</source></trans-unit>
             <trans-unit id="cheddi.ui.templatesTitle"><source>Prompt templates</source></trans-unit>
             <trans-unit id="cheddi.templates.searchPlaceholder"><source>Search templates</source></trans-unit>
-            <trans-unit id="cheddi.templates.none"><source>No prompt templates are available.</source></trans-unit>
             <trans-unit id="cheddi.templates.noMatch"><source>No template matches this search.</source></trans-unit>
             <trans-unit id="cheddi.templates.needsRecord"><source>This template works on the record you are editing. Open one first.</source></trans-unit>
             <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source></trans-unit>
@@ -29,7 +27,6 @@
             <trans-unit id="cheddi.ui.send"><source>Send</source></trans-unit>
             <trans-unit id="cheddi.ui.cancel"><source>Cancel</source></trans-unit>
             <trans-unit id="cheddi.ui.locked"><source>Locked</source></trans-unit>
-
 
             <!-- Working indicator -->
             <trans-unit id="cheddi.thinking.default"><source>ChEddi is thinking</source></trans-unit>
@@ -192,7 +189,6 @@
             <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source></trans-unit>
             <trans-unit id="cheddi.preview.pageTree.under"><source>Below: {parent}</source></trans-unit>
             <trans-unit id="cheddi.preview.translations"><source>+ one translation each in: {languages}</source></trans-unit>
-
 
             <!-- Editor-facing labels for MCP tool calls -->
             <trans-unit id="cheddi.tool.fallback"><source>Action</source></trans-unit>

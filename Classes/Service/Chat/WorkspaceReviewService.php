@@ -22,6 +22,7 @@ use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class WorkspaceReviewService
@@ -40,7 +41,7 @@ class WorkspaceReviewService
     ) {}
 
     /**
-     * @return list<array{uid: int, table: string, recordUid: int, workspaceRecordUid: int, pageId: int, action: string, label: string, status: string, changedFields: list<string>}>
+     * @return list<array{uid: int, table: string, recordUid: int, workspaceRecordUid: int, pageId: int, action: string, label: string, language: string, status: string, changedFields: list<string>}>
      */
     public function describeChanges(int $sessionUid): array
     {
@@ -79,6 +80,7 @@ class WorkspaceReviewService
                 'pageId' => (int) $change['page_id'],
                 'action' => (string) $change['action'],
                 'label' => $label,
+                'language' => $this->languageOf($table, $workspaceRecordUid > 0 ? $workspaceRecordUid : (int) $change['record_uid'], (int) $change['page_id']),
                 'status' => self::normaliseStatus($status),
                 'changedFields' => array_values(array_map('strval', $changedFields)),
             ];
@@ -173,6 +175,27 @@ class WorkspaceReviewService
                 $workspaceRecordUid => ['discard' => true],
             ],
         ]);
+    }
+
+    private function languageOf(string $table, int $uid, int $pageId): string
+    {
+        $languageField = (string) ($GLOBALS['TCA'][$table]['ctrl']['languageField'] ?? '');
+        if ('' === $languageField || $uid <= 0 || $pageId <= 0) {
+            return '';
+        }
+
+        try {
+            $record = BackendUtility::getRecord($table, $uid, $languageField);
+            $languageId = (int) ($record[$languageField] ?? -1);
+            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId);
+            if ($languageId < 0 || count($site->getLanguages()) < 2) {
+                return '';
+            }
+
+            return $site->getLanguageById($languageId)->getTitle();
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /**

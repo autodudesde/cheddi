@@ -205,7 +205,7 @@ class ChatService
             return TurnResult::error($sessionUuid, 'Chat session not found.');
         }
 
-        $context = new ChatToolContext($request, $session->sessionUuid, $session->model);
+        $context = new ChatToolContext($request, $session->model);
 
         $pendingCalls = $this->extractPendingToolCalls($session->uid);
         if ([] === $pendingCalls) {
@@ -594,7 +594,7 @@ class ChatService
         }
 
         $this->progressService->startTurn($session->sessionUuid);
-        $context = new ChatToolContext($request, $session->sessionUuid, $session->model);
+        $context = new ChatToolContext($request, $session->model);
         $history = $this->messageRepository->findBySession($session->uid);
         $messages = $this->reconcileDanglingToolCalls(
             array_map(fn (ChatMessage $m): array => $this->messageToApiShape($m, true), $history),

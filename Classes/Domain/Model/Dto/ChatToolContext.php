@@ -20,7 +20,6 @@ final class ChatToolContext
 {
     public function __construct(
         public readonly ServerRequestInterface $request,
-        public readonly string $sessionUuid = '',
         public readonly string $model = '',
     ) {}
 }

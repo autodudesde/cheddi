@@ -16,28 +16,28 @@ $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['proc
     = ChatWriteCaptureHook::class;
 
 try {
-    $aisuiteChatExtConf = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('cheddi');
+    $cheddiExtConf = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('cheddi');
 } catch (Throwable) {
-    $aisuiteChatExtConf = [];
+    $cheddiExtConf = [];
 }
 
 try {
-    $aisuiteChatMcpExtConf = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('ai_suite_mcp');
+    $cheddiMcpExtConf = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('ai_suite_mcp');
 } catch (Throwable) {
-    $aisuiteChatMcpExtConf = [];
+    $cheddiMcpExtConf = [];
 }
 
-$aisuiteChatAdditionalRedactionPatterns = array_values(array_unique(array_filter(
+$cheddiAdditionalRedactionPatterns = array_values(array_unique(array_filter(
     array_map('trim', array_merge(
-        explode(',', (string) ($aisuiteChatMcpExtConf['mcpLogRedactionPatterns'] ?? '')),
-        explode(',', (string) ($aisuiteChatExtConf['chatLogRedactionPatterns'] ?? '')),
+        explode(',', (string) ($cheddiMcpExtConf['mcpLogRedactionPatterns'] ?? '')),
+        explode(',', (string) ($cheddiExtConf['chatLogRedactionPatterns'] ?? '')),
     )),
     static fn (string $entry): bool => '' !== $entry,
 )));
 
-$aisuiteChatLogVerbose = (string) ($aisuiteChatExtConf['chatLogVerbose'] ?? 'inherit');
-if ('' === $aisuiteChatLogVerbose || 'inherit' === $aisuiteChatLogVerbose) {
-    $aisuiteChatLogVerbose = (string) ($aisuiteChatMcpExtConf['mcpLogVerbose'] ?? '1');
+$cheddiLogVerbose = (string) ($cheddiExtConf['chatLogVerbose'] ?? 'inherit');
+if ('' === $cheddiLogVerbose || 'inherit' === $cheddiLogVerbose) {
+    $cheddiLogVerbose = (string) ($cheddiMcpExtConf['mcpLogVerbose'] ?? '1');
 }
 
 $GLOBALS['TYPO3_CONF_VARS']['LOG']['AutoDudes']['Cheddi']['writerConfiguration'] = [
@@ -49,7 +49,7 @@ $GLOBALS['TYPO3_CONF_VARS']['LOG']['AutoDudes']['Cheddi']['writerConfiguration']
     LogLevel::INFO => [
         FileWriter::class => [
             'logFile' => Environment::getVarPath().'/log/cheddi.log',
-            'disabled' => !(bool) (int) $aisuiteChatLogVerbose,
+            'disabled' => !(bool) (int) $cheddiLogVerbose,
         ],
     ],
 ];
@@ -57,9 +57,9 @@ $GLOBALS['TYPO3_CONF_VARS']['LOG']['AutoDudes']['Cheddi']['writerConfiguration']
 $GLOBALS['TYPO3_CONF_VARS']['LOG']['AutoDudes']['Cheddi']['processorConfiguration'] = [
     LogLevel::DEBUG => [
         SensitiveDataProcessor::class => [
-            'additionalPatterns' => $aisuiteChatAdditionalRedactionPatterns,
+            'additionalPatterns' => $cheddiAdditionalRedactionPatterns,
         ],
     ],
 ];
 
-unset($aisuiteChatExtConf, $aisuiteChatMcpExtConf, $aisuiteChatAdditionalRedactionPatterns, $aisuiteChatLogVerbose);
+unset($cheddiExtConf, $cheddiMcpExtConf, $cheddiAdditionalRedactionPatterns, $cheddiLogVerbose);

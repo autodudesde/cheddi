@@ -12,10 +12,8 @@
             <trans-unit id="cheddi.ui.newConversation"><source>New conversation</source><target>Neue Konversation</target></trans-unit>
             <trans-unit id="cheddi.ui.conversationsMenu"><source>Conversations</source><target>Konversationen</target></trans-unit>
             <trans-unit id="cheddi.ui.templatesMenu"><source>Templates</source><target>Vorlagen</target></trans-unit>
-            <trans-unit id="cheddi.templates.loading"><source>Loading templates …</source><target>Vorlagen werden geladen …</target></trans-unit>
             <trans-unit id="cheddi.ui.templatesTitle"><source>Prompt templates</source><target>Prompt-Vorlagen</target></trans-unit>
             <trans-unit id="cheddi.templates.searchPlaceholder"><source>Search templates</source><target>Vorlagen durchsuchen</target></trans-unit>
-            <trans-unit id="cheddi.templates.none"><source>No prompt templates are available.</source><target>Es sind keine Prompt-Vorlagen vorhanden.</target></trans-unit>
             <trans-unit id="cheddi.templates.noMatch"><source>No template matches this search.</source><target>Keine Vorlage passt zu dieser Suche.</target></trans-unit>
             <trans-unit id="cheddi.templates.needsRecord"><source>This template works on the record you are editing. Open one first.</source><target>Diese Vorlage arbeitet mit dem Datensatz, den du bearbeitest. Bitte zuerst einen öffnen.</target></trans-unit>
             <trans-unit id="cheddi.ui.conversationsTitle"><source>Conversations</source><target>Konversationen</target></trans-unit>
@@ -28,7 +26,6 @@
             <trans-unit id="cheddi.ui.send"><source>Send</source><target>Senden</target></trans-unit>
             <trans-unit id="cheddi.ui.cancel"><source>Cancel</source><target>Abbrechen</target></trans-unit>
             <trans-unit id="cheddi.ui.locked"><source>Locked</source><target>Gesperrt</target></trans-unit>
-
 
             <trans-unit id="cheddi.thinking.default"><source>ChEddi is thinking</source><target>ChEddi denkt nach</target></trans-unit>
             <trans-unit id="cheddi.thinking.moment"><source>One moment …</source><target>Einen Moment …</target></trans-unit>
@@ -178,7 +175,6 @@
             <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source><target>{count} neue Seite(n)</target></trans-unit>
             <trans-unit id="cheddi.preview.pageTree.under"><source>Below: {parent}</source><target>Unterhalb von: {parent}</target></trans-unit>
             <trans-unit id="cheddi.preview.translations"><source>+ one translation each in: {languages}</source><target>+ je eine Übersetzung in: {languages}</target></trans-unit>
-
 
             <trans-unit id="cheddi.tool.fallback"><source>Action</source><target>Aktion</target></trans-unit>
             <trans-unit id="cheddi.tool.readPageTree"><source>Read page tree</source><target>Seitenbaum lesen</target></trans-unit>

@@ -144,17 +144,6 @@ class ChatMessageRepository extends AbstractRepository
         return (int) $connection->lastInsertId();
     }
 
-    public function updateToolStatus(int $messageUid, string $newStatus): void
-    {
-        $this->connectionPool->getConnectionForTable($this->table)
-            ->update(
-                $this->table,
-                ['tool_status' => $newStatus, 'tstamp' => time()],
-                ['uid' => $messageUid],
-            )
-        ;
-    }
-
     /**
      * @param list<int> $messageUids
      */

@@ -304,12 +304,7 @@ class ToolBridge
             beUserUid: (int) ($backendUser->user['uid'] ?? 0),
             scopes: $this->availableScopes(),
             clientId: 'cheddi',
-            tokenId: '',
         );
-
-        if ('' !== $context->sessionUuid) {
-            $this->userContext->setSessionKey('cheddi:'.$context->sessionUuid);
-        }
 
         $workspaceId = $this->orientationService->resolveWorkspaceId($backendUser);
 

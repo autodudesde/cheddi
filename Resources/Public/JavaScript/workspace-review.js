@@ -144,6 +144,12 @@ export class WorkspaceReview {
         const label = document.createElement('td');
         const title = document.createElement('div');
         title.textContent = change.label || `${change.table}:${change.recordUid}`;
+        if (change.language) {
+            const language = document.createElement('span');
+            language.className = 'badge badge-default ms-1';
+            language.textContent = change.language;
+            title.append(language);
+        }
         label.append(title);
 
         if (Array.isArray(change.changedFields) && change.changedFields.length > 0) {

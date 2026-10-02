@@ -33,11 +33,6 @@ class ChatModelPolicy
         private readonly ChatServerCapabilityService $capabilityService,
     ) {}
 
-    public function isSelectable(string $model): bool
-    {
-        return null === $this->reasonNotSelectable($model);
-    }
-
     public function reasonNotSelectable(string $model): ?string
     {
         if ('' === $model) {

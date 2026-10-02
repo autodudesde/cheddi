@@ -8,6 +8,7 @@ use AutoDudes\AiSuiteMcp\Mcp\Service\RecordPreviewService;
 use AutoDudes\AiSuiteMcp\Mcp\Utility\BatchDefaults;
 use AutoDudes\AiSuiteMcp\Mcp\Utility\RecordsArgumentDecoder;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
 
 class PendingPreviewService
 {
@@ -42,6 +43,7 @@ class PendingPreviewService
                 'moveRecords' => $this->buildExisting($this->withBatchTable($arguments, 'moves'), 'moves', 'move'),
                 'localizeRecord' => $this->buildLocalize($arguments),
                 'savePageTree' => $this->buildPageTree($arguments),
+                'patchText' => $this->buildPatch($arguments),
                 default => null,
             };
         } catch (\Throwable $e) {
@@ -175,6 +177,48 @@ class PendingPreviewService
         );
 
         return $this->wrap(array_map($this->capFields(...), $described), $total);
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return null|array<string, mixed>
+     */
+    private function buildPatch(array $arguments): ?array
+    {
+        $table = (string) ($arguments['table'] ?? '');
+        $uid = isset($arguments['uid']) && is_numeric($arguments['uid']) ? (int) $arguments['uid'] : null;
+        $field = (string) ($arguments['field'] ?? '');
+        $replacements = $arguments['replacements'] ?? null;
+        if ('' === $table || null === $uid || '' === $field || !is_array($replacements) || [] === $replacements) {
+            return null;
+        }
+
+        $row = BackendUtility::getRecordWSOL($table, $uid);
+        $value = is_array($row) && is_scalar($row[$field] ?? null) ? (string) $row[$field] : null;
+        foreach ($replacements as $replacement) {
+            $search = is_array($replacement) ? (string) ($replacement['search'] ?? '') : '';
+            if (null === $value || '' === $search || !str_contains($value, $search)) {
+                $value = null;
+
+                break;
+            }
+            $replace = (string) ($replacement['replace'] ?? '');
+            $value = (bool) ($replacement['all'] ?? false)
+                ? str_replace($search, $replace, $value)
+                : substr_replace($value, $replace, (int) strpos($value, $search), strlen($search));
+        }
+
+        if (null === $value) {
+            return $this->wrap([$this->recordPreview->describeExisting($table, $uid, 'update', sprintf('Field: %s', $field))], 1);
+        }
+
+        $described = $this->recordPreview->describeWrite(
+            [['table' => $table, 'uid' => $uid, 'fields' => [$field => $value]]],
+            self::MAX_VALUE_LENGTH,
+        );
+
+        return $this->wrap(array_map($this->capFields(...), $described), 1);
     }
 
     /**

@@ -1267,15 +1267,6 @@ body.cheddi-resizing-composer * {
     color: var(--cheddi-muted-fg);
 }
 
-.cheddi__sessions-item--disabled {
-    opacity: 0.5;
-}
-
-.cheddi__sessions-item--disabled:hover {
-    background-color: transparent;
-    border-color: transparent;
-}
-
 .cheddi__sessions-item:hover {
     background-color: var(--cheddi-hover-bg);
 }

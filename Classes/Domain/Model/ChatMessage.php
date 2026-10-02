@@ -21,8 +21,6 @@ class ChatMessage
     public const ROLE_TOOL = 'tool';
     public const ROLE_SUMMARY = 'summary';
 
-    public const TOOL_STATUS_PENDING = 'pending';
-    public const TOOL_STATUS_APPROVED = 'approved';
     public const TOOL_STATUS_REJECTED = 'rejected';
     public const TOOL_STATUS_DONE = 'done';
     public const TOOL_STATUS_FAILED = 'failed';
