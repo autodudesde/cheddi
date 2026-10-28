@@ -23,6 +23,7 @@ use AutoDudes\Cheddi\Mcp\Tool\ReadWebPageTool;
 use AutoDudes\Cheddi\Mcp\Tool\SearchWebTool;
 use AutoDudes\Cheddi\Service\Chat\ToolBridge;
 use AutoDudes\Cheddi\Service\Chat\UploadedFileWriter;
+use AutoDudes\Cheddi\Upgrades\CheddiPermissionsUpgradeWizard;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use TYPO3\CMS\Backend\Controller\Event\AfterBackendPageRenderEvent;
 use TYPO3\CMS\Workspaces\Event\AfterRecordPublishedEvent;
@@ -48,6 +49,11 @@ return static function (ContainerConfigurator $configurator): void {
             ->tag(ToolBridge::CHAT_TOOL_TAG)
         ;
     }
+
+    // Tagged by name: the UpgradeWizard attribute lives in EXT:install up to v13 and in EXT:core from v14.
+    $services->set(CheddiPermissionsUpgradeWizard::class)
+        ->tag('install.upgradewizard', ['identifier' => CheddiPermissionsUpgradeWizard::IDENTIFIER])
+    ;
 
     $services->set(UploadedFileWriter::class)
         ->public()
@@ -76,7 +82,7 @@ return static function (ContainerConfigurator $configurator): void {
 
     $services->set(AutoDeleteChatSessionsCommand::class)
         ->tag('console.command', [
-            'command' => 'cheddi:auto-delete-sessions',
+            'command' => AutoDeleteChatSessionsCommand::NAME,
             'description' => 'Soft-/hard-delete expired chat sessions.',
             'schedulable' => true,
         ])

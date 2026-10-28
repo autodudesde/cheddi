@@ -19,6 +19,7 @@ use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\LocalizationService;
 use AutoDudes\AiSuiteMcp\Domain\Repository\SysWorkspaceRepository;
 use AutoDudes\AiSuiteMcp\Mcp\Service\McpWriteModeResolver;
+use AutoDudes\Cheddi\Exception\WorkspaceAccessException;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -38,11 +39,12 @@ class ChatOrientationService implements SingletonInterface
         private readonly WebResearchPolicy $webResearchPolicy,
         private readonly SysWorkspaceRepository $sysWorkspaceRepository,
         private readonly BackendUserService $backendUserService,
+        private readonly ChatWorkspaceOptionsService $workspaceOptions,
         private readonly LoggerInterface $logger,
     ) {}
 
     /**
-     * @return array{gdprForced: bool, writeMode: string, webResearch: bool, webResearchBlockedReason: string, sessionLifetimeDays: int, apiKeyMissing: bool, workspaceId: int, workspaceTitle: string, workspacePending: bool}
+     * @return array{gdprForced: bool, writeMode: string, webResearch: bool, webResearchBlockedReason: string, sessionLifetimeDays: int, apiKeyMissing: bool, workspaceId: int, workspaceTitle: string, workspacePending: bool, workspaceOptions: list<array{value: string, uid: int, title: string, personal: bool, pending: bool}>}
      */
     public function getOrientation(): array
     {
@@ -58,6 +60,7 @@ class ChatOrientationService implements SingletonInterface
             'workspaceId' => $workspace['id'],
             'workspaceTitle' => $workspace['title'],
             'workspacePending' => $workspace['pending'],
+            'workspaceOptions' => $this->workspaceOptions(),
         ];
     }
 
@@ -66,7 +69,7 @@ class ChatOrientationService implements SingletonInterface
      *
      * @return array{id: int, title: string, pending: bool}
      */
-    public function resolveWorkspaceForDisplay(): array
+    public function resolveWorkspaceForDisplay(int $pinnedWorkspaceId = 0): array
     {
         if ('live' === $this->getWriteMode()) {
             return ['id' => 0, 'title' => '', 'pending' => false];
@@ -78,11 +81,9 @@ class ChatOrientationService implements SingletonInterface
                 return ['id' => 0, 'title' => '', 'pending' => true];
             }
 
-            $workspaceId = (int) $backendUser->workspace;
+            $workspaceId = $pinnedWorkspaceId > 0 ? $pinnedWorkspaceId : (int) $backendUser->workspace;
             if ($workspaceId <= 0) {
-                $workspaceId = (int) ($this->sysWorkspaceRepository->findUserWorkspaceUid(
-                    (int) ($backendUser->user['uid'] ?? 0),
-                ) ?? 0);
+                $workspaceId = (int) ($this->workspaceOptions->ownWorkspaceUid($backendUser) ?? 0);
             }
             if ($workspaceId <= 0) {
                 return ['id' => 0, 'title' => '', 'pending' => true];
@@ -118,9 +119,31 @@ class ChatOrientationService implements SingletonInterface
         return $this->chatSettings->getWriteModeOverride() ?? $this->writeModeResolver->getWriteMode();
     }
 
-    public function resolveWorkspaceId(BackendUserAuthentication $backendUser): int
+    /**
+     * @throws WorkspaceAccessException
+     */
+    public function resolveWorkspaceId(BackendUserAuthentication $backendUser, int $pinnedWorkspaceId = 0): int
     {
-        return $this->writeModeResolver->resolveWorkspaceId($backendUser, null, $this->getWriteMode());
+        if ('live' === $this->getWriteMode()) {
+            return 0;
+        }
+        if ($pinnedWorkspaceId > 0) {
+            return $pinnedWorkspaceId;
+        }
+        if ($backendUser->workspace > 0) {
+            return (int) $backendUser->workspace;
+        }
+
+        return $this->workspaceOptions->ensureOwnWorkspaceId($backendUser);
+    }
+
+    public function pinWorkspace(BackendUserAuthentication $backendUser, string $choice): ?int
+    {
+        if ('' === $choice || 'live' === $this->getWriteMode()) {
+            return 0;
+        }
+
+        return $this->workspaceOptions->pin($backendUser, $choice);
     }
 
     /**
@@ -134,7 +157,9 @@ class ChatOrientationService implements SingletonInterface
             ['tone' => self::TONE_INFO, 'text' => $this->translate('aiSystem')],
             'live' === $o['writeMode']
                 ? ['tone' => self::TONE_WARNING, 'text' => $this->translate('writeLive')]
-                : ['tone' => self::TONE_INFO, 'text' => $this->workspaceStatement($o['workspaceTitle'], $o['workspacePending'])],
+                : ['tone' => self::TONE_INFO, 'text' => [] !== $o['workspaceOptions']
+                    ? $this->translate('writeWorkspace')
+                    : $this->workspaceStatement($o['workspaceTitle'], $o['workspacePending'])],
             $o['gdprForced']
                 ? ['tone' => self::TONE_SUCCESS, 'text' => $this->translate('gdprOn')]
                 : ['tone' => self::TONE_INFO, 'text' => $this->translate('gdprOff')],
@@ -171,6 +196,29 @@ class ChatOrientationService implements SingletonInterface
             $this->translate('compact.writeMode'),
             $writeMode,
         );
+    }
+
+    /**
+     * @return list<array{value: string, uid: int, title: string, personal: bool, pending: bool}>
+     */
+    private function workspaceOptions(): array
+    {
+        if ('live' === $this->getWriteMode()) {
+            return [];
+        }
+
+        try {
+            $backendUser = $this->backendUserService->getBackendUser();
+            $options = null === $backendUser ? [] : $this->workspaceOptions->optionsFor($backendUser);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: could not list the selectable workspaces', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+
+        return count($options) > 1 ? $options : [];
     }
 
     private function workspaceStatement(string $workspaceTitle, bool $pending): string

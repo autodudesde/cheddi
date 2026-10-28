@@ -17,6 +17,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\ModelService;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
 
 class ChatModelPolicy
 {
@@ -54,13 +55,13 @@ class ChatModelPolicy
         if (null === $keyMap) {
             return self::REASON_NOT_CHAT;
         }
-        if (!$this->backendUserService->checkPermissions('tx_aisuite_models:'.$model)) {
+        if (!$this->backendUserService->checkPermissions(CheddiPermissionEnumeration::model($model))) {
             return self::REASON_NOT_PERMITTED;
         }
         if ($this->gdprModelPolicy->isForced($extConf) && !$this->gdprModelPolicy->isCompliant($model)) {
             return self::REASON_GDPR_BLOCKED;
         }
-        if ($this->capabilityService->get()['byok'] && !self::hasApiKey($keyMap)) {
+        if ($this->capabilityService->get()['byok'] && !$this->hasApiKey($keyMap)) {
             return self::REASON_MISSING_KEY;
         }
 
@@ -70,7 +71,7 @@ class ChatModelPolicy
     /**
      * @param array<string, mixed> $keyMap
      */
-    private static function hasApiKey(array $keyMap): bool
+    private function hasApiKey(array $keyMap): bool
     {
         foreach ($keyMap as $value) {
             if ('' !== trim((string) $value)) {

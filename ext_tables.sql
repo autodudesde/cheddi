@@ -12,6 +12,7 @@ CREATE TABLE tx_cheddi_session (
     be_user int(11) DEFAULT '0' NOT NULL,
     title varchar(255) DEFAULT '' NOT NULL,
     model varchar(64) DEFAULT '' NOT NULL,
+    workspace int(11) DEFAULT '0' NOT NULL,
     last_activity int(11) DEFAULT '0' NOT NULL,
 
     PRIMARY KEY (uid),
@@ -69,4 +70,40 @@ CREATE TABLE tx_cheddi_change (
     PRIMARY KEY (uid),
     KEY session (session),
     KEY record (tablename, record_uid)
+);
+
+#
+# Table structure for table 'tx_cheddi_upload'
+#
+CREATE TABLE tx_cheddi_upload (
+    uid int(11) NOT NULL auto_increment,
+    pid int(11) DEFAULT '0' NOT NULL,
+    crdate int(11) DEFAULT '0' NOT NULL,
+
+    file int(11) DEFAULT '0' NOT NULL,
+    be_user int(11) DEFAULT '0' NOT NULL,
+
+    PRIMARY KEY (uid),
+    KEY file (file),
+    KEY crdate (crdate)
+);
+
+#
+# Group-level ChEddi settings (empty = inherit the extension configuration)
+#
+CREATE TABLE be_groups (
+    chatUploadFolder varchar(255) DEFAULT '' NOT NULL,
+    chatUploadRandomNames varchar(8) DEFAULT '' NOT NULL,
+    chatForceGdpa varchar(8) DEFAULT '' NOT NULL,
+    chatWriteMode varchar(16) DEFAULT '' NOT NULL,
+    chatAllowRawHtmlWrite varchar(8) DEFAULT '' NOT NULL,
+    chatExcludedTools text,
+    chatExcludedTables text
+);
+
+#
+# Table structure for table 'sys_workspace'
+#
+CREATE TABLE sys_workspace (
+    tx_cheddi_owner int(11) DEFAULT '0' NOT NULL
 );

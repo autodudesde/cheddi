@@ -19,9 +19,7 @@ final class GdprModelPolicy
     /**
      * @var list<string>
      */
-    private const COMPLIANT_MODELS = ['IonosQwen35'];
-
-    private const DEFAULT_MODEL = 'IonosQwen35';
+    private const COMPLIANT_MODELS = ['IonosQwen38', 'IonosQwen35'];
 
     public function __construct(
         private readonly ChatSettingsService $chatSettings,
@@ -44,8 +42,11 @@ final class GdprModelPolicy
         return in_array($model, self::COMPLIANT_MODELS, true);
     }
 
-    public function defaultModel(): string
+    /**
+     * @return non-empty-list<string>
+     */
+    public function defaultModels(): array
     {
-        return self::DEFAULT_MODEL;
+        return self::COMPLIANT_MODELS;
     }
 }

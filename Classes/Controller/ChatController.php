@@ -17,8 +17,10 @@ namespace AutoDudes\Cheddi\Controller;
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\CsvExportService;
+use AutoDudes\AiSuiteMcp\Domain\Model\Dto\RateLimitPolicy;
 use AutoDudes\AiSuiteMcp\Mcp\Service\RateLimiterService;
 use AutoDudes\Cheddi\Domain\Model\Dto\TurnResult;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
 use AutoDudes\Cheddi\Service\Chat\AttachmentService;
 use AutoDudes\Cheddi\Service\Chat\ChatCatalogService;
 use AutoDudes\Cheddi\Service\Chat\ChatCreditsService;
@@ -37,8 +39,6 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 #[AsController]
 final class ChatController
 {
-    private const FEATURE_FLAG = 'tx_aisuite_features:enable_cheddi_interface';
-
     private const MODEL_REJECTION_MESSAGES = [
         ChatModelPolicy::REASON_NOT_CHAT => 'Selected model is not a chat model.',
         ChatModelPolicy::REASON_NOT_PERMITTED => 'Selected chat model is not allowed for this BE user group.',
@@ -86,7 +86,7 @@ final class ChatController
         }
         $model = $this->stringParam($params, 'model');
         if ('' === $model && $this->gdprModelPolicy->isForced($this->settingsFactory->mergeExtConfAndUserGroupSettings())) {
-            $model = $this->gdprModelPolicy->defaultModel();
+            $model = $this->firstSelectableGdprModel();
         }
         $modelDenied = $this->guardModelPermission($model);
         if (null !== $modelDenied) {
@@ -96,7 +96,14 @@ final class ChatController
 
         $attachmentUids = $this->attachmentService->parseClientPayload($params['attachments'] ?? null);
 
-        $result = $this->chatService->startTurn($sessionUuid, $text, $model, $request, $attachmentUids);
+        $result = $this->chatService->startTurn(
+            $sessionUuid,
+            $text,
+            $model,
+            $request,
+            $attachmentUids,
+            $this->stringParam($params, 'workspace'),
+        );
 
         return $this->turnResultToResponse($result);
     }
@@ -148,7 +155,7 @@ final class ChatController
 
         $session = $this->chatService->loadSession($sessionUuid);
         if (null === $session) {
-            return new JsonResponse(['error' => ['message' => 'Session not found.']], 404);
+            return new JsonResponse(['error' => ['message' => 'Session not found.', 'chatErrorCode' => 'sessionNotFound']], 404);
         }
 
         return new JsonResponse(['session' => $session]);
@@ -192,7 +199,7 @@ final class ChatController
 
         $ok = $this->chatService->deleteSession($sessionUuid);
         if (!$ok) {
-            return new JsonResponse(['error' => ['message' => 'Session not found.']], 404);
+            return new JsonResponse(['error' => ['message' => 'Session not found.', 'chatErrorCode' => 'sessionNotFound']], 404);
         }
 
         return new JsonResponse(['deleted' => true]);
@@ -206,6 +213,7 @@ final class ChatController
         }
 
         $catalog = $this->chatCatalogService->getModelCatalog();
+        $imagesAllowed = $this->backendUserService->checkPermissions(CheddiPermissionEnumeration::MEDIA_UPLOAD);
         $refresh = '1' === $this->stringParam($this->parsedBody($request), 'refreshCredits');
 
         return $this->neverCached(new JsonResponse([
@@ -217,8 +225,8 @@ final class ChatController
             'templates' => $this->chatCatalogService->getStarterTemplates(),
             'attachments' => [
                 'maxPerMessage' => $this->attachmentService->maxAttachmentsPerMessage(),
-                'accept' => $this->attachmentService->acceptAttribute(),
-                'maxBytes' => $this->attachmentService->maxUploadBytes(),
+                'accept' => $this->attachmentService->acceptAttribute($imagesAllowed),
+                'maxBytes' => $this->attachmentService->maxUploadBytes($imagesAllowed),
             ],
         ]));
     }
@@ -256,7 +264,6 @@ final class ChatController
 
     public function turnProgressAction(ServerRequestInterface $request): ResponseInterface
     {
-        // the poll must not consume the turn budget it reports on.
         $denied = $this->guardPermission();
         if (null !== $denied) {
             return $denied;
@@ -301,7 +308,7 @@ final class ChatController
         $identifier = 'cheddi_'.$bucket.'_'.(int) ($beUser?->user['uid'] ?? 0);
 
         try {
-            $this->rateLimiter->checkAndIncrement($identifier);
+            $this->rateLimiter->checkAndIncrement($identifier, RateLimitPolicy::chatTurn());
         } catch (\RuntimeException $e) {
             $this->logger->warning('ChEddi: chat turn rate limit exceeded', [
                 'identifier' => $identifier,
@@ -319,7 +326,7 @@ final class ChatController
 
     private function guardPermission(): ?ResponseInterface
     {
-        if (!$this->backendUserService->checkPermissions(self::FEATURE_FLAG)) {
+        if (!$this->backendUserService->checkPermissions(CheddiPermissionEnumeration::INTERFACE)) {
             return new JsonResponse(
                 ['error' => ['message' => 'Chat interface not enabled for this BE user group.', 'chatErrorCode' => 'featureDisabled']],
                 403,
@@ -327,6 +334,18 @@ final class ChatController
         }
 
         return null;
+    }
+
+    private function firstSelectableGdprModel(): string
+    {
+        $candidates = $this->gdprModelPolicy->defaultModels();
+        foreach ($candidates as $candidate) {
+            if (null === $this->modelPolicy->reasonNotSelectable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0];
     }
 
     private function guardModelPermission(string $model): ?ResponseInterface

@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
+use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\SurfaceSettingOverrides;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\SingletonInterface;
@@ -27,6 +28,7 @@ class ChatSettingsService implements SingletonInterface
     public function __construct(
         private readonly ExtensionConfiguration $extensionConfiguration,
         private readonly SurfaceSettingOverrides $surfaceOverrides,
+        private readonly BackendUserService $backendUserService,
     ) {}
 
     public function applyToMcpSurface(): void
@@ -44,6 +46,10 @@ class ChatSettingsService implements SingletonInterface
 
     public function getWriteModeOverride(): ?string
     {
+        if (in_array('workspace', $this->groupValues('chatWriteMode'), true)) {
+            return 'workspace';
+        }
+
         $value = $this->setting('chatWriteMode');
 
         return ('' === $value || self::INHERIT === $value) ? null : $value;
@@ -51,11 +57,19 @@ class ChatSettingsService implements SingletonInterface
 
     public function getRawHtmlWriteOverride(): ?bool
     {
+        if (in_array('0', $this->groupValues('chatAllowRawHtmlWrite'), true)) {
+            return false;
+        }
+
         return $this->boolOverride('chatAllowRawHtmlWrite');
     }
 
     public function getGdprForcedOverride(): ?bool
     {
+        if (in_array('1', $this->groupValues('chatForceGdpa'), true)) {
+            return true;
+        }
+
         return $this->boolOverride('chatForceGdpa');
     }
 
@@ -64,7 +78,18 @@ class ChatSettingsService implements SingletonInterface
      */
     public function getExcludedTools(): array
     {
-        return $this->list('chatExcludedTools');
+        return $this->listWithGroups('chatExcludedTools');
+    }
+
+    public function getUploadFolder(): string
+    {
+        return $this->groupValues('chatUploadFolder')[0] ?? trim($this->setting('chatUploadFolder'));
+    }
+
+    public function usesRandomUploadNames(): bool
+    {
+        return '0' !== $this->setting('chatUploadRandomNames')
+            || in_array('1', $this->groupValues('chatUploadRandomNames'), true);
     }
 
     /**
@@ -72,7 +97,7 @@ class ChatSettingsService implements SingletonInterface
      */
     public function getExcludedTables(): array
     {
-        return $this->list('chatExcludedTables');
+        return $this->listWithGroups('chatExcludedTables');
     }
 
     public function getSessionLifetimeDays(): int
@@ -118,9 +143,51 @@ class ChatSettingsService implements SingletonInterface
     /**
      * @return list<string>
      */
+    private function listWithGroups(string $key): array
+    {
+        $entries = $this->list($key);
+        foreach ($this->groupValues($key) as $value) {
+            $entries = [...$entries, ...$this->splitList($value)];
+        }
+
+        return array_values(array_unique($entries));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function groupValues(string $key): array
+    {
+        $backendUser = $this->backendUserService->getBackendUser();
+        if (null === $backendUser || $backendUser->isAdmin()) {
+            return [];
+        }
+
+        $values = [];
+        foreach ($backendUser->userGroups as $group) {
+            $value = is_array($group) ? trim((string) ($group[$key] ?? '')) : '';
+            if ('' !== $value) {
+                $values[] = $value;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function splitList(string $value): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', $value))));
+    }
+
+    /**
+     * @return list<string>
+     */
     private function list(string $key): array
     {
-        return array_values(array_filter(array_map('trim', explode(',', $this->setting($key)))));
+        return $this->splitList($this->setting($key));
     }
 
     private function setting(string $key): string

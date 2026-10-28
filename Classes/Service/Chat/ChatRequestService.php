@@ -18,6 +18,7 @@ use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
 use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use AutoDudes\Cheddi\Domain\Model\Dto\ChatTurnAnswer;
+use AutoDudes\Cheddi\Utility\NetworkTimeoutDetector;
 use GuzzleHttp\Exception\BadResponseException;
 use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -73,7 +74,7 @@ class ChatRequestService
                 'Authorization' => 'Bearer '.((string) ($extConf['aiSuiteApiKey'] ?? '')),
                 'X-AiSuite-Source' => 'chat',
             ],
-            'form_params' => [
+            'form_params' => array_merge($this->instanceIdentity(), [
                 'model' => $model,
                 'messages' => json_encode($messages),
                 'tools' => json_encode($tools),
@@ -84,7 +85,7 @@ class ChatRequestService
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
                 'intent' => $intent,
                 'webResearch' => json_encode($webResearch),
-            ],
+            ]),
         ];
 
         try {
@@ -97,7 +98,7 @@ class ChatRequestService
                 ['statusCode' => $statusCode, 'body' => substr($body, 0, 512)],
             );
 
-            return $this->buildErrorAnswer(sprintf('chat-server-http-%d: %s', $statusCode, substr($body, 0, 256)));
+            return $this->serverErrorAnswer($body) ?? $this->buildErrorAnswer(sprintf('chat-server-http-%d', $statusCode), 'chatServerUnavailable');
         } catch (NetworkExceptionInterface $e) {
             if (NetworkTimeoutDetector::isTimeout($e)) {
                 $this->logger->error(
@@ -105,16 +106,16 @@ class ChatRequestService
                     ['timeoutSeconds' => self::REQUEST_TIMEOUT_SECONDS, 'exception' => $e->getMessage()],
                 );
 
-                return $this->buildErrorAnswer('chat-server-timeout: '.$e->getMessage(), 'chatServerTimeout');
+                return $this->buildErrorAnswer('chat-server-timeout', 'chatServerTimeout');
             }
 
             $this->logger->error('Chat turn request failed', ['exception' => $e->getMessage()]);
 
-            return $this->buildErrorAnswer('chat-server-unavailable: '.$e->getMessage());
+            return $this->buildErrorAnswer('chat-server-unavailable', 'chatServerUnavailable');
         } catch (\Throwable $e) {
             $this->logger->error('Chat turn request failed', ['exception' => $e->getMessage()]);
 
-            return $this->buildErrorAnswer('chat-server-unavailable: '.$e->getMessage());
+            return $this->buildErrorAnswer('chat-server-unavailable', 'chatServerUnavailable');
         }
 
         $body = (string) $response->getBody();
@@ -124,7 +125,7 @@ class ChatRequestService
         if (!is_array($decoded)) {
             $this->logger->error('Chat turn response was not JSON', ['body' => substr($body, 0, 256)]);
 
-            return $this->buildErrorAnswer('chat-server-invalid-response');
+            return $this->buildErrorAnswer('chat-server-invalid-response', 'chatServerUnavailable');
         }
 
         return ChatTurnAnswer::fromResponseData($decoded);
@@ -169,6 +170,17 @@ class ChatRequestService
         }
     }
 
+    private function serverErrorAnswer(string $body): ?ChatTurnAnswer
+    {
+        /** @var mixed $decoded */
+        $decoded = json_decode($body, true);
+        if (!is_array($decoded) || ChatTurnAnswer::TYPE_ERROR !== ($decoded['type'] ?? null)) {
+            return null;
+        }
+
+        return ChatTurnAnswer::fromResponseData($decoded);
+    }
+
     private function buildErrorAnswer(string $message, ?string $chatErrorCode = null): ChatTurnAnswer
     {
         return ChatTurnAnswer::fromResponseData([
@@ -178,5 +190,14 @@ class ChatRequestService
                 'errorType' => $chatErrorCode,
             ], static fn (?string $value): bool => null !== $value),
         ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function instanceIdentity(): array
+    {
+        // @phpstan-ignore function.alreadyNarrowedType
+        return method_exists($this->systemDomainResolver, 'instanceIdentity') ? $this->systemDomainResolver->instanceIdentity() : [];
     }
 }

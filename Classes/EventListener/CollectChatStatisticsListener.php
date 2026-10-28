@@ -16,19 +16,21 @@ namespace AutoDudes\Cheddi\EventListener;
 
 use AutoDudes\AiSuite\Events\CollectUsageStatisticsEvent;
 use AutoDudes\AiSuite\Service\BackendUserService;
+use AutoDudes\AiSuite\Service\LocalizationService;
 use AutoDudes\AiSuite\Service\SendRequestService;
-use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
 
 final class CollectChatStatisticsListener
 {
     public function __construct(
         private readonly SendRequestService $requestService,
         private readonly BackendUserService $backendUserService,
+        private readonly LocalizationService $localizationService,
     ) {}
 
     public function __invoke(CollectUsageStatisticsEvent $event): void
     {
-        if (!$this->backendUserService->checkPermissions('tx_aisuite_features:enable_cheddi_interface')) {
+        if (!$this->backendUserService->checkPermissions(CheddiPermissionEnumeration::INTERFACE)) {
             return;
         }
 
@@ -77,13 +79,13 @@ final class CollectChatStatisticsListener
     private function translate(string $key, string $fallback): string
     {
         try {
-            $label = LocalizationUtility::translate(
+            $label = $this->localizationService->translate(
                 'LLL:EXT:cheddi/Resources/Private/Language/locallang.xlf:cheddi.statistics.'.$key,
             );
         } catch (\Throwable) {
-            $label = null;
+            $label = '';
         }
 
-        return is_string($label) && '' !== $label ? $label : $fallback;
+        return '' !== $label ? $label : $fallback;
     }
 }

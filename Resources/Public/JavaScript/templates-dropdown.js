@@ -2,11 +2,6 @@ import { ll } from '@autodudes/cheddi/i18n.js';
 
 const PREVIEW_LENGTH = 90;
 
-/**
- * It draws the list and nothing else: which prompt lands in the composer is the drawer's business
- * and arrives as `onPick`. Templates addressing an open record stay listed but disabled when there
- * is none - a search that hides its own matches reads as a broken search.
- */
 export class TemplatesDropdown {
     constructor(elements, { onPick, appliesToContext }) {
         this.elements = elements;
@@ -29,11 +24,6 @@ export class TemplatesDropdown {
         this.open();
     }
 
-    /**
-     * The list arrives with the drawer's status refresh, so it is current every time the drawer is
-     * opened. The button stays hidden while there is nothing behind it - an editor should not click
-     * a control that then reports emptiness.
-     */
     setTemplates(templates) {
         this.templates = Array.isArray(templates) ? templates : [];
         this.loaded = true;

@@ -14,10 +14,15 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
+use AutoDudes\Cheddi\Exception\DocumentNotReadableException;
 use Composer\Pcre\Preg;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory as SpreadsheetIOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
+use PhpOffice\PhpWord\Reader\AbstractReader as AbstractWordReader;
 use Psr\Log\LoggerInterface;
+use Smalot\PdfParser\Config as PdfConfig;
 use Smalot\PdfParser\Parser as PdfParser;
 use TYPO3\CMS\Core\Resource\File;
 
@@ -25,7 +30,15 @@ class DocumentExtractorService
 {
     public const MAX_OUTPUT_CHARS = 50000;
 
+    public const MAX_SHEET_ROWS = 2000;
+
+    public const MAX_SHEET_COLUMNS = 50;
+
     private const MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024;
+
+    private const MAX_ARCHIVE_ENTRIES = 10000;
+
+    private const MAX_PDF_STREAM_BYTES = 16 * 1024 * 1024;
 
     private const FORMAT_TEXT = 'text';
 
@@ -57,7 +70,7 @@ class DocumentExtractorService
     /**
      * @return array{text: string, truncated: bool}
      *
-     * @throws \RuntimeException
+     * @throws DocumentNotReadableException
      */
     public function extract(File $file, int $charOffset = 0): array
     {
@@ -68,7 +81,7 @@ class DocumentExtractorService
             self::FORMAT_PDF => $this->readPdf($file),
             self::FORMAT_WORD => $this->readWord($file, $extension),
             self::FORMAT_SPREADSHEET => $this->readSpreadsheet($file, $extension),
-            default => throw new \RuntimeException(sprintf('Files of type "%s" cannot be read as text.', $extension)),
+            default => throw new DocumentNotReadableException(sprintf('Files of type "%s" cannot be read as text.', $extension)),
         };
 
         return $this->capOutput($this->normalizeWhitespace($text), $charOffset);
@@ -115,6 +128,16 @@ class DocumentExtractorService
             return;
         }
 
+        if ($zip->numFiles > self::MAX_ARCHIVE_ENTRIES) {
+            $entries = $zip->numFiles;
+            $zip->close();
+            $this->logger->warning('ChEddi: rejected a document with an implausible number of archive entries', [
+                'entries' => $entries,
+            ]);
+
+            throw new DocumentNotReadableException(sprintf('This %s is too large to read safely.', $label));
+        }
+
         $uncompressed = 0;
         for ($i = 0; $i < $zip->numFiles; ++$i) {
             $stat = $zip->statIndex($i);
@@ -129,7 +152,7 @@ class DocumentExtractorService
                 'uncompressedBytes' => $uncompressed,
             ]);
 
-            throw new \RuntimeException(sprintf('This %s is too large to read safely.', $label));
+            throw new DocumentNotReadableException(sprintf('This %s is too large to read safely.', $label));
         }
     }
 
@@ -157,7 +180,7 @@ class DocumentExtractorService
     {
         $reason = $this->unavailabilityReason($format);
         if (null !== $reason) {
-            throw new \RuntimeException(sprintf('%s cannot be read: %s.', $label, $reason));
+            throw new DocumentNotReadableException(sprintf('%s cannot be read: %s.', $label, $reason));
         }
     }
 
@@ -195,14 +218,17 @@ class DocumentExtractorService
         $this->assertFormatAvailable(self::FORMAT_PDF, 'PDF files');
 
         try {
-            return (new PdfParser())->parseContent($file->getContents())->getText();
+            $config = new PdfConfig();
+            $config->setDecodeMemoryLimit(self::MAX_PDF_STREAM_BYTES);
+
+            return (new PdfParser([], $config))->parseContent($file->getContents())->getText();
         } catch (\Throwable $e) {
             $this->logger->warning('ChEddi: could not extract text from a PDF', [
                 'file' => $file->getUid(),
                 'exception' => $e->getMessage(),
             ]);
 
-            throw new \RuntimeException('This PDF could not be read. It may be encrypted or contain only scanned images.');
+            throw new DocumentNotReadableException('This PDF could not be read. It may be encrypted or contain only scanned images.');
         }
     }
 
@@ -218,7 +244,11 @@ class DocumentExtractorService
                 default => 'Word2007',
             };
 
-            $document = WordIOFactory::createReader($reader)->load($path);
+            $wordReader = WordIOFactory::createReader($reader);
+            if (!$wordReader instanceof AbstractWordReader) {
+                throw new \RuntimeException(sprintf('The %s reader cannot switch off image loading.', $reader));
+            }
+            $document = $wordReader->setImageLoading(false)->load($path);
 
             $text = '';
             foreach ($document->getSections() as $section) {
@@ -258,20 +288,42 @@ class DocumentExtractorService
         $this->loadPcreWhereTheCoreLacksIt();
 
         return $this->withTemporaryCopy($file, static function (string $path): string {
+            $filter = new class implements IReadFilter {
+                public bool $cutOff = false;
+
+                public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
+                {
+                    $inside = $row <= DocumentExtractorService::MAX_SHEET_ROWS
+                        && Coordinate::columnIndexFromString($columnAddress) <= DocumentExtractorService::MAX_SHEET_COLUMNS;
+                    $this->cutOff = $this->cutOff || !$inside;
+
+                    return $inside;
+                }
+            };
+
             $reader = SpreadsheetIOFactory::createReaderForFile($path);
             $reader->setReadDataOnly(true);
+            $reader->setReadFilter($filter);
             $spreadsheet = $reader->load($path);
 
             $text = '';
             foreach ($spreadsheet->getAllSheets() as $sheet) {
                 $text .= '## '.$sheet->getTitle()."\n";
-                foreach ($sheet->toArray(null, true, false, false) as $row) {
+                foreach ($sheet->toArray(null, false, false, false) as $row) {
                     $cells = array_map(static fn (mixed $cell): string => null === $cell ? '' : (string) $cell, $row);
                     $line = trim(implode(' | ', $cells), ' |');
                     if ('' !== $line) {
                         $text .= $line."\n";
                     }
                 }
+            }
+
+            if ($filter->cutOff) {
+                $text .= sprintf(
+                    "\n[Only the first %d rows and %d columns of each sheet were read.]\n",
+                    DocumentExtractorService::MAX_SHEET_ROWS,
+                    DocumentExtractorService::MAX_SHEET_COLUMNS,
+                );
             }
 
             return $text;
@@ -294,7 +346,7 @@ class DocumentExtractorService
                 'exception' => $e->getMessage(),
             ]);
 
-            throw new \RuntimeException(sprintf('This %s could not be read.', $label));
+            throw new DocumentNotReadableException(sprintf('This %s could not be read.', $label));
         }
     }
 

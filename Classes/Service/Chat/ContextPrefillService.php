@@ -32,7 +32,6 @@ class ContextPrefillService
 
     /**
      * @return list<array{role: string, content: string, toolCalls?: array<int, array<string, mixed>>, toolCallId?: string, toolStatus?: string}>
-     *                                                                                                                                            empty, or an assistant+tool pair in API shape
      */
     public function buildSyntheticMessages(ChatToolContext $context): array
     {

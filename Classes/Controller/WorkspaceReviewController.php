@@ -17,6 +17,8 @@ namespace AutoDudes\Cheddi\Controller;
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\WorkspaceComparisonService;
 use AutoDudes\Cheddi\Domain\Repository\ChatSessionRepository;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
+use AutoDudes\Cheddi\Exception\WorkspaceAccessException;
 use AutoDudes\Cheddi\Service\Chat\WorkspaceReviewService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -26,8 +28,6 @@ use TYPO3\CMS\Core\Http\JsonResponse;
 #[AsController]
 final class WorkspaceReviewController
 {
-    private const FEATURE_FLAG = 'tx_aisuite_features:enable_cheddi_interface';
-
     public function __construct(
         private readonly ChatSessionRepository $sessionRepository,
         private readonly WorkspaceReviewService $reviewService,
@@ -80,7 +80,7 @@ final class WorkspaceReviewController
 
         try {
             $outcome = $this->reviewService->apply($session, $uids, $publish);
-        } catch (\RuntimeException $e) {
+        } catch (WorkspaceAccessException $e) {
             return $this->error($e->getMessage(), 403);
         }
 
@@ -93,7 +93,7 @@ final class WorkspaceReviewController
 
     private function resolveSession(ServerRequestInterface $request): int|ResponseInterface
     {
-        if (!$this->backendUserService->checkPermissions(self::FEATURE_FLAG)) {
+        if (!$this->backendUserService->checkPermissions(CheddiPermissionEnumeration::INTERFACE)) {
             return $this->error('ChEddi is not enabled for this backend user.', 403);
         }
 

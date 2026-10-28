@@ -9,6 +9,7 @@ use AutoDudes\Cheddi\Controller\WorkspaceReviewController;
 return [
     'cheddi_attachment_upload' => [
         'path' => '/cheddi/attachment/upload',
+        'methods' => ['POST'],
         'target' => AttachmentController::class.'::uploadAction',
     ],
     'cheddi_ws_changes' => [
@@ -17,18 +18,22 @@ return [
     ],
     'cheddi_ws_publish' => [
         'path' => '/cheddi/workspace/publish',
+        'methods' => ['POST'],
         'target' => WorkspaceReviewController::class.'::publishAction',
     ],
     'cheddi_ws_discard' => [
         'path' => '/cheddi/workspace/discard',
+        'methods' => ['POST'],
         'target' => WorkspaceReviewController::class.'::discardAction',
     ],
     'cheddi_turn' => [
         'path' => '/cheddi/turn',
+        'methods' => ['POST'],
         'target' => ChatController::class.'::startTurnAction',
     ],
     'cheddi_turn_continue' => [
         'path' => '/cheddi/turn/continue',
+        'methods' => ['POST'],
         'target' => ChatController::class.'::continueTurnAction',
     ],
     'cheddi_turn_progress' => [
@@ -37,10 +42,12 @@ return [
     ],
     'cheddi_summarize' => [
         'path' => '/cheddi/summarize',
+        'methods' => ['POST'],
         'target' => ChatController::class.'::summarizeHistoryAction',
     ],
     'cheddi_confirm' => [
         'path' => '/cheddi/confirm',
+        'methods' => ['POST'],
         'target' => ChatController::class.'::applyConfirmationsAction',
     ],
     'cheddi_download_csv' => [
@@ -65,6 +72,7 @@ return [
     ],
     'cheddi_session_delete' => [
         'path' => '/cheddi/session/delete',
+        'methods' => ['POST'],
         'target' => ChatController::class.'::deleteSessionAction',
     ],
 ];

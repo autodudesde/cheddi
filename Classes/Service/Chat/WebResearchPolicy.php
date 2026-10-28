@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\BackendUserService;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -26,7 +27,6 @@ class WebResearchPolicy implements SingletonInterface
     public const REASON_NO_KEY = 'noKey';
     public const REASON_GDPR_NO_PROVIDER = 'gdprNoProvider';
     public const REASON_GDPR_MARKET = 'gdprMarket';
-    private const WEB_RESEARCH_PERMISSION = 'tx_aisuite_features:enable_web_research';
 
     private const MAX_DOMAINS = 10;
 
@@ -138,7 +138,7 @@ class WebResearchPolicy implements SingletonInterface
     public function isPageReadingAllowed(): bool
     {
         try {
-            return $this->backendUserService->checkPermissions(self::WEB_RESEARCH_PERMISSION);
+            return $this->backendUserService->checkPermissions(CheddiPermissionEnumeration::WEB_RESEARCH);
         } catch (\Throwable) {
             return false;
         }
@@ -151,7 +151,6 @@ class WebResearchPolicy implements SingletonInterface
      */
     private function capDomains(array $domains, string $setting): array
     {
-        // The retrieval providers cap their domain filters and drop the surplus without an error.
         if (count($domains) <= self::MAX_DOMAINS) {
             return $domains;
         }

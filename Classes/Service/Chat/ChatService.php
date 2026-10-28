@@ -29,6 +29,9 @@ use AutoDudes\Cheddi\Domain\Repository\ChatSessionRepository;
 use AutoDudes\Cheddi\Mcp\Tool\CreateCsvDownloadTool;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Locking\Exception\LockAcquireWouldBlockException;
+use TYPO3\CMS\Core\Locking\LockFactory;
+use TYPO3\CMS\Core\Locking\LockingStrategyInterface;
 
 class ChatService
 {
@@ -43,11 +46,14 @@ class ChatService
     public const CONTEXT_LEVEL_WARNING = 'warning';
 
     public const SESSION_TITLE_MAX_LENGTH = 40;
+    private const CONFIRM_LOCK_MODE = LockingStrategyInterface::LOCK_CAPABILITY_EXCLUSIVE | LockingStrategyInterface::LOCK_CAPABILITY_NOBLOCK;
 
-    /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> */
+    private const SESSION_UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
+    /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> */
     private array $navigationTargets = [];
 
-    /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> */
+    /** @var list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> */
     private array $foundTargets = [];
 
     public function __construct(
@@ -68,6 +74,7 @@ class ChatService
         protected readonly ChatOrientationService $orientationService,
         protected readonly NavigationTargetCollector $navigationTargetCollector,
         protected readonly BackendBaseUrlResolver $backendBaseUrlResolver,
+        protected readonly LockFactory $lockFactory,
         protected readonly LoggerInterface $logger,
     ) {}
 
@@ -80,13 +87,21 @@ class ChatService
         string $model,
         ServerRequestInterface $request,
         array $attachmentUids = [],
+        string $workspaceChoice = '',
     ): TurnResult {
         $beUserUid = $this->resolveBeUserUid();
         if (0 === $beUserUid) {
             return TurnResult::error('', 'No backend user in context.');
         }
 
-        $session = $this->resolveSession($sessionUuid, $beUserUid, $model);
+        $session = $this->findExistingSession($sessionUuid, $beUserUid, $model);
+        if (null === $session) {
+            $workspace = $this->pinWorkspace($workspaceChoice);
+            if (null === $workspace) {
+                return TurnResult::error('', 'The selected workspace is not available to this backend user.', 'workspaceNotSelectable');
+            }
+            $session = $this->createSession($sessionUuid, $beUserUid, $model, $workspace);
+        }
         if (null === $session) {
             return TurnResult::error('', 'Chat session could not be resolved.');
         }
@@ -178,7 +193,6 @@ class ChatService
         $this->applyHistorySummaryIfPresent($session, $answer, $replacedIds);
         $this->sessionRepository->touchActivity($session->uid);
 
-        // The summarising call reports the usage of the history it has just replaced.
         return TurnResult::final(
             $session->sessionUuid,
             '',
@@ -205,92 +219,109 @@ class ChatService
             return TurnResult::error($sessionUuid, 'Chat session not found.');
         }
 
-        $context = new ChatToolContext($request, $session->model);
+        $context = new ChatToolContext($request, $session->model, $session->workspace);
 
-        $pendingCalls = $this->extractPendingToolCalls($session->uid);
-        if ([] === $pendingCalls) {
-            return TurnResult::error($session->sessionUuid, 'No pending tool calls to confirm.');
-        }
-
-        $approvalMap = [];
-        foreach ($approvals as $approval) {
-            $callId = $approval['toolCallId'] ?? null;
-            if (is_string($callId) && '' !== $callId) {
-                $approvalMap[$callId] = (bool) ($approval['approved'] ?? false);
-            }
-        }
-
-        $this->writeCapture->begin();
-        $touchedTables = [];
-        $applied = ['executed' => [], 'failed' => [], 'declined' => [], 'rejected' => []];
-        $step = 0;
-        $total = count($pendingCalls);
+        $locker = $this->lockFactory->createLocker('cheddi_confirm_'.$session->uid, self::CONFIRM_LOCK_MODE);
 
         try {
-            foreach ($pendingCalls as $call) {
-                ++$step;
-                $callId = (string) $call['id'];
-                $approved = $approvalMap[$callId] ?? false;
+            $locked = $locker->acquire(self::CONFIRM_LOCK_MODE);
+        } catch (LockAcquireWouldBlockException) {
+            $locked = false;
+        }
+        if (!$locked) {
+            return TurnResult::error($session->sessionUuid, 'These confirmations are already being applied.', 'confirmInProgress');
+        }
 
-                if (!$approved) {
-                    $applied['declined'][] = (string) $call['name'];
-                    $invalidNotes = $this->pendingPreviewService->invalidNotes((string) $call['name'], $call['arguments']);
-                    $this->messageRepository->append($session->uid, [
-                        'role' => ChatMessage::ROLE_TOOL,
-                        'content' => [] === $invalidNotes
-                            ? 'User declined this action.'
-                            : sprintf(
-                                'User declined this action. The payload was also invalid: %s. '
-                                .'Correct it before offering the write again.',
-                                implode(' | ', $invalidNotes),
+        try {
+            $pendingCalls = $this->extractPendingToolCalls($session->uid);
+            if ([] === $pendingCalls) {
+                return TurnResult::error($session->sessionUuid, 'No pending tool calls to confirm.');
+            }
+
+            $approvalMap = [];
+            foreach ($approvals as $approval) {
+                $callId = $approval['toolCallId'] ?? null;
+                if (is_string($callId) && '' !== $callId) {
+                    $approvalMap[$callId] = (bool) ($approval['approved'] ?? false);
+                }
+            }
+
+            $this->writeCapture->begin();
+            $touchedTables = [];
+            $applied = ['executed' => [], 'failed' => [], 'declined' => [], 'rejected' => []];
+            $step = 0;
+            $total = count($pendingCalls);
+
+            try {
+                foreach ($pendingCalls as $call) {
+                    ++$step;
+                    $callId = (string) $call['id'];
+                    $approved = $approvalMap[$callId] ?? false;
+
+                    if (!$approved) {
+                        $applied['declined'][] = (string) $call['name'];
+                        $invalidNotes = $this->pendingPreviewService->invalidNotes((string) $call['name'], $call['arguments']);
+                        $this->messageRepository->append($session->uid, [
+                            'role' => ChatMessage::ROLE_TOOL,
+                            'content' => [] === $invalidNotes
+                                ? 'User declined this action.'
+                                : sprintf(
+                                    'User declined this action. The payload was also invalid: %s. '
+                                    .'Correct it before offering the write again.',
+                                    implode(' | ', $invalidNotes),
+                                ),
+                            'tool_call_id' => $callId,
+                            'tool_status' => ChatMessage::TOOL_STATUS_REJECTED,
+                        ]);
+
+                        continue;
+                    }
+
+                    $invalidReason = $this->pendingPreviewService->invalidReason((string) $call['name'], $call['arguments']);
+
+                    if (null !== $invalidReason) {
+                        $applied['rejected'][] = (string) $call['name'];
+                        $this->logger->warning('ChEddi: blocked a confirmed write with invalid records', [
+                            'tool' => $call['name'],
+                            'reason' => $invalidReason,
+                        ]);
+                        $this->messageRepository->append($session->uid, [
+                            'role' => ChatMessage::ROLE_TOOL,
+                            'content' => sprintf(
+                                'Rejected before execution. Nothing was written. The payload is invalid: %s. Send a corrected %s call.',
+                                $invalidReason,
+                                (string) $call['name'],
                             ),
-                        'tool_call_id' => $callId,
-                        'tool_status' => ChatMessage::TOOL_STATUS_REJECTED,
-                    ]);
+                            'tool_call_id' => $callId,
+                            'tool_status' => ChatMessage::TOOL_STATUS_FAILED,
+                        ]);
 
-                    continue;
-                }
+                        continue;
+                    }
 
-                $invalidReason = $this->pendingPreviewService->invalidReason((string) $call['name'], $call['arguments']);
-
-                if (null !== $invalidReason) {
-                    $applied['rejected'][] = (string) $call['name'];
-                    $this->logger->warning('ChEddi: blocked a confirmed write with invalid records', [
-                        'tool' => $call['name'],
-                        'reason' => $invalidReason,
-                    ]);
+                    $this->progressService->toolStarted($session->sessionUuid, (string) $call['name'], $step, $total);
+                    $result = $this->toolBridge->execute((string) $call['name'], $call['arguments'], $context);
+                    $applied[$result['isError'] ? 'failed' : 'executed'][] = (string) $call['name'];
+                    $this->rememberNavigationTargets($result['structured'] ?? null);
                     $this->messageRepository->append($session->uid, [
                         'role' => ChatMessage::ROLE_TOOL,
-                        'content' => sprintf(
-                            'Rejected before execution. Nothing was written. The payload is invalid: %s. Send a corrected writeRecords call.',
-                            $invalidReason,
-                        ),
+                        'content' => $result['content'],
                         'tool_call_id' => $callId,
-                        'tool_status' => ChatMessage::TOOL_STATUS_FAILED,
+                        'tool_status' => $result['isError']
+                            ? ChatMessage::TOOL_STATUS_FAILED
+                            : ChatMessage::TOOL_STATUS_DONE,
+                        'sources' => $this->encodeSources(array_values($this->extractSources($result['structured'] ?? null))),
                     ]);
-
-                    continue;
                 }
-
-                $this->progressService->toolStarted($session->sessionUuid, (string) $call['name'], $step, $total);
-                $result = $this->toolBridge->execute((string) $call['name'], $call['arguments'], $context);
-                $applied[$result['isError'] ? 'failed' : 'executed'][] = (string) $call['name'];
-                $this->rememberNavigationTargets($result['structured'] ?? null);
-                $this->messageRepository->append($session->uid, [
-                    'role' => ChatMessage::ROLE_TOOL,
-                    'content' => $result['content'],
-                    'tool_call_id' => $callId,
-                    'tool_status' => $result['isError']
-                        ? ChatMessage::TOOL_STATUS_FAILED
-                        : ChatMessage::TOOL_STATUS_DONE,
-                ]);
+            } finally {
+                foreach ($this->writeCapture->flush() as $change) {
+                    $this->changeTracker->track($session->uid, $change['table'], $change['uid'], $change['action'], $session->workspace);
+                    $touchedTables[$change['table']] = true;
+                }
+                $this->writeCapture->end();
             }
         } finally {
-            foreach ($this->writeCapture->flush() as $change) {
-                $this->changeTracker->track($session->uid, $change['table'], $change['uid'], $change['action']);
-                $touchedTables[$change['table']] = true;
-            }
-            $this->writeCapture->end();
+            $locker->release();
         }
 
         $this->logger->info('ChEddi confirmations applied', [
@@ -338,6 +369,7 @@ class ChatService
      *     uuid: string,
      *     title: string,
      *     model: string,
+     *     workspace: array{id: int, title: string, pending: bool},
      *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, sources?: list<array<string, mixed>>, createdAt: int}>,
      *     pending: list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, creditCost: null|int, preview: null|array<string, mixed>}>,
      *     confirmTarget: null|array{key: string, params?: array<string, int|string>},
@@ -365,9 +397,10 @@ class ChatService
             'uuid' => $session->sessionUuid,
             'title' => $session->title,
             'model' => $session->model,
+            'workspace' => $this->orientationService->resolveWorkspaceForDisplay($session->workspace),
             'messages' => $messages,
             'pending' => $pending,
-            'confirmTarget' => [] === $pending ? null : $this->confirmTarget(),
+            'confirmTarget' => [] === $pending ? null : $this->confirmTarget($session),
         ];
     }
 
@@ -421,10 +454,10 @@ class ChatService
     private function pendingForSession(int $sessionUid): array
     {
         $pending = [];
+        $editorTexts = $this->editorTexts($this->messageRepository->findBySession($sessionUid));
         foreach ($this->extractPendingToolCalls($sessionUid) as $call) {
-            $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments']);
-            // A read-only call is executed and answered within its own turn, so an unanswered one
-            // means the turn died mid-flight; it never had a card and must not grow one here.
+            $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments'], $editorTexts);
+            // An unanswered read-only call belongs to a turn that died and never had a card
             if (Severity::ReadOnly === $severity) {
                 continue;
             }
@@ -529,13 +562,13 @@ class ChatService
     /**
      * @return array{key: string, params?: array<string, string>}
      */
-    private function confirmTarget(): array
+    private function confirmTarget(ChatSession $session): array
     {
         if ('live' === $this->orientationService->getWriteMode()) {
             return ['key' => 'cheddi.confirm.targetLive'];
         }
 
-        $workspace = $this->orientationService->resolveWorkspaceForDisplay();
+        $workspace = $this->orientationService->resolveWorkspaceForDisplay($session->workspace);
         if ($workspace['pending']) {
             return ['key' => 'cheddi.confirm.targetWorkspacePending'];
         }
@@ -559,10 +592,10 @@ class ChatService
 
         $ratio = $answer->inputTokens / $answer->contextWindowTokens;
 
-        return ['ratio' => $ratio, 'level' => self::contextLevel($ratio)];
+        return ['ratio' => $ratio, 'level' => $this->contextLevel($ratio)];
     }
 
-    private static function contextLevel(float $ratio): string
+    private function contextLevel(float $ratio): string
     {
         if ($ratio >= self::CONTEXT_WARNING_RATIO) {
             return self::CONTEXT_LEVEL_WARNING;
@@ -594,7 +627,7 @@ class ChatService
         }
 
         $this->progressService->startTurn($session->sessionUuid);
-        $context = new ChatToolContext($request, $session->model);
+        $context = new ChatToolContext($request, $session->model, $session->workspace);
         $history = $this->messageRepository->findBySession($session->uid);
         $messages = $this->reconcileDanglingToolCalls(
             array_map(fn (ChatMessage $m): array => $this->messageToApiShape($m, true), $history),
@@ -696,7 +729,7 @@ class ChatService
             $answer,
             $history,
             $tools,
-            $this->resolveToolCalls($session, $answer, $context, $notices),
+            $this->resolveToolCalls($session, $answer, $context, $history, $notices),
         );
     }
 
@@ -887,6 +920,23 @@ class ChatService
 
     /**
      * @param list<ChatMessage> $messages
+     *
+     * @return list<string>
+     */
+    private function editorTexts(array $messages): array
+    {
+        $texts = [];
+        foreach ($messages as $message) {
+            if (ChatMessage::ROLE_USER === $message->role) {
+                $texts[] = $message->content;
+            }
+        }
+
+        return $texts;
+    }
+
+    /**
+     * @param list<ChatMessage> $messages
      */
     private function countToolMessagesInCurrentSequence(array $messages): int
     {
@@ -905,9 +955,10 @@ class ChatService
     }
 
     /**
+     * @param list<ChatMessage>                                                   $history
      * @param list<array{key: string, params?: array<string, int|string>}|string> $notices
      */
-    private function resolveToolCalls(ChatSession $session, ChatTurnAnswer $answer, ChatToolContext $context, array $notices = []): TurnResult
+    private function resolveToolCalls(ChatSession $session, ChatTurnAnswer $answer, ChatToolContext $context, array $history, array $notices = []): TurnResult
     {
         $autoExecuted = [];
         $pending = [];
@@ -915,9 +966,10 @@ class ChatService
         $downloads = [];
         $step = 0;
         $total = count($answer->toolCalls);
+        $editorTexts = $this->editorTexts($history);
         foreach ($answer->toolCalls as $call) {
             ++$step;
-            $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments']);
+            $severity = $this->toolBridge->resolvePolicy($call['name'], $call['arguments'], $editorTexts);
             if (Severity::ReadOnly === $severity) {
                 $this->progressService->toolStarted($session->sessionUuid, $call['name'], $step, $total);
                 $result = $this->toolBridge->execute($call['name'], $call['arguments'], $context);
@@ -968,7 +1020,7 @@ class ChatService
                 $answer->contextWindowTokens,
                 $notices,
                 $autoExecuted,
-                $this->confirmTarget(),
+                $this->confirmTarget($session),
             )->withContextFill($this->contextFill($answer))->withDownloads($downloads);
         }
 
@@ -1019,9 +1071,9 @@ class ChatService
     }
 
     /**
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $groups
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $groups
      *
-     * @return list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>
+     * @return list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}>
      */
     private function withSameOriginUrlsOnly(array $groups): array
     {
@@ -1036,7 +1088,7 @@ class ChatService
             $targets = array_values(array_filter(
                 $group['targets'],
                 function (array $target) use ($host): bool {
-                    if (str_starts_with($target['url'], '/')) {
+                    if (str_starts_with($target['url'], '/') && !str_starts_with($target['url'], '//')) {
                         return true;
                     }
                     if (1 !== preg_match('#^https?://#i', $target['url'])) {
@@ -1057,7 +1109,7 @@ class ChatService
         return $kept;
     }
 
-    private function resolveSession(?string $sessionUuid, int $beUserUid, string $model): ?ChatSession
+    private function findExistingSession(?string $sessionUuid, int $beUserUid, string $model): ?ChatSession
     {
         if (null !== $sessionUuid && '' !== $sessionUuid) {
             $existing = $this->sessionRepository->findByUuidForUser($sessionUuid, $beUserUid);
@@ -1073,22 +1125,51 @@ class ChatService
             }
         }
 
+        return null;
+    }
+
+    private function pinWorkspace(string $workspaceChoice): ?int
+    {
+        if ('' === $workspaceChoice) {
+            return 0;
+        }
+
+        $backendUser = $this->backendUserService->getBackendUser();
+        if (null === $backendUser) {
+            return null;
+        }
+
+        try {
+            return $this->orientationService->pinWorkspace($backendUser, $workspaceChoice);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: the selected workspace could not be pinned to the conversation', [
+                'workspace' => $workspaceChoice,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function createSession(?string $sessionUuid, int $beUserUid, string $model, int $workspace): ?ChatSession
+    {
         if ('' === $model) {
             $this->logger->warning('Cannot create chat session without model identifier');
 
             return null;
         }
 
-        $newUuid = null !== $sessionUuid && '' !== $sessionUuid
+        $newUuid = null !== $sessionUuid && 1 === preg_match(self::SESSION_UUID_PATTERN, $sessionUuid)
             ? $sessionUuid
             : $this->uuidService->generateUuid();
-        $sessionId = $this->sessionRepository->create($newUuid, $beUserUid, $model);
+        $sessionId = $this->sessionRepository->create($newUuid, $beUserUid, $model, '', $workspace);
 
         return new ChatSession(
             uid: $sessionId,
             sessionUuid: $newUuid,
             beUser: $beUserUid,
             model: $model,
+            workspace: $workspace,
         );
     }
 

@@ -18,8 +18,8 @@ export function bindComposerResize(elements, state, onComposerHeightChanged) {
 
         try {
             handle.setPointerCapture(pointerId);
-        } catch (err) {
-            console.debug('[ChEddi] setPointerCapture failed (pointer gone).', err);
+        } catch {
+            // The pointer is already gone
         }
         document.body.classList.add('cheddi-resizing-composer');
 
@@ -36,8 +36,8 @@ export function bindComposerResize(elements, state, onComposerHeightChanged) {
             handle.removeEventListener('pointercancel', onPointerUp);
             try {
                 handle.releasePointerCapture(pointerId);
-            } catch (err) {
-                console.debug('[ChEddi] releasePointerCapture failed (already released).', err);
+            } catch {
+                // Already released
             }
             document.body.classList.remove('cheddi-resizing-composer');
             saveState(state);
@@ -68,8 +68,8 @@ export function bindResize(elements, state, onComposerHeightChanged, onResized) 
 
         try {
             handle.setPointerCapture(pointerId);
-        } catch (err) {
-            console.debug('[ChEddi] setPointerCapture failed (pointer gone).', err);
+        } catch {
+            // The pointer is already gone
         }
         document.body.classList.add('cheddi-resizing');
 
@@ -92,8 +92,8 @@ export function bindResize(elements, state, onComposerHeightChanged, onResized) 
             handle.removeEventListener('pointercancel', onPointerUp);
             try {
                 handle.releasePointerCapture(pointerId);
-            } catch (err) {
-                console.debug('[ChEddi] releasePointerCapture failed (already released).', err);
+            } catch {
+                // Already released
             }
             document.body.classList.remove('cheddi-resizing');
             onComposerHeightChanged();

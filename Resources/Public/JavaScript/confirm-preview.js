@@ -10,6 +10,9 @@ export function renderPendingPreview(preview) {
     if (preview && preview.kind === 'pageTree') {
         return renderPageTree(preview);
     }
+    if (preview && preview.kind === 'media') {
+        return renderMedia(preview);
+    }
 
     if (!preview || preview.kind !== 'records' || !Array.isArray(preview.records) || preview.records.length === 0) {
         return null;
@@ -37,6 +40,67 @@ export function renderPendingPreview(preview) {
         });
         container.append(more);
     }
+
+    return container;
+}
+
+function renderMedia(preview) {
+    if (!Array.isArray(preview.records) || preview.records.length === 0) {
+        return null;
+    }
+
+    const container = document.createElement('div');
+    container.className = 'cheddi__preview';
+
+    for (const media of preview.records) {
+        if (!media || typeof media !== 'object') {
+            continue;
+        }
+
+        const item = document.createElement('div');
+        item.className = 'cheddi__preview-record';
+        item.append(renderRecordHeader({
+            action: media.action,
+            tableLabel: ll('cheddi.preview.media.title'),
+            recordLabel: media.fileName || '',
+        }));
+
+        const fields = [media.source === 'file'
+            ? { label: ll('cheddi.preview.media.currentFolder'), new: media.currentFolder }
+            : { label: ll('cheddi.preview.media.source'), new: media.source === 'url' ? media.url : ll('cheddi.preview.media.inline') }];
+        if (media.folder) {
+            fields.push({
+                label: ll('cheddi.preview.media.folder'),
+                new: media.newFolder ? ll('cheddi.preview.media.newFolder', { folder: media.folder }) : media.folder,
+            });
+        }
+        item.append(renderFields(fields));
+
+        if (media.note) {
+            const note = document.createElement('div');
+            note.className = 'cheddi__preview-note';
+            note.textContent = media.note;
+            item.append(note);
+        }
+
+        container.append(item);
+    }
+
+    if (preview.truncated) {
+        const more = document.createElement('div');
+        more.className = 'cheddi__preview-more';
+        more.textContent = ll('cheddi.preview.moreRecords', {
+            count: preview.total - preview.records.length,
+        });
+        container.append(more);
+    }
+
+    const irreversible = document.createElement('div');
+    irreversible.className = 'cheddi__preview-context';
+    irreversible.textContent = preview.mode === 'move'
+        ? ll('cheddi.preview.media.moveIrreversible')
+        : ll('cheddi.preview.media.irreversible');
+    container.append(irreversible);
 
     return container;
 }

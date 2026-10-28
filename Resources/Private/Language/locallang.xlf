@@ -48,9 +48,13 @@
             <trans-unit id="cheddi.error.missingAiModelApiKey"><source>Your plan runs on your own provider keys, and the key for this model is missing. Please add it in the extension configuration under "Bring Your Own Keys".</source></trans-unit>
             <trans-unit id="cheddi.error.chatRequestMalformed"><source>ChEddi built an invalid request for this model. That is an error on our side, not a model outage, and it is not charged. Please report it to us.</source></trans-unit>
             <trans-unit id="cheddi.error.chatServerTimeout"><source>The server did not answer in time. The turn may still be running there, so it was not retried automatically. Please check the TYPO3 log and ask again if nothing arrives.</source></trans-unit>
+            <trans-unit id="cheddi.error.chatServerUnavailable"><source>The AI Suite Server cannot be reached right now. The details are in the TYPO3 log; if this persists, check the server status or contact support.</source></trans-unit>
+            <trans-unit id="cheddi.error.confirmInProgress"><source>These actions are already being carried out. Wait for the result instead of confirming again.</source></trans-unit>
             <trans-unit id="cheddi.error.serverUnreachable"><source>The server aborted the request. This is usually a server-side error. Please check the TYPO3 log.</source></trans-unit>
             <trans-unit id="cheddi.error.serverError"><source>The server did not return a valid response. Please check the TYPO3 log.</source></trans-unit>
             <trans-unit id="cheddi.error.noOpenTurn"><source>This conversation has nothing left to continue. Please ask a new question.</source></trans-unit>
+            <trans-unit id="cheddi.error.sessionNotFound"><source>This conversation no longer exists. Start a new one or open another one from the list.</source></trans-unit>
+            <trans-unit id="cheddi.error.workspaceNotSelectable"><source>The selected workspace is not available to you. Pick another one or start a new conversation.</source></trans-unit>
             <trans-unit id="cheddi.error.requestRateLimited"><source>The AI Suite Server received too many requests from this installation. Please wait a moment and try again.</source></trans-unit>
             <trans-unit id="cheddi.error.rateLimited"><source>Too many requests in a short time. Please wait a moment and try again.</source></trans-unit>
             <trans-unit id="cheddi.error.apiKeyMissing"><source>No AI Suite API key is configured. Please enter your key in the extension configuration. If you don't have a key yet, you can get one at https://www.autodudes.de</source></trans-unit>
@@ -59,6 +63,8 @@
             <trans-unit id="cheddi.error.apiKeyNotFound"><source>The AI Suite Server does not know the API key of this installation. Please check the key in the extension configuration.</source></trans-unit>
             <trans-unit id="cheddi.error.apiKeyExpired"><source>The API key of this installation has expired. Please renew it at your provider.</source></trans-unit>
             <trans-unit id="cheddi.error.apiRouteNotFound"><source>The AI Suite Server does not know this route. Usually the extension is newer than the server it talks to.</source></trans-unit>
+            <trans-unit id="cheddi.error.modelNotAvailable"><source>This chat model is currently not available on the AI Suite Server. Start a new conversation and pick another model.</source></trans-unit>
+            <trans-unit id="cheddi.error.keyIsFreddi"><source>The configured key is a FrEddi key for the frontend assistant and does not work for the chat. Please enter the AI Suite key in the extension configuration.</source></trans-unit>
             <trans-unit id="cheddi.error.thirdPartyApi"><source>The AI provider did not answer. Please try again in a moment; the details are in the server log.</source></trans-unit>
             <trans-unit id="cheddi.error.webSearchUnavailable"><source>Web research is not available for this installation under its current data-protection settings.</source></trans-unit>
             <trans-unit id="cheddi.error.unknown"><source>Unknown error.</source></trans-unit>
@@ -70,6 +76,7 @@
             <trans-unit id="cheddi.notice.apiKeyMissing.title"><source>Please enter your AI Suite API key in the extension configuration.</source></trans-unit>
             <trans-unit id="cheddi.notice.apiKeyMissing.message"><source>If you don't have an API key yet, you can get one at https://www.autodudes.de</source></trans-unit>
             <trans-unit id="cheddi.notice.modelLocked"><source>The model is fixed per conversation. Start a new conversation to change it. Credits are charged per answer, and continuing a conversation costs less than starting a new one.</source></trans-unit>
+            <trans-unit id="cheddi.notice.workspaceLocked"><source>The workspace is fixed per conversation. Start a new conversation to change it.</source></trans-unit>
             <trans-unit id="cheddi.notice.activeModel"><source>This conversation runs on {model}. Start a new conversation to change it.</source></trans-unit>
             <trans-unit id="cheddi.notice.toolCapReached"><source>Maximum number of automatic tool calls reached. Please ask a new question.</source></trans-unit>
             <trans-unit id="cheddi.notice.toolCapReachedAbort"><source>Tool-call limit reached, the turn was aborted. Please ask a new question.</source></trans-unit>
@@ -189,6 +196,14 @@
             <trans-unit id="cheddi.preview.pageTree.title"><source>{count} new page(s)</source></trans-unit>
             <trans-unit id="cheddi.preview.pageTree.under"><source>Below: {parent}</source></trans-unit>
             <trans-unit id="cheddi.preview.translations"><source>+ one translation each in: {languages}</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.title"><source>File</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.source"><source>Source</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.inline"><source>Content sent with the request</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.folder"><source>Target folder</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.newFolder"><source>{folder} (will be created)</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.irreversible"><source>The file is stored right away. Discarding the workspace does not remove it.</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.currentFolder"><source>Current folder</source></trans-unit>
+            <trans-unit id="cheddi.preview.media.moveIrreversible"><source>The file is moved right away. Discarding the workspace does not move it back.</source></trans-unit>
 
             <!-- Editor-facing labels for MCP tool calls -->
             <trans-unit id="cheddi.tool.fallback"><source>Action</source></trans-unit>
@@ -224,6 +239,7 @@
             <trans-unit id="cheddi.tool.copyMediaReference"><source>Copy media reference</source></trans-unit>
             <trans-unit id="cheddi.tool.replaceMediaReference"><source>Replace media reference</source></trans-unit>
             <trans-unit id="cheddi.tool.uploadMedia"><source>Upload media</source></trans-unit>
+            <trans-unit id="cheddi.tool.moveFile"><source>Move file</source></trans-unit>
             <trans-unit id="cheddi.tool.deleteRecords"><source>Delete records</source></trans-unit>
             <trans-unit id="cheddi.tool.generateFileMetadata"><source>Generate file metadata</source></trans-unit>
             <trans-unit id="cheddi.tool.generateImage"><source>Generate image</source></trans-unit>
@@ -289,6 +305,8 @@
             <trans-unit id="cheddi.ui.workspaceUnnamed"><source>Draft</source></trans-unit>
             <trans-unit id="cheddi.ui.workspacePending"><source>Draft will be created</source></trans-unit>
             <trans-unit id="cheddi.ui.workspacePendingHint"><source>No draft workspace exists yet. ChEddi creates a personal one with your first confirmed change; nothing goes live.</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspaceSelect"><source>Select the workspace ChEddi writes into</source></trans-unit>
+            <trans-unit id="cheddi.ui.workspaceNew"><source>New workspace (will be created)</source></trans-unit>
             <trans-unit id="cheddi.ui.modeLive"><source>Live</source></trans-unit>
             <trans-unit id="cheddi.ui.modeLiveHint"><source>Changes take effect on the live site immediately.</source></trans-unit>
             <trans-unit id="cheddi.ui.helpButton"><source>How ChEddi works here</source></trans-unit>

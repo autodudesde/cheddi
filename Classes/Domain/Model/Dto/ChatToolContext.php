@@ -21,5 +21,6 @@ final class ChatToolContext
     public function __construct(
         public readonly ServerRequestInterface $request,
         public readonly string $model = '',
+        public readonly int $workspace = 0,
     ) {}
 }

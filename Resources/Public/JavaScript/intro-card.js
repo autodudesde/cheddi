@@ -1,10 +1,5 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
 
-/**
- * Composed by ChatOrientationService::statements(); the drawer only renders it. A client that
- * rebuilt the sentences kept a fourth copy of the write-mode rule and drifted onto a mode the
- * server had removed.
- */
 export function orientationStatus(orientation) {
     const statements = orientation?.statements;
     return Array.isArray(statements) ? statements : [];

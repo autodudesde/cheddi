@@ -17,12 +17,13 @@ namespace AutoDudes\Cheddi\Service\Chat;
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\WorkspaceContextService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\DataHandlerErrorFormatter;
+use AutoDudes\AiSuiteMcp\Mcp\Service\RecordLanguageLabelService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\WorkspaceComparisonService;
 use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
+use AutoDudes\Cheddi\Exception\WorkspaceAccessException;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
-use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class WorkspaceReviewService
@@ -38,6 +39,7 @@ class WorkspaceReviewService
         private readonly WorkspaceContextService $workspaceContextService,
         private readonly LoggerInterface $logger,
         private readonly DataHandlerErrorFormatter $dataHandlerErrorFormatter,
+        private readonly RecordLanguageLabelService $recordLanguageLabelService,
     ) {}
 
     /**
@@ -80,8 +82,8 @@ class WorkspaceReviewService
                 'pageId' => (int) $change['page_id'],
                 'action' => (string) $change['action'],
                 'label' => $label,
-                'language' => $this->languageOf($table, $workspaceRecordUid > 0 ? $workspaceRecordUid : (int) $change['record_uid'], (int) $change['page_id']),
-                'status' => self::normaliseStatus($status),
+                'language' => $this->recordLanguageLabelService->titleOf($table, $workspaceRecordUid > 0 ? $workspaceRecordUid : (int) $change['record_uid']),
+                'status' => $this->normaliseStatus($status),
                 'changedFields' => array_values(array_map('strval', $changedFields)),
             ];
         }
@@ -94,13 +96,13 @@ class WorkspaceReviewService
      *
      * @return array{applied: list<int>, errors: list<string>}
      *
-     * @throws \RuntimeException
+     * @throws WorkspaceAccessException
      */
     public function apply(int $sessionUid, array $changeUids, bool $publish): array
     {
         $backendUser = $this->backendUserService->getBackendUser();
         if (null === $backendUser) {
-            throw new \RuntimeException('No backend user in context.');
+            throw new WorkspaceAccessException('No backend user in context.');
         }
 
         $selected = [];
@@ -117,7 +119,7 @@ class WorkspaceReviewService
         foreach ($selected as $change) {
             $workspace = (int) $change['workspace'];
             if ($workspace <= 0 || false === $backendUser->checkWorkspace($workspace)) {
-                throw new \RuntimeException('No access to the workspace of this change.');
+                throw new WorkspaceAccessException('No access to the workspace of this change.');
             }
         }
 
@@ -130,7 +132,7 @@ class WorkspaceReviewService
             $workspace = (int) $change['workspace'];
 
             if ($workspaceRecordUid <= 0) {
-                $this->changeRepository->removeByRecord($table, (int) $change['record_uid']);
+                $this->changeRepository->removeByUid((int) $change['uid']);
                 $applied[] = (int) $change['uid'];
 
                 continue;
@@ -150,7 +152,7 @@ class WorkspaceReviewService
                 continue;
             }
 
-            $this->changeRepository->removeByRecord($table, (int) $change['record_uid']);
+            $this->changeRepository->removeByRecord($table, (int) $change['record_uid'], $workspace);
             $applied[] = (int) $change['uid'];
         }
 
@@ -177,27 +179,6 @@ class WorkspaceReviewService
         ]);
     }
 
-    private function languageOf(string $table, int $uid, int $pageId): string
-    {
-        $languageField = (string) ($GLOBALS['TCA'][$table]['ctrl']['languageField'] ?? '');
-        if ('' === $languageField || $uid <= 0 || $pageId <= 0) {
-            return '';
-        }
-
-        try {
-            $record = BackendUtility::getRecord($table, $uid, $languageField);
-            $languageId = (int) ($record[$languageField] ?? -1);
-            $site = GeneralUtility::makeInstance(SiteFinder::class)->getSiteByPageId($pageId);
-            if ($languageId < 0 || count($site->getLanguages()) < 2) {
-                return '';
-            }
-
-            return $site->getLanguageById($languageId)->getTitle();
-        } catch (\Throwable) {
-            return '';
-        }
-    }
-
     /**
      * @param array<string, array<int, array<string, mixed>>> $cmd
      */
@@ -217,7 +198,7 @@ class WorkspaceReviewService
         return $message;
     }
 
-    private static function normaliseStatus(string $status): string
+    private function normaliseStatus(string $status): string
     {
         return match ($status) {
             'added', 'create' => self::STATUS_ADDED,

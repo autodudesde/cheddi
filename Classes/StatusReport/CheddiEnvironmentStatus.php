@@ -14,8 +14,15 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\StatusReport;
 
+use AutoDudes\AiSuite\Service\BackendUserService;
+use AutoDudes\Cheddi\Command\AutoDeleteChatSessionsCommand;
+use AutoDudes\Cheddi\Domain\Repository\BackendGroupRepository;
+use AutoDudes\Cheddi\Domain\Repository\SchedulerTaskRepository;
+use AutoDudes\Cheddi\Service\Chat\AttachmentService;
 use AutoDudes\Cheddi\Service\Chat\ChatRequestService;
+use AutoDudes\Cheddi\Service\Chat\ChatSettingsService;
 use AutoDudes\Cheddi\Service\Chat\DocumentExtractorService;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
 use TYPO3\CMS\Reports\Status;
 use TYPO3\CMS\Reports\StatusProviderInterface;
@@ -24,6 +31,12 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
 {
     public function __construct(
         private readonly DocumentExtractorService $documentExtractor,
+        private readonly AttachmentService $attachmentService,
+        private readonly ChatSettingsService $chatSettings,
+        private readonly BackendUserService $backendUserService,
+        private readonly SchedulerTaskRepository $schedulerTaskRepository,
+        private readonly BackendGroupRepository $backendGroupRepository,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -34,6 +47,8 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
         return [
             $this->documentReadingStatus(),
             $this->executionTimeStatus(),
+            $this->uploadFolderStatus(),
+            $this->cleanupTaskStatus(),
         ];
     }
 
@@ -73,6 +88,110 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
                 implode('; ', $reasons),
             ),
             ContextualFeedbackSeverity::WARNING,
+        );
+    }
+
+    private function uploadFolderStatus(): Status
+    {
+        $configured = $this->chatSettings->getUploadFolder();
+        $backendUser = $this->backendUserService->getBackendUser();
+        $folder = null === $backendUser ? null : $this->attachmentService->baseUploadFolder($backendUser);
+
+        $findings = [];
+        $severity = ContextualFeedbackSeverity::OK;
+        if (null === $folder) {
+            $findings[] = '' === $configured
+                ? 'Your backend user has no default upload folder, so ChEddi refuses attachments for you. Editors with one are not affected.'
+                : sprintf('The chat upload folder "%s" (chatUploadFolder) does not exist, so ChEddi refuses every attachment that would go there. Create it or correct the setting.', $configured);
+            $severity = '' === $configured ? ContextualFeedbackSeverity::NOTICE : ContextualFeedbackSeverity::ERROR;
+        } elseif ($folder->getStorage()->isPublic()) {
+            $findings[] = $this->publicFolderFinding($folder->getCombinedIdentifier(), '' === $configured
+                ? 'This is the default upload folder of your user; other editors may use other folders.'
+                : 'This is the folder of the extension configuration.');
+            $severity = ContextualFeedbackSeverity::WARNING;
+        }
+
+        foreach ($this->backendGroupRepository->findWithChatUploadFolder() as $group) {
+            $groupFolder = $this->attachmentService->resolveConfiguredFolder($group['folder']);
+            if (null === $groupFolder) {
+                $findings[] = sprintf('Backend group "%s" (uid %d) sets the upload folder "%s", which does not exist; its members cannot attach files.', $group['title'], $group['uid'], $group['folder']);
+                $severity = ContextualFeedbackSeverity::ERROR;
+            } elseif ($groupFolder->getStorage()->isPublic()) {
+                $findings[] = $this->publicFolderFinding($groupFolder->getCombinedIdentifier(), sprintf('It is set on backend group "%s" (uid %d).', $group['title'], $group['uid']));
+                if (ContextualFeedbackSeverity::ERROR !== $severity) {
+                    $severity = ContextualFeedbackSeverity::WARNING;
+                }
+            }
+        }
+
+        if ([] === $findings) {
+            return new Status(
+                'ChEddi Upload Folder',
+                'Not public',
+                'Chat attachments are stored in a non-public storage and are only delivered to backend users with access to it.',
+                ContextualFeedbackSeverity::OK,
+            );
+        }
+
+        return new Status(
+            'ChEddi Upload Folder',
+            ContextualFeedbackSeverity::ERROR === $severity ? 'Folder missing' : (ContextualFeedbackSeverity::WARNING === $severity ? 'Publicly reachable' : 'No folder for your user'),
+            implode(' ', $findings),
+            $severity,
+        );
+    }
+
+    private function publicFolderFinding(string $folder, string $origin): string
+    {
+        return sprintf(
+            'Chat attachments are stored in %s%s/, a folder of a public storage. %s Anyone who knows a file\'s URL can download it without logging in; %s '
+            .'Set chatUploadFolder to a folder of a non-public storage to keep attachments private.',
+            $folder,
+            AttachmentService::UPLOAD_FOLDER_NAME,
+            $origin,
+            $this->chatSettings->usesRandomUploadNames()
+                ? 'the random prefix in every file name makes the URL hard to guess, not private.'
+                : 'random file names are switched off (chatUploadRandomNames), so a URL can be guessed from the original file name.',
+        );
+    }
+
+    private function cleanupTaskStatus(): Status
+    {
+        try {
+            $scheduled = $this->schedulerTaskRepository->hasActiveCommandTask(AutoDeleteChatSessionsCommand::NAME);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: could not look up the scheduler task for the session cleanup', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return new Status(
+                'ChEddi Session Cleanup',
+                'Not determinable',
+                sprintf('The scheduler tasks could not be read. Make sure a task runs the command %s regularly.', AutoDeleteChatSessionsCommand::NAME),
+                ContextualFeedbackSeverity::NOTICE,
+            );
+        }
+
+        if (!$scheduled) {
+            return new Status(
+                'ChEddi Session Cleanup',
+                'No active scheduler task',
+                sprintf(
+                    'Editors are told that inactive chats are deleted after %d days, but no active scheduler task runs the command %s. '
+                    .'Until one does, chats, their attachments and uploads that were never sent are kept indefinitely. '
+                    .'Add an "Execute console commands" task for it in the Scheduler module, daily is enough.',
+                    $this->chatSettings->getSessionLifetimeDays(),
+                    AutoDeleteChatSessionsCommand::NAME,
+                ),
+                ContextualFeedbackSeverity::WARNING,
+            );
+        }
+
+        return new Status(
+            'ChEddi Session Cleanup',
+            'Scheduler task active',
+            sprintf('An active scheduler task runs %s. Whether the scheduler cron job itself runs is shown under "Scheduler".', AutoDeleteChatSessionsCommand::NAME),
+            ContextualFeedbackSeverity::OK,
         );
     }
 

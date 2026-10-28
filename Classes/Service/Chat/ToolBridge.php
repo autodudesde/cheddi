@@ -16,15 +16,16 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\WorkspaceContextService;
+use AutoDudes\AiSuiteMcp\Domain\Model\Dto\ToolAccessContext;
 use AutoDudes\AiSuiteMcp\Mcp\McpUserContext;
 use AutoDudes\AiSuiteMcp\Mcp\Service\PermissionService;
-use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolAccessContext;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolGateway;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolInterface;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolRegistry;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\Translation\SelfTranslatingToolInterface;
 use AutoDudes\Cheddi\Domain\Enum\Severity;
 use AutoDudes\Cheddi\Domain\Model\Dto\ChatToolContext;
+use AutoDudes\Cheddi\Exception\WorkspaceAccessException;
 use AutoDudes\Cheddi\Mcp\Tool\ReadWebPageTool;
 use AutoDudes\Cheddi\Mcp\Tool\SearchWebTool;
 use Psr\Log\LoggerInterface;
@@ -40,7 +41,6 @@ class ToolBridge
     private const EXCLUDED_TOOLS = [
         'readServerInfo',
         'compareWithLive',
-        'uploadMedia',
         'batchGenerateMetadata',
         'batchGenerateFileMetadata',
         'batchTranslatePage',
@@ -56,6 +56,8 @@ class ToolBridge
      * @var null|list<string>
      */
     private ?array $cachedAvailableScopes = null;
+
+    private readonly CheddiToolPermissionPolicy $toolPermissionPolicy;
 
     /**
      * @var array<string, ToolInterface>
@@ -80,6 +82,7 @@ class ToolBridge
         #[AutowireIterator(self::CHAT_TOOL_TAG)]
         iterable $chatTools = [],
     ) {
+        $this->toolPermissionPolicy = new CheddiToolPermissionPolicy();
         foreach ($chatTools as $chatTool) {
             $this->chatTools[$chatTool->getName()] = $chatTool;
         }
@@ -176,8 +179,9 @@ class ToolBridge
 
     /**
      * @param array<string, mixed> $arguments
+     * @param list<string>         $editorTexts
      */
-    public function resolvePolicy(string $toolName, array $arguments = []): Severity
+    public function resolvePolicy(string $toolName, array $arguments = [], array $editorTexts = []): Severity
     {
         $tool = $this->chatTools[$toolName] ?? $this->toolRegistry->getTool($toolName);
         if (null === $tool) {
@@ -188,7 +192,7 @@ class ToolBridge
             return Severity::ReadOnly;
         }
 
-        return $this->policyResolver->resolve($tool);
+        return $this->policyResolver->resolveCall($tool, $arguments, $editorTexts);
     }
 
     public function creditCost(string $toolName): ?int
@@ -257,7 +261,7 @@ class ToolBridge
      */
     private function availableScopes(): array
     {
-        return $this->cachedAvailableScopes ??= $this->permissionService->getAvailableScopes();
+        return $this->cachedAvailableScopes ??= $this->permissionService->getAvailableScopes($this->toolPermissionPolicy);
     }
 
     /**
@@ -285,7 +289,7 @@ class ToolBridge
 
     private function accessContext(): ToolAccessContext
     {
-        return new ToolAccessContext($this->availableScopes(), ToolAccessContext::VIA_CHEDDI);
+        return new ToolAccessContext($this->availableScopes(), ToolAccessContext::VIA_CHEDDI, $this->toolPermissionPolicy);
     }
 
     private function ensureUserContextInitialized(ChatToolContext $context): void
@@ -304,12 +308,13 @@ class ToolBridge
             beUserUid: (int) ($backendUser->user['uid'] ?? 0),
             scopes: $this->availableScopes(),
             clientId: 'cheddi',
+            toolPermissionPolicy: $this->toolPermissionPolicy,
         );
 
-        $workspaceId = $this->orientationService->resolveWorkspaceId($backendUser);
+        $workspaceId = $this->orientationService->resolveWorkspaceId($backendUser, $context->workspace);
 
         if (false === $this->workspaceContextService->applyWorkspace($backendUser, $workspaceId)) {
-            throw new \RuntimeException(sprintf('The backend user has no access to workspace %d.', $workspaceId));
+            throw new WorkspaceAccessException(sprintf('The backend user has no access to workspace %d.', $workspaceId));
         }
     }
 }

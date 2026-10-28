@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'cheddi.drawerState';
 const SESSION_STORAGE_KEY = 'cheddi.sessionUuid';
 const SESSION_MODEL_STORAGE_KEY = 'cheddi.sessionModel';
+const SESSION_WORKSPACE_STORAGE_KEY = 'cheddi.sessionWorkspace';
 
 const SIZE_LIMITS = {
     minWidth: 360,
@@ -116,6 +117,27 @@ export function saveSessionModel(model) {
         }
     } catch (e) {
         console.warn('[ChEddi] could not persist the session model.', e);
+    }
+}
+
+export function loadSessionWorkspace() {
+    try {
+        return window.localStorage.getItem(SESSION_WORKSPACE_STORAGE_KEY) || null;
+    } catch (e) {
+        console.warn('[ChEddi] could not read the stored session workspace.', e);
+        return null;
+    }
+}
+
+export function saveSessionWorkspace(workspace) {
+    try {
+        if (workspace) {
+            window.localStorage.setItem(SESSION_WORKSPACE_STORAGE_KEY, workspace);
+        } else {
+            window.localStorage.removeItem(SESSION_WORKSPACE_STORAGE_KEY);
+        }
+    } catch (e) {
+        console.warn('[ChEddi] could not persist the session workspace.', e);
     }
 }
 

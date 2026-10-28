@@ -1,6 +1,6 @@
 # TYPO3 + ChEddi <img src="Resources/Public/Icons/Extension.png" alt="ChEddi" width="40" align="top">
 
-> 🧪 **Beta (`0.2.2`).** The feature set and the HTTP contract (routes, the `TurnResult`
+> 🧪 **Beta (`0.4.0`).** The feature set and the HTTP contract (routes, the `TurnResult`
 > response envelope, the tool-severity classification) are stabilising, but smaller changes
 > are still possible between minor versions while the extension matures. Pin a version and
 > review the changelog before upgrading.
@@ -12,9 +12,10 @@ pages have no image?"). ChEddi then works on the real records: page tree, conten
 translations, metadata, images, record CRUD, always as the logged-in backend user and with
 exactly that user's permissions.
 
-Nothing changes behind the editor's back. Read-only steps run on their own, every write is
-surfaced inline and needs a click, destructive ones a second click. In the default workspace
-write mode the result lands in a draft the editor can publish or discard from the drawer.
+Nothing changes behind the editor's back. Read-only steps run on their own unless they carry a
+fixed credit cost (the audits), every write is surfaced inline and needs a click, destructive ones
+a second click. In the default workspace write mode the result lands in a draft the editor can
+publish or discard from the drawer.
 
 [AI Suite](https://www.autodudes.de/) is the technical foundation this builds on: it ships
 the extension infrastructure, the backend-group permission model, the TYPO3
@@ -32,10 +33,11 @@ dependencies and Composer pulls them in for you.
 - 🧰 **Work on real records, not suggestions**: the assistant calls the same MCP tools an
   external client would (page tree, content generation, translation, metadata, image
   generation, record CRUD), gated to exactly what the current BE user is allowed to do.
-- ✅ **Confirm before anything changes**: read-only tools auto-run; write tools require a
-  click; destructive tools require a second confirming click. When one answer proposes several
-  calls, the card also offers "execute all" and "decline all"; "execute all" covers only what a
-  single click would have approved, so destructive and blocked entries still need their own
+- ✅ **Confirm before anything changes**: read-only tools auto-run, except the audits with
+  their fixed credit cost, which are confirmed like a write; write tools require a click;
+  destructive tools require a second confirming click. When one answer proposes several calls,
+  the card also offers "execute all" and "decline all"; "execute all" covers only what a single
+  click would have approved, so destructive and blocked entries still need their own
   decision. Decisions are recorded inline in the conversation as an audit trail.
 - 🧠 **Location-aware**: when the editor has a record open in an edit form, the drawer names its
   table and uid when a task starts, and ChEddi reads that record for the model up front (cut at
@@ -43,25 +45,46 @@ dependencies and Composer pulls them in for you.
   page the editor is looking at is not sent.
 - 📎 **Attach documents**: PDF, Word, spreadsheets and plain text are uploaded into FAL and
   their *text* is pulled in on demand via the `readAttachmentText` tool. The upload answer says
-  per file whether it can be read at all, so the editor learns that before sending. Images are
-  **not** an accepted attachment type (see *Limitations*). Up to 5 files per message, with size
-  caps per type (text 5 MB, PDF 50 MB, office documents 25 MB); long text is read in slices of
-  50,000 characters.
+  per file whether it can be read at all, so the editor learns that before sending. Up to 5
+  files per message, with size caps per type (text 5 MB, PDF 50 MB, office documents 25 MB);
+  long text is read in slices of 50,000 characters. Images are not among the readable
+  attachments (see *Bring in media*). Spreadsheets are read up to 2,000 rows and 50
+  columns per sheet, formulas as written rather than calculated; a document whose archive holds more
+  than 10,000 entries or unpacks to more than 200 MB is refused. Files land in a `cheddi` folder below the
+  editor's default upload folder, or below `chatUploadFolder` (of the extension or of a backend
+  group) when that is set, under a name with a random prefix unless `chatUploadRandomNames` is off;
+  the editor keeps seeing the original name. In a public storage such as `fileadmin`
+  that makes the URL hard to guess, not private, and the Reports module says so: point
+  `chatUploadFolder` at a non-public storage to keep attachments private. At most 30 uploads per
+  editor in ten minutes.
+- 🖼️ **Bring in media** (`enable_cheddi_media_upload`): with the flag, images can be attached
+  as well and placed on a page by ChEddi (`writeRecords`, `replaceMediaReference`), and `uploadMedia`
+  imports an image or video by URL or a YouTube/Vimeo link into the file storage. Image types and
+  the size cap follow `mcpMediaAllowedExtensions` and `mcpMediaMaxSizeMb` of `ai_suite_mcp`
+  (`0` there means the PDF cap of 50 MB applies); SVG is never accepted. **No chat model has
+  vision**: an attached image is a file ChEddi can place or move, but no model can describe,
+  check or compare what it shows; alternative text and title come from `generateFileMetadata`
+  (see *Limitations*). An attached image stays in the chat upload folder; once it is
+  placed on a page it survives the deletion of the chat. `moveFile` moves it (or any other file)
+  into a folder of your choice; the file keeps its UID, so the image on the page stays, and a file
+  moved out of the chat folder is never touched by the chat cleanup again.
 - 🚧 **Research the web** *(experimental)*: two separate capabilities behind the
-  `enable_web_research` backend-group flag. `searchWeb` runs through the AI Suite Server
+  `tx_cheddi_features:enable_web_research` backend-group flag. `searchWeb` runs through the AI Suite Server
   (`/api/webSearch`) on the server's search provider (its EU provider in GDPR mode) and costs
   credits; models with a search of their own use it instead, outside GDPR mode. `readWebPage`
   fetches one URL the editor named directly from this installation, with no AI provider in the
-  path and no credits. Both feed
+  path and no credits. A URL that appears in none of the editor's messages (another path, an added
+  query string, another host) is shown as a confirmation card first, so text the model read cannot
+  send data out on its own. Both feed
   their sources into the drawer so the editor can check the answer against them. See
   *Limitations* before enabling it.
 - 🔗 **Jump to what was found or changed**: records a task wrote, and records a pure read found
-  (search hits, a page tree, a record list), become buttons under the final answer; found records
-  only when the task changed nothing. Child records such as accordion items or file references
+  (search hits, records matching a filter, a page that was read), become buttons under the final
+  answer; found records only when the task changed nothing. Child records such as accordion items or file references
   link the element they belong to.
 - 📊 **Audits are kept**: an SEO, accessibility or other audit run through the chat is stored in the
-  AI Suite Audit module for the page it audited, with buttons to open the result (if the editor may
-  open the Audit module) and, for SEO and accessibility, to download it as CSV. Audits cost credits
+  AI Suite Audit module for the page it audited, with buttons, shown only if the editor may open the
+  Audit module, to open the result and, for SEO and accessibility, to download it as CSV. Audits cost credits
   and therefore need a click.
 - 📄 **CSV on request**: when the editor asks for a CSV or spreadsheet file, the answer carries a
   download button (`createCsvDownload`). The file is built from the stored tool call, so it is still
@@ -69,10 +92,16 @@ dependencies and Composer pulls them in for you.
 - 🧾 **Review what changed**: when writes land in a draft workspace (the default), the
   actions menu lists exactly the records this conversation touched and offers Publish or
   Discard per record or for all of them.
+- 🗃️ **Choose the workspace**: an editor with access to more than one workspace picks the draft
+  workspace per conversation in the header, next to the model. The choice is fixed with the first
+  message and leaves the editor's own backend workspace unchanged. The list holds every workspace
+  the editor has access to, for admins all of them, plus "New workspace (will be created)" when the
+  editor has no ChEddi workspace yet. ChEddi creates that one as "ChEddi: <name>" (real name, else
+  username), separate from the `AI Suite MCP [#<uid>]` workspace that MCP clients write into.
 - 🗂️ **Conversation history**: sessions are stored per BE user, auto-titled from the first
   message, listed in a panel, and can be reopened, switched or deleted.
-- 💰 **Credit feedback**: remaining credits show in the header, the badge turns amber below 50
-  credits, a warning appears in the conversation, and the input locks for this conversation once
+- 💰 **Credit feedback**: remaining credits show in the header, the badge turns amber once the credit
+  pack drops below 50 and the plan has nothing left, a warning appears in the conversation, and the input locks for this conversation once
   credits are exhausted.
 - 🧭 **Orientation while working**: the drawer states the operating context (write mode, GDPR
   mode, web research, where a confirmed write lands, retention) and that ChEddi is an AI system;
@@ -99,21 +128,22 @@ These are deliberate design decisions, not bugs, and worth knowing before you de
 - **Every turn goes through the AI Suite Server.** ChEddi never calls a model provider
   directly, so the server has to be reachable even on BYOK tariffs, where it forwards the
   request using your own keys.
-- **Images are not supported as attachments.** Messages travel to the server as plain strings,
-  so no image content could reach the model anyway; image extensions are therefore not in the
-  upload allowlist and are rejected. Documents (PDF, Word, spreadsheets, plain text) *are* read,
+- **The model never sees an image.** Messages travel to the server as plain strings, so an
+  attached image is a file ChEddi can place, not a picture the model can look at; alternative text
+  comes from `generateFileMetadata`. Documents (PDF, Word, spreadsheets, plain text) *are* read,
   as text, on demand.
 - **Write reversibility comes from the workspace draft, not from ChEddi.** With the default
   `workspace` write mode a confirmed change lands in a draft you can publish or discard from the
   drawer; in `live` mode a confirmed change is immediate. Note that the underlying `generateImage`
   tool stores its file directly, so no workspace discard undoes it (see the `ai_suite_mcp`
-  README); `uploadMedia` is not offered in ChEddi at all.
+  README). The same holds for `uploadMedia` and `moveFile`: an imported or moved file is stored right away, which is
+  why their confirmation is destructive (two steps) and their card says so.
 - **Web research is experimental.** 🚧 It is off by default (`enable_web_research`) and its
   behaviour and configuration may change between minor versions; treat it as a preview, not as
   a stable interface. Three consequences worth knowing before you switch it on:
   - **`searchWeb` sends the editor's query out of the installation**, to a search provider by way
     of the AI Suite Server, and it costs credits. Without GDPR mode that provider is US-hosted.
-    With `chatForceGdpa` the search runs through the server's EU search provider instead, and it
+    In GDPR mode (`forceGdpa` in AI Suite or `chatForceGdpa`) the search runs through the server's EU search provider instead, and it
     is withheld when the server has none or when that provider does not serve the site's market;
     the drawer names which of the two applies. Models with a search of their own search natively
     outside GDPR mode, never in it, and they are never offered `searchWeb`. `readWebPage` is
@@ -136,8 +166,8 @@ These are deliberate design decisions, not bugs, and worth knowing before you de
 |---|---|---|
 | TYPO3 CMS | `12.4.11` to `14.3.x` | Backend extension for TYPO3 v12, v13 and v14 |
 | PHP | `^8.1` | |
-| `autodudes/ai-suite` | `^12.23.0 \|\| ^13.17.0 \|\| ^14.5.0` | The shared services (requests, settings, models, workspace context, localization, CSV export, prompt templates), `AbstractRepository` and the backend-group permission model |
-| `autodudes/ai-suite-mcp` | `^0.8` | Provides the `ToolRegistry`, `ToolGateway`, `PermissionService`, `McpUserContext` and `SurfaceSettingOverrides` |
+| `autodudes/ai-suite` | `^12.24.0 \|\| ^13.18.0 \|\| ^14.6.0` | The shared services (requests, settings, models, workspace context, localization, CSV export, prompt templates), `AbstractRepository` and the backend-group permission model |
+| `autodudes/ai-suite-mcp` | `^0.11` | Provides the `ToolRegistry`, `ToolGateway`, `PermissionService`, `McpUserContext` and `SurfaceSettingOverrides` |
 | `typo3/cms-workspaces` | `^12.4.11 \|\| ^13.4.1 \|\| ^14.3.0` | Required; the default `workspace` write mode routes confirmed changes through a draft |
 | `typo3/cms-scheduler` | `^12.4.11 \|\| ^13.4.1 \|\| ^14.3.0` | Required. The session auto-delete command also runs straight from the CLI, but the dependency is hard |
 | `typo3/cms-reports` | `^12.4.11 \|\| ^13.4.1 \|\| ^14.3.0` | Required; the Reports module shows the *ChEddi Environment* check |
@@ -160,15 +190,23 @@ Then in the TYPO3 backend:
 
 1. Activate the extension (it ships its DB tables via `ext_tables.sql`).
 2. Grant the **Enable Chat Interface** permission to the relevant BE groups
-   (Access → custom permission option `tx_aisuite_features:enable_cheddi_interface`).
+   (Access → **ChEddi Features**, `tx_cheddi_features:enable_cheddi_interface`).
    Without it the drawer is not injected and every chat AJAX route returns `403`.
-3. Make sure each BE group also holds the per-model permissions
-   (`tx_aisuite_models:<Model>`) for at least one chat-capable model (ChEddi registers
-   `OpenAiLuna`, `IonosQwen35`, `ClaudeHaiku45`, `ClaudeSonnet5` and `ClaudeOpus5`; in GDPR mode only
-   `IonosQwen35`); otherwise the
-   model dropdown is empty and the input area shows a hint.
-4. Optionally grant `tx_aisuite_features:enable_web_research` to groups that may use the
+3. Make sure each BE group also holds at least one chat model under **ChEddi Models**
+   (`tx_cheddi_models:<Model>`: `OpenAiLuna`, `IonosQwen35`, `IonosQwen38`, `ClaudeHaiku55`,
+   `ClaudeSonnet55`; in GDPR mode only `IonosQwen35` and `IonosQwen38`); otherwise the model
+   dropdown is empty and the input area shows a hint.
+4. Grant the ChEddi features the chat may use for that group (see *Permissions & security model*).
+   They are independent of the AI Suite features: a group may translate in the AI Suite and not in
+   the chat, or the other way round.
+5. Optionally grant `tx_cheddi_features:enable_web_research` to groups that may use the
    experimental web research (see *Limitations*).
+
+Updating from a version that kept these permissions under *AI Suite Features* and *AI Suite
+Models*: run the upgrade wizard `cheddiSeparatePermissions` (`vendor/bin/typo3 upgrade:run
+cheddiSeparatePermissions`, or *Admin Tools → Upgrade*). It moves the ChEddi flags and chat models
+into their own lists and grants every group the ChEddi counterpart of the AI Suite features it holds,
+so nobody loses an ability in the chat. Until it has run, no group has access to ChEddi.
 
 ### Classic mode (no Composer)
 
@@ -190,19 +228,36 @@ and their dependencies are bundled in `Resources/Private/PHP`. TYPO3 v14 loads t
 
 ## Permissions & security model
 
-Access is gated in two layers, both reusing the existing AI Suite permission system:
+ChEddi has its own two permission lists in the backend group (Access tab, next to the AI Suite
+lists), so what an editor may do in the chat is set independently of the AI Suite modules:
 
-1. **Feature flag**: `tx_aisuite_features:enable_cheddi_interface`. Gates both the drawer
-   injection (`InjectChatDrawerListener`) and every AJAX route (`ChatController`,
-   `AttachmentController` and `WorkspaceReviewController` check it on every request).
-   A second, independent flag `tx_aisuite_features:enable_web_research` gates the experimental
-   web research tools (`WebResearchPolicy`); it is off unless granted, and under `chatForceGdpa`
-   `searchWeb` only runs through the server's EU search provider, where one serves the site's market.
-2. **Per-model + per-tool**: the model dropdown only lists models the BE group holds
-   `tx_aisuite_models:<Model>` for. The `ToolBridge` filters the MCP tool catalogue through
-   the `PermissionService` of `ai_suite_mcp` (via `ToolGateway`) so the LLM only ever sees tools the user may run, and re-validates
-   on execution (the chat-only tools are gated by `WebResearchPolicy` and file-mount checks instead). Tool calls run under an `McpUserContext` seeded from the BE user's own
-   permission-derived scopes (admins bypass via TYPO3's `BackendUserAuthentication::check()`).
+| ChEddi feature | Gates in the chat |
+|---|---|
+| `enable_cheddi_interface` | the drawer (`InjectChatDrawerListener`) and every AJAX route (`ChatController`, `AttachmentController`, `WorkspaceReviewController`) |
+| `enable_web_research` | the experimental web research tools (`WebResearchPolicy`); in GDPR mode `searchWeb` only runs through the server's EU search provider, where one serves the site's market |
+| `enable_cheddi_generation` | generating page and file metadata, content elements and pages |
+| `enable_cheddi_translation` | the translation tools; `translatePage` and `translateFileMetadata` also need the flag of their own |
+| `enable_cheddi_page_translation` | `translatePage`, a whole page with its content elements |
+| `enable_cheddi_file_metadata_translation` | `translateFileMetadata` |
+| `enable_cheddi_image_generation` | `generateImage` |
+| `enable_cheddi_audit` | `auditSeo`, `auditAccessibility`, `auditContent` |
+| `enable_cheddi_rendered_page_read` | `readRenderedPage` |
+| `enable_cheddi_media_upload` | `uploadMedia`, `moveFile` and image attachments (`AttachmentController`, picker `accept` list) |
+
+Reading and writing records need no flag beyond the chat itself, as over MCP.
+
+1. **Chat models**: the model dropdown only lists models the group holds
+   `tx_cheddi_models:<Model>` for.
+2. **Tools**: the `ToolBridge` filters the MCP tool catalogue through the `PermissionService` of
+   `ai_suite_mcp` (via `ToolGateway`) with ChEddi's own `CheddiToolPermissionPolicy`, so the
+   features above decide, not the AI Suite features or the MCP flags. The same policy is checked
+   again when a tool runs. The chat-only tools are gated by `WebResearchPolicy` and file-mount
+   checks instead.
+3. **Models inside a tool** stay with the AI Suite: a translation, image or metadata tool may use
+   only the models the group holds under **AI Suite Models**.
+
+Tool calls run under an `McpUserContext` seeded from the scopes this policy grants (admins
+bypass via TYPO3's `BackendUserAuthentication::check()`).
 
 ### Tool risk classification
 
@@ -311,7 +366,7 @@ Validation errors and permission denials use `4xx` with `{ "error": { "message":
 (`400`, `badRequest`), a missing feature flag (`403`, `featureDisabled`) and a rejected model
 (`403`, `modelNotChat`, `modelNotPermitted`, `gdprModelBlocked` or `missingAiModelApiKey`). Without
 a code: the upload and workspace review routes answer `400` on a malformed request, `403` for a
-missing upload folder or a refused publish/discard, `404` for an unknown
+missing upload folder, a missing feature flag or a refused publish/discard, `404` for an unknown
 session, download or workspace review session, `409` on publish/discard without workspaces,
 `413` / `415` for an oversized or unsupported attachment, and `500` when an upload cannot be
 stored.
@@ -322,8 +377,9 @@ user-correctable, and carrying `chatErrorCode: noOpenTurn` when a continue finds
 resume, `nothingToSummarize` on an empty conversation and `chatServerTimeout` when the server
 does not answer within the request timeout, which is never retried automatically); a hit rate
 limit comes back as `429` with `chatErrorCode: rateLimited`
-(separate buckets per backend user for `turn`, `continue` and `confirm`; summarize shares the
-`turn` bucket); `creditsExhausted` and `aborted` come back as `200`.
+(separate buckets per backend user for `turn`, `continue` and `confirm`, each fixed at 100
+requests per 60 seconds with a 60-second lockout and independent of `mcpRateLimitRequests`;
+summarize shares the `turn` bucket); `creditsExhausted` and `aborted` come back as `200`.
 
 ## Architecture
 
@@ -349,18 +405,20 @@ Classes/
 │   ├── AttachmentService.php, DocumentExtractorService.php   Attachment storage and text extraction
 │   ├── PendingPreviewService.php, WorkspaceReviewService.php, ChangeTracker.php, ChatWriteCaptureService.php   Confirmation previews, draft review and the write capture window
 │   ├── ChatHelpService.php, ChatProgressService.php   Help topics and the turn progress the drawer polls
-│   ├── CsvDownloadPayload.php, UploadedFileWriter.php, NetworkTimeoutDetector.php   CSV download payload, attachment writing, timeout detection
+│   ├── CsvDownloadPayload.php, UploadedFileWriter.php   CSV download payload, attachment writing
 │   └── ChatSessionAutoDeleter.php    Two-stage retention (sessions, messages, changes, unused attachments)
 ├── Mcp/Tool/                         Chat-only tools: readAttachmentText, searchWeb, readWebPage, createCsvDownload
 ├── Command/
-│   └── AutoDeleteChatSessionsCommand.php   Scheduler/CLI entry point for retention
+│   └── AutoDeleteChatSessionsCommand.php   Scheduler/CLI entry point for retention (one run at a time)
 ├── EventListener/                    Drawer injection, change-log cleanup on publish, usage statistics
 ├── Hook/ChatWriteCaptureHook.php     Captures the records a confirmed write touched
 ├── StatusReport/CheddiEnvironmentStatus.php   Reports module check (readable attachment types, execution time)
+├── Exception/                        CheddiException and its subclasses (unreadable documents, workspace access)
+├── Utility/NetworkTimeoutDetector.php   Recognises an HTTP timeout under Guzzle 7 and 8
 └── Domain/
     ├── Model/{ChatSession,ChatMessage}.php   Plain row objects (fromRow factories)
     ├── Model/Dto/{TurnResult,ChatTurnAnswer,ChatToolContext}.php   Typed turn in/out envelopes
-    ├── Repository/{ChatSession,ChatMessage,ChatChange}Repository.php   extend AI Suite AbstractRepository
+    ├── Repository/{ChatSession,ChatMessage,ChatChange,FileReference}Repository.php   extend AI Suite AbstractRepository
     └── Enum/Severity.php             ReadOnly | Write | Destructive
 
 Resources/Public/
@@ -379,8 +437,12 @@ has no third-party dependencies. It mounts on the `[data-cheddi-drawer]` div the
 listener appends to the rendered backend page. It owns the bubble/drawer, model selector, the
 auto-continue loop and the inline confirm UI; the credits badge comes from `status-bar.js`, safe
 Markdown rendering from `markdown.js`, and the session list from `sessions-panel.js`. `state.js`
-persists the drawer size, composer height and open state, the active session UUID and the
+persists the drawer size, dock state, composer height and open state, the active session UUID and the
 session's model to `localStorage`.
+
+Other backend modules can open the drawer with a prepared message: dispatch
+`new CustomEvent('cheddi:prefill', {detail: {text}})` on `top.document`. The drawer opens and fills
+the composer; nothing is sent until the editor sends it.
 
 `marked` and `DOMPurify` are **vendored locally** (not pulled from a CDN) to keep ChEddi
 self-contained; the import map in `JavaScriptModules.php` records the audited versions and
@@ -390,12 +452,16 @@ the CVEs they patch; re-run the audit and update that comment when bumping them.
 
 | Table | Purpose |
 |---|---|
-| `tx_cheddi_session` | One row per conversation: `session_uuid`, `be_user`, `title`, `model`, `last_activity`, soft-delete `deleted` flag |
+| `tx_cheddi_session` | One row per conversation: `session_uuid`, `be_user`, `title`, `model`, `workspace` (the workspace chosen for the conversation, `0` when none was chosen), `last_activity`, soft-delete `deleted` flag |
 | `tx_cheddi_message` | One row per message: `session`, `sort`, `role` (`user`/`assistant`/`tool`/`summary`), `content`, `tool_calls`, `tool_call_id`, `tool_status`, `attachments` (file references, never bytes), `provider_items`, `sources` (web research sources, JSON) |
-| `tx_cheddi_change` | Audit trail of the records a session mutated: `session`, `tablename`, `record_uid`, `workspace_record_uid`, `workspace`, `page_id`, `action`. Only filled in workspace write mode; rows are removed once the record is published or discarded |
+| `tx_cheddi_change` | Audit trail of the records a session mutated: `session`, `tablename`, `record_uid`, `workspace_record_uid`, `workspace`, `page_id`, `action`. Only filled in workspace write mode; rows are removed once the record is published, or discarded from the drawer |
 
 There are no FK constraints between them; the auto-deleter cascades message, change and
 attachment deletion in application code.
+
+ChEddi also adds the column `sys_workspace.tx_cheddi_owner`: the backend user a ChEddi draft workspace was
+created for, `0` on every other workspace. The workspace is found by this column, so renaming it in
+the workspace module keeps it in use.
 
 ## Session retention
 
@@ -407,7 +473,11 @@ Two-stage, handled by `ChatSessionAutoDeleter` and invoked by the
    is possible.
 2. **Hard-delete** sessions soft-deleted for at least `HARD_DELETE_GRACE_DAYS` (**7** days),
    together with their messages, their `tx_cheddi_change` rows and the attachments still in
-   ChEddi's upload folder that nothing else references any more.
+   ChEddi's upload folder that nothing else references any more, including another conversation.
+3. **Sweep** uploads that were never sent: every upload is registered in `tx_cheddi_upload`, and
+   one that is older than `chatSessionLifetimeDays`, still sits in a `cheddi` folder and is
+   referenced by no conversation and no record is removed. A file someone put into such a folder by
+   hand was never registered and is never touched; one moved out of the folder is forgotten.
 
 Run it from the CLI:
 
@@ -416,7 +486,8 @@ vendor/bin/typo3 cheddi:auto-delete-sessions
 ```
 
 …or register it as a recurring task in the TYPO3 scheduler module (requires
-`typo3/cms-scheduler`). A daily cron is recommended.
+`typo3/cms-scheduler`). A daily cron is recommended. Without an active task none of this happens,
+although the drawer still names the retention period; the Reports module warns about it.
 
 ## Configuration
 
@@ -424,7 +495,9 @@ Extension configuration (`ext_conf_template.txt`):
 
 | Key | Default | Description |
 |---|---|---|
-| `chatSessionLifetimeDays` | `20` | Days of inactivity before a session is soft-deleted. |
+| `chatSessionLifetimeDays` | `20` | Days of inactivity before a session is soft-deleted, and the age at which an upload that was never sent is removed. |
+| `chatUploadFolder` | *(empty)* | Combined identifier of the folder chat attachments are stored below, e.g. `2:/chat/`. Empty uses the editor's default upload folder. Point it at a non-public storage to keep attachments private; editors need write access to it. |
+| `chatUploadRandomNames` | `1` | Store attachments under a random name prefix so a URL in a public storage cannot be guessed. Switch it off only for a non-public storage where the original names are wanted in the file list. |
 | `chatForceGdpa` | `inherit` | Restrict ChEddi to GDPR-compliant models; `searchWeb` then runs only through the server's EU search provider and is withheld where none serves the site's market (experimental; `readWebPage` stays available, it contacts no AI provider). |
 | `chatWriteMode` | `inherit` | Where writes land: draft `workspace` or `live`. |
 | `chatAllowRawHtmlWrite` | `inherit` | Whether ChEddi may store raw markup in code editor fields. |
@@ -434,25 +507,44 @@ Extension configuration (`ext_conf_template.txt`):
 | `chatLogRedactionPatterns` | *(empty)* | Extra regex patterns redacted in the ChEddi log, on top of `mcpLogRedactionPatterns`. |
 | `chatWebResearchAllowedDomains` | *(empty)* | Domains web research is restricted to, at most 10. A hard filter, not a ranking hint: a question whose answer lives on none of them returns no sources. Takes precedence over the block list. |
 | `chatWebResearchBlockedDomains` | *(empty)* | Domains web research never returns, at most 10. Ignored while an allow list is set. |
-| `chatWebResearchCountry` | *(empty)* | Two-letter ISO country the results are localised for. Empty takes the region of the site's default language. |
+| `chatWebResearchCountry` | *(empty)* | Two-letter ISO country the results are localised for. Empty takes the region of the default language of the first site that has one. |
 | `chatWebResearchMaxSearches` | `0` | Searches one turn may run. `0` leaves it to the server. |
 
+### Per backend group
+
+The *ChEddi* tab of a backend group overrides part of this configuration for its members. Admins
+always use the extension configuration. A group can only tighten what is security-relevant, so
+the order of an editor's groups never decides how much they may do:
+
+| Field | Combination across groups |
+|---|---|
+| `chatUploadFolder` | The first group with a value wins, as with `mediaStorageFolder` of the AI Suite. |
+| `chatUploadRandomNames` | Can only be switched on. |
+| `chatForceGdpa` | Can only be forced on. |
+| `chatWriteMode` | Can only force a draft workspace, never live. |
+| `chatAllowRawHtmlWrite` | Can only forbid. |
+| `chatExcludedTools`, `chatExcludedTables` | The lists of all groups add up. |
+
+The Reports module checks every group folder: one that does not exist is an error, one in a public
+storage a warning.
+
 ChEddi never offers these tools, whatever `chatExcludedTools` says, because each is reachable
-through a backend module instead: `readServerInfo`, `compareWithLive`, `uploadMedia`,
+through a backend module instead: `readServerInfo`, `compareWithLive`,
 `batchGenerateMetadata`, `batchGenerateFileMetadata`, `batchTranslatePage`,
 `batchTranslateFileMetadata`, `readTaskStatus`, `readTaskResults` and `applyTaskResults`. `chatExcludedTools` adds to that list.
 
 Every key with a counterpart in `ai_suite_mcp` (`mcpWriteMode`, `mcpAllowRawHtmlWrite`,
 `mcpExcludedTables`, `mcpLogVerbose`, `mcpLogRedactionPatterns`) or in `ai_suite` (`forceGdpa`)
-defaults to **inherit**: left empty or on `inherit`, ChEddi behaves exactly like the surface it
-inherits from. For most keys a configured value may only **tighten**: the table list and redaction
+defaults to **inherit**, the list settings `chatExcludedTables` and `chatLogRedactionPatterns` to
+empty: left empty or on `inherit`, ChEddi behaves exactly like the surface it inherits from. For most keys a configured value may only **tighten**: the table list and redaction
 patterns are added to the MCP ones and never shorten them, `chatAllowRawHtmlWrite = Yes` cannot
 re-enable what MCP forbids, and `chatForceGdpa = No` cannot take ChEddi out of an
 installation-wide GDPR requirement. Two keys are ChEddi's own decision: `chatWriteMode` replaces
 `mcpWriteMode` for ChEddi, so `live` writes live even while MCP writes to a workspace, and
 `chatLogVerbose` switches `var/log/cheddi.log` independently of `mcpLogVerbose`.
 `ChatSettingsService` resolves this and pushes what the shared MCP services need into
-`SurfaceSettingOverrides` (`ai_suite_mcp`), which the MCP transport itself leaves empty.
+`SurfaceSettingOverrides` (`ai_suite_mcp`), which the MCP transport itself leaves empty; the two
+log settings are applied in ChEddi's `ext_localconf.php`.
 
 The server endpoint and API key are **not** configured here; they are read from the parent
 AI Suite ext-conf (`aiSuiteServer`, `aiSuiteApiKey`) via

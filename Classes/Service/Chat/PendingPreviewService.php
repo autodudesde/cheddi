@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
+use AutoDudes\AiSuiteMcp\Mcp\Exception\InvalidParameterException;
+use AutoDudes\AiSuiteMcp\Mcp\Service\MediaUploadPreflight;
+use AutoDudes\AiSuiteMcp\Mcp\Service\MediaUploadSettings;
+use AutoDudes\AiSuiteMcp\Mcp\Service\RecordAccessService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\RecordPreviewService;
 use AutoDudes\AiSuiteMcp\Mcp\Utility\BatchDefaults;
 use AutoDudes\AiSuiteMcp\Mcp\Utility\RecordsArgumentDecoder;
@@ -25,6 +29,9 @@ class PendingPreviewService
 
     public function __construct(
         private readonly RecordPreviewService $recordPreview,
+        private readonly MediaUploadPreflight $mediaUploadPreflight,
+        private readonly MediaUploadSettings $mediaUploadSettings,
+        private readonly RecordAccessService $recordAccess,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -44,6 +51,8 @@ class PendingPreviewService
                 'localizeRecord' => $this->buildLocalize($arguments),
                 'savePageTree' => $this->buildPageTree($arguments),
                 'patchText' => $this->buildPatch($arguments),
+                'uploadMedia' => $this->buildMedia($arguments),
+                'moveFile' => $this->buildMove($arguments),
                 default => null,
             };
         } catch (\Throwable $e) {
@@ -84,6 +93,12 @@ class PendingPreviewService
      */
     private function scanWriteRecords(string $toolName, array $arguments): array
     {
+        if ('uploadMedia' === $toolName) {
+            return $this->scanPlanned($toolName, fn (): array => $this->planMedia($arguments));
+        }
+        if ('moveFile' === $toolName) {
+            return $this->scanPlanned($toolName, fn (): array => $this->planMove($arguments));
+        }
         if ('writeRecords' !== $toolName) {
             return ['notes' => [], 'writable' => 0];
         }
@@ -112,6 +127,182 @@ class PendingPreviewService
 
             return ['notes' => [], 'writable' => 0];
         }
+    }
+
+    /**
+     * @param callable(): list<array{error: ?string}> $planner
+     *
+     * @return array{notes: list<string>, writable: int}
+     */
+    private function scanPlanned(string $toolName, callable $planner): array
+    {
+        try {
+            $notes = [];
+            $writable = 0;
+            foreach ($planner() as $index => $item) {
+                if (null === $item['error']) {
+                    ++$writable;
+                } else {
+                    $notes[] = sprintf('#%d: %s', $index + 1, $item['error']);
+                }
+            }
+
+            return ['notes' => $notes, 'writable' => $writable];
+        } catch (\Throwable $e) {
+            $this->report($toolName, 'gate opened, the tool validates the call itself', $e);
+
+            return ['notes' => [], 'writable' => 0];
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return list<array{item: mixed, folder: string, newFolder: bool, error: ?string}>
+     */
+    private function planMedia(array $arguments): array
+    {
+        $media = $arguments['media'] ?? null;
+        if (!is_array($media)) {
+            return [];
+        }
+
+        $batchFolder = '' !== (string) ($arguments['targetFolder'] ?? '')
+            ? (string) $arguments['targetFolder']
+            : $this->mediaUploadSettings->read()['defaultFolder'];
+        $batchConflictMode = $this->mediaUploadPreflight->resolveConflictMode($arguments['onConflict'] ?? 'rename');
+        $batchCreateFolder = (bool) ($arguments['createFolder'] ?? false);
+
+        $planned = [];
+        foreach (array_values($media) as $item) {
+            try {
+                $plan = $this->mediaUploadPreflight->plan($item, $batchFolder, $batchConflictMode, $batchCreateFolder);
+                $planned[] = ['item' => $item, 'folder' => $plan->folderIdentifier, 'newFolder' => [] !== $plan->missingFolders, 'error' => null];
+            } catch (InvalidParameterException|\RuntimeException $e) {
+                $planned[] = ['item' => $item, 'folder' => '', 'newFolder' => false, 'error' => $e->getMessage()];
+            }
+        }
+
+        return $planned;
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return null|array<string, mixed>
+     */
+    private function buildMedia(array $arguments): ?array
+    {
+        $planned = $this->planMedia($arguments);
+        if ([] === $planned) {
+            return null;
+        }
+
+        $items = [];
+        foreach (array_slice($planned, 0, self::MAX_RECORDS) as $entry) {
+            $item = is_array($entry['item']) ? $entry['item'] : [];
+            $url = trim((string) ($item['url'] ?? ''));
+            $items[] = [
+                'action' => null === $entry['error'] ? 'create' : 'invalid',
+                'source' => '' !== $url ? 'url' : 'content',
+                'url' => '' !== $url ? mb_substr($url, 0, self::MAX_VALUE_LENGTH) : null,
+                'fileName' => trim((string) ($item['fileName'] ?? '')),
+                'folder' => $entry['folder'],
+                'newFolder' => $entry['newFolder'],
+                'note' => $entry['error'],
+            ];
+        }
+
+        return [
+            'kind' => 'media',
+            'mode' => 'upload',
+            'records' => $items,
+            'total' => count($planned),
+            'truncated' => count($planned) > count($items),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return list<array{fileName: string, currentFolder: string, folder: string, newFolder: bool, error: ?string}>
+     */
+    private function planMove(array $arguments): array
+    {
+        $fileUids = is_array($arguments['fileUids'] ?? null)
+            ? array_values(array_filter(array_map('intval', $arguments['fileUids']), static fn (int $uid): bool => $uid > 0))
+            : [];
+        if ([] === $fileUids) {
+            return [];
+        }
+
+        $requestedFolder = (string) ($arguments['targetFolder'] ?? '');
+        $folder = null;
+        $folderError = null;
+
+        try {
+            $folder = $this->mediaUploadPreflight->resolveTargetFolder($requestedFolder, (bool) ($arguments['createFolder'] ?? false));
+        } catch (InvalidParameterException|\RuntimeException $e) {
+            $folderError = $e->getMessage();
+        }
+
+        $planned = [];
+        foreach ($fileUids as $fileUid) {
+            try {
+                $file = $this->recordAccess->assertFileReadAccess($fileUid);
+                $fileName = $file->getName();
+                $currentFolder = $file->getParentFolder()->getCombinedIdentifier();
+                $error = $folderError;
+            } catch (InvalidParameterException|\RuntimeException $e) {
+                $fileName = sprintf('UID %d', $fileUid);
+                $currentFolder = '';
+                $error = $e->getMessage();
+            }
+            $planned[] = [
+                'fileName' => $fileName,
+                'currentFolder' => $currentFolder,
+                'folder' => null !== $folder ? $folder->identifier : $requestedFolder,
+                'newFolder' => null !== $folder && [] !== $folder->missingFolders,
+                'error' => $error,
+            ];
+        }
+
+        return $planned;
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return null|array<string, mixed>
+     */
+    private function buildMove(array $arguments): ?array
+    {
+        $planned = $this->planMove($arguments);
+        if ([] === $planned) {
+            return null;
+        }
+
+        $items = [];
+        foreach (array_slice($planned, 0, self::MAX_RECORDS) as $entry) {
+            $items[] = [
+                'action' => null === $entry['error'] ? 'move' : 'invalid',
+                'source' => 'file',
+                'url' => null,
+                'fileName' => $entry['fileName'],
+                'currentFolder' => $entry['currentFolder'],
+                'folder' => $entry['folder'],
+                'newFolder' => $entry['newFolder'],
+                'note' => $entry['error'],
+            ];
+        }
+
+        return [
+            'kind' => 'media',
+            'mode' => 'move',
+            'records' => $items,
+            'total' => count($planned),
+            'truncated' => count($planned) > count($items),
+        ];
     }
 
     private function report(string $toolName, string $consequence, \Throwable $e): void
@@ -194,6 +385,13 @@ class PendingPreviewService
             return null;
         }
 
+        if (!$this->mayPatch($table, $uid, $field)) {
+            return $this->wrap(array_map($this->capFields(...), $this->recordPreview->describeWrite(
+                [['table' => $table, 'uid' => $uid, 'fields' => [$field => '']]],
+                self::MAX_VALUE_LENGTH,
+            )), 1);
+        }
+
         $row = BackendUtility::getRecordWSOL($table, $uid);
         $value = is_array($row) && is_scalar($row[$field] ?? null) ? (string) $row[$field] : null;
         foreach ($replacements as $replacement) {
@@ -219,6 +417,19 @@ class PendingPreviewService
         );
 
         return $this->wrap(array_map($this->capFields(...), $described), 1);
+    }
+
+    private function mayPatch(string $table, int $uid, string $field): bool
+    {
+        try {
+            $this->recordAccess->validateTableReadAccess($table);
+            $this->recordAccess->assertRecordEditAccess($table, $uid);
+            $this->recordAccess->filterAccessibleFields($table, [$field => '']);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

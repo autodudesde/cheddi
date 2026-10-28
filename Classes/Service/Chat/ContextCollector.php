@@ -17,12 +17,14 @@ namespace AutoDudes\Cheddi\Service\Chat;
 use AutoDudes\AiSuiteMcp\Mcp\Utility\OperatingGuidelines;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Context\Context;
 
 class ContextCollector
 {
     public function __construct(
         private readonly ChatOrientationService $orientationService,
         private readonly LoggerInterface $logger,
+        private readonly Context $context,
     ) {}
 
     public function build(
@@ -73,7 +75,7 @@ class ContextCollector
             'One exception: when a generate* tool answers with a list of generation models to choose '
                 .'from, show that list to the editor and let them pick — do not pick a model yourself. '
                 .'If only one model is offered, use it directly. This applies to that tool answer alone, '
-                .'not to layout, wording or structure decisions, which you make yourself.',
+                .'not to layout or structure decisions, which you make yourself.',
             'Translating is different: call translatePage and translateRecord without a model and '
                 .'translate the fields they hand back yourself, then write the result. Name a model '
                 .'only when the editor asked for one — never pick one on your own, and never offer '
@@ -115,6 +117,8 @@ class ContextCollector
                 .'or sources.';
         }
 
+        $parts[] = $this->today();
+
         try {
             $orientation = $this->orientationService->describeForLlm();
             if ('' !== $orientation) {
@@ -151,6 +155,16 @@ class ContextCollector
         }
 
         return ['table' => $table, 'uid' => $uid];
+    }
+
+    private function today(): string
+    {
+        $today = $this->context->getPropertyFromAspect('date', 'full');
+        if (!$today instanceof \DateTimeInterface) {
+            $today = new \DateTimeImmutable();
+        }
+
+        return sprintf('Today is %s (%s).', $today->format('l, j F Y'), $today->format('Y-m-d'));
     }
 
     /**

@@ -28,7 +28,7 @@ class WorkspacePublishListener
     public function __invoke(AfterRecordPublishedEvent $event): void
     {
         try {
-            $this->changeRepository->removeByRecord($event->getTable(), $event->getRecordId());
+            $this->changeRepository->removeByRecord($event->getTable(), $event->getRecordId(), $event->getWorkspaceId());
         } catch (\Throwable $e) {
             $this->logger->warning('ChEddi: could not clear the change entry of a published record', [
                 'table' => $event->getTable(),

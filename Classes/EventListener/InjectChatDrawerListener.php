@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\EventListener;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\IconService;
+use AutoDudes\Cheddi\Enumeration\CheddiPermissionEnumeration;
 use TYPO3\CMS\Backend\Controller\Event\AfterBackendPageRenderEvent;
 use TYPO3\CMS\Core\Page\PageRenderer;
 
@@ -29,7 +30,7 @@ final class InjectChatDrawerListener
 
     public function __invoke(AfterBackendPageRenderEvent $event): void
     {
-        if (!$this->backendUserService->checkPermissions('tx_aisuite_features:enable_cheddi_interface')) {
+        if (!$this->backendUserService->checkPermissions(CheddiPermissionEnumeration::INTERFACE)) {
             return;
         }
 

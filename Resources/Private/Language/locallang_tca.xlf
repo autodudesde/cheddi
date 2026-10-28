@@ -21,17 +21,71 @@
             <trans-unit id="cheddi.permissions.modelIonosQwen35">
                 <source>ChEddi model: IONOS Qwen3.5-397B-A17B</source>
             </trans-unit>
-            <trans-unit id="cheddi.permissions.modelClaudeHaiku45">
-                <source>ChEddi model: Claude Haiku 4.5</source>
+            <trans-unit id="cheddi.permissions.modelIonosQwen38">
+                <source>ChEddi model: IONOS Qwen3.8-27B</source>
             </trans-unit>
-            <trans-unit id="cheddi.permissions.modelClaudeSonnet5">
-                <source>ChEddi model: Claude Sonnet 5</source>
+            <trans-unit id="cheddi.permissions.modelClaudeHaiku55">
+                <source>ChEddi model: Claude Haiku 5.5</source>
             </trans-unit>
-            <trans-unit id="cheddi.permissions.modelClaudeOpus5">
-                <source>ChEddi model: Claude Opus 5</source>
+            <trans-unit id="cheddi.permissions.modelClaudeSonnet55">
+                <source>ChEddi model: Claude Sonnet 5.5</source>
             </trans-unit>
             <trans-unit id="cheddi.permissions.modelChatDescription">
                 <source>Allow backend users of this group to select this chat model in ChEddi.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.headerFeatures">
+                <source>ChEddi Features</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.headerModels">
+                <source>ChEddi Models</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableGeneration">
+                <source>Generate metadata and content in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableGenerationDescription">
+                <source>Allow ChEddi to generate page and file metadata, content elements and pages for this group. Independent of the AI Suite permissions; which model may be used is still decided by the AI Suite models.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableTranslation">
+                <source>Translate in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableTranslationDescription">
+                <source>Allow ChEddi to translate records for this group. Translating a whole page or file metadata also needs the flag of its own below. Independent of the AI Suite permissions; which model may be used is still decided by the AI Suite models.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enablePageTranslation">
+                <source>Translate whole pages in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enablePageTranslationDescription">
+                <source>Allow ChEddi to translate a whole page with all its content elements for this group (translatePage). Needs "Translate in ChEddi" as well.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableFileMetadataTranslation">
+                <source>Translate file metadata in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableFileMetadataTranslationDescription">
+                <source>Allow ChEddi to translate alternative text, title and description of files for this group (translateFileMetadata). Needs "Translate in ChEddi" as well.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableImageGeneration">
+                <source>Generate images in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableImageGenerationDescription">
+                <source>Allow ChEddi to generate images for this group. Independent of the AI Suite permissions; which model may be used is still decided by the AI Suite models.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableAudit">
+                <source>Run audits in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableAuditDescription">
+                <source>Allow ChEddi to run SEO, accessibility and content audits for this group. The page URL is sent to the AutoDudes audit infrastructure. Independent of the AI Suite permissions.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableRenderedPageRead">
+                <source>Read rendered pages in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableRenderedPageReadDescription">
+                <source>Allow ChEddi to read a page as it is rendered, including hidden and unpublished pages, for this group. Independent of the MCP permission for the same tool.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableMediaUpload">
+                <source>Upload media in ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.permissions.enableMediaUploadDescription">
+                <source>Allow this group to attach images in ChEddi, to have images and videos imported into the file storage by URL or as a YouTube/Vimeo link, and to have files moved between folders. Uploaded files are stored immediately and are not undone by discarding the workspace. Independent of the MCP permission for the same tool.</source>
             </trans-unit>
             <trans-unit id="cheddi.model.OpenAiLuna.label">
                 <source>OpenAI GPT-5.6 Luna</source>
@@ -39,14 +93,14 @@
             <trans-unit id="cheddi.model.IonosQwen35.label">
                 <source>IONOS Qwen3.5-397B-A17B</source>
             </trans-unit>
-            <trans-unit id="cheddi.model.ClaudeHaiku45.label">
-                <source>Claude Haiku 4.5</source>
+            <trans-unit id="cheddi.model.IonosQwen38.label">
+                <source>IONOS Qwen3.8-27B</source>
             </trans-unit>
-            <trans-unit id="cheddi.model.ClaudeSonnet5.label">
-                <source>Claude Sonnet 5</source>
+            <trans-unit id="cheddi.model.ClaudeHaiku55.label">
+                <source>Claude Haiku 5.5</source>
             </trans-unit>
-            <trans-unit id="cheddi.model.ClaudeOpus5.label">
-                <source>Claude Opus 5</source>
+            <trans-unit id="cheddi.model.ClaudeSonnet55.label">
+                <source>Claude Sonnet 5.5</source>
             </trans-unit>
             <trans-unit id="cheddi.promptTemplate.scopeCheddi">
                 <source>ChEddi</source>
@@ -65,6 +119,66 @@
             </trans-unit>
             <trans-unit id="cheddi.tca.session.lastActivity">
                 <source>Last activity</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.tab">
+                <source>ChEddi</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.inherit">
+                <source>Inherit from the extension configuration</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatUploadFolder">
+                <source>Upload folder</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatUploadFolder.description">
+                <source>Combined identifier of the folder chat attachments of this group are stored below, e.g. "2:/chat/". ChEddi creates its "cheddi" subfolder there. Editors need write access to it. The first group with a value wins; empty inherits the extension configuration.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatUploadRandomNames">
+                <source>Random file names</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatUploadRandomNames.description">
+                <source>Store chat attachments under a random name prefix so their URL cannot be guessed. A group can only switch this on: once one group or the extension configuration asks for it, it applies.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatUploadRandomNames.on">
+                <source>Always use random names</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatForceGdpa">
+                <source>GDPR compliant mode</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatForceGdpa.description">
+                <source>Offer this group only GDPR-compliant chat models. A group can only switch this on, never off.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatForceGdpa.on">
+                <source>Force GDPR compliant mode</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatWriteMode">
+                <source>Write mode</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatWriteMode.description">
+                <source>Make every ChEddi write of this group land in a draft workspace, even where the installation writes live. A group cannot switch to live.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatWriteMode.workspace">
+                <source>Always write to a draft workspace</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatAllowRawHtmlWrite">
+                <source>Raw HTML writes</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatAllowRawHtmlWrite.description">
+                <source>Forbid this group to store raw markup in code editor fields through ChEddi. A group can only forbid it, never allow it.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatAllowRawHtmlWrite.off">
+                <source>Forbid raw HTML writes</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatExcludedTools">
+                <source>Excluded tools</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatExcludedTools.description">
+                <source>Comma-separated tool names ChEddi never offers to this group, on top of the extension configuration. The lists of all groups add up.</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatExcludedTables">
+                <source>Excluded tables</source>
+            </trans-unit>
+            <trans-unit id="cheddi.beGroups.chatExcludedTables.description">
+                <source>Comma-separated tables ChEddi never reads or writes for this group, on top of the extension configuration. The lists of all groups add up.</source>
             </trans-unit>
         </body>
     </file>

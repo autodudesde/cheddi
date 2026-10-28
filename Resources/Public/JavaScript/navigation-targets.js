@@ -1,17 +1,13 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
 
-/**
- * Opens a backend location. The content container is the normal path; a new tab is the fallback for
- * a drawer that is not running inside the backend shell.
- */
 export function navigateBackend(url) {
     try {
         if (top?.TYPO3?.Backend?.ContentContainer?.setUrl) {
             top.TYPO3.Backend.ContentContainer.setUrl(url);
             return true;
         }
-    } catch (e) {
-        console.debug('[ChEddi] backend ContentContainer navigation failed, trying a new tab.', e);
+    } catch {
+        // Falls through to a new tab
     }
     try {
         window.open(url, '_blank', 'noopener');
@@ -100,7 +96,7 @@ function buildNavigationGroup(group, found, onNavigate) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn btn-default btn-sm cheddi__nav-link';
-        button.title = label;
+        button.title = target.language ? `${label} (${target.language})` : label;
         const icon = document.createElement('span');
         icon.className = 'cheddi__nav-icon';
         icon.setAttribute('aria-hidden', 'true');
@@ -112,6 +108,12 @@ function buildNavigationGroup(group, found, onNavigate) {
             icon.innerHTML = '<typo3-backend-icon identifier="actions-download" size="small" aria-hidden="true"></typo3-backend-icon>';
         }
         button.append(icon, text);
+        if (target.language) {
+            const language = document.createElement('span');
+            language.className = 'badge badge-default cheddi__nav-language';
+            language.textContent = target.language;
+            button.append(language);
+        }
         button.addEventListener('click', () => {
             if (target.download === true) {
                 downloadFile(target.url);

@@ -99,6 +99,10 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                         </div>
                     </div>
                     <div class="cheddi__header-row cheddi__header-row--model">
+                        <select class="form-select form-select-sm cheddi__workspace-select"
+                            data-cheddi-workspace-select
+                            aria-label="${ll('cheddi.ui.workspaceSelect')}"
+                            hidden></select>
                         <select class="form-select form-select-sm cheddi__model-select"
                             data-cheddi-model-select
                             aria-label="${ll('cheddi.ui.modelSelect')}"

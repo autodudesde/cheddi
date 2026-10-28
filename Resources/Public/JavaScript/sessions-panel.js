@@ -1,11 +1,6 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
 import { formatFullDateTime, formatLastUsed } from '@autodudes/cheddi/time-format.js';
 
-/**
- * The conversation list. It owns the panel markup and nothing else: switching to a session and
- * starting a new one are the drawer's business, so they arrive as callbacks. `currentSessionUuid`
- * is read on every render because the drawer replaces it whenever a turn creates a session.
- */
 export class SessionsPanel {
     constructor(apiClient, elements, { onSelect, onNew, currentSessionUuid }) {
         this.api = apiClient;
@@ -13,6 +8,15 @@ export class SessionsPanel {
         this.onSelect = onSelect;
         this.onNew = onNew;
         this.currentSessionUuid = currentSessionUuid;
+        this.primaryStartsNew = false;
+        this.elements.sessionsPrimaryButton?.addEventListener('click', () => this.onPrimary());
+    }
+
+    onPrimary() {
+        this.close();
+        if (this.primaryStartsNew) {
+            this.onNew();
+        }
     }
 
     async open() {
@@ -48,17 +52,10 @@ export class SessionsPanel {
     }
 
     updatePrimaryButton(hasSessions) {
-        const button = this.elements.sessionsPrimaryButton;
-        if (hasSessions) {
-            button.textContent = ll('cheddi.sessions.backToChat');
-            button.onclick = () => this.close();
-        } else {
-            button.textContent = ll('cheddi.sessions.startNew');
-            button.onclick = () => {
-                this.close();
-                this.onNew();
-            };
-        }
+        this.primaryStartsNew = !hasSessions;
+        this.elements.sessionsPrimaryButton.textContent = hasSessions
+            ? ll('cheddi.sessions.backToChat')
+            : ll('cheddi.sessions.startNew');
     }
 
     makeItem(session) {
@@ -89,7 +86,6 @@ export class SessionsPanel {
 
         openButton.appendChild(text);
 
-        // Signals the row is a switchable conversation.
         const chevron = document.createElement('span');
         chevron.className = 'cheddi__sessions-item-chevron';
         chevron.setAttribute('aria-hidden', 'true');

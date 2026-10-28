@@ -10,7 +10,7 @@
             <trans-unit id="cheddi.help.what.p1"><source>ChEddi is an assistant inside your TYPO3 backend. It works with your permissions and only sees what you are allowed to see.</source></trans-unit>
             <trans-unit id="cheddi.help.what.i1"><source>Find, read and explain pages, content elements and files</source></trans-unit>
             <trans-unit id="cheddi.help.what.i2"><source>Create and change content, page trees and metadata</source></trans-unit>
-            <trans-unit id="cheddi.help.what.i3"><source>Translate pages and content into the languages of this site</source></trans-unit>
+            <trans-unit id="cheddi.help.what.i3"><source>Translate pages and content</source></trans-unit>
             <trans-unit id="cheddi.help.what.i4"><source>Create and update content from a document you attach, for example a PDF</source></trans-unit>
             <trans-unit id="cheddi.help.what.i5"><source>…and many more use cases</source></trans-unit>
 
@@ -39,7 +39,7 @@
             <trans-unit id="cheddi.help.privacy.title"><source>Data protection</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.teaser"><source>Which data leaves this installation</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i1"><source>GDPR mode restricts the choice to the model hosted in the EU. Switch it off and the other models become selectable again.</source></trans-unit>
-            <trans-unit id="cheddi.help.privacy.i2"><source>Web research sends your search query to an external provider. It needs a backend group permission and is currently not available in GDPR mode.</source></trans-unit>
+            <trans-unit id="cheddi.help.privacy.i2"><source>Web research sends your search query to an external provider and needs a backend group permission. In GDPR mode it runs only through an EU-hosted search provider and is unavailable if there is none or it does not serve your website's region.</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i3"><source>Attachments are read on the server and their text is sent to the model together with your message.</source></trans-unit>
             <trans-unit id="cheddi.help.privacy.i4"><source>Never write passwords, API keys or personal data of third parties into the chat.</source></trans-unit>
 

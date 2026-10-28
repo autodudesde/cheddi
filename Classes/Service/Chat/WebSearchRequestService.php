@@ -17,6 +17,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
 use AutoDudes\AiSuite\Service\SystemDomainResolver;
+use AutoDudes\Cheddi\Utility\NetworkTimeoutDetector;
 use GuzzleHttp\Exception\BadResponseException;
 use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\ResponseInterface;
@@ -66,7 +67,7 @@ class WebSearchRequestService
                 'Authorization' => 'Bearer '.((string) ($extConf['aiSuiteApiKey'] ?? '')),
                 'X-AiSuite-Source' => 'chat',
             ],
-            'form_params' => [
+            'form_params' => array_merge($this->instanceIdentity(), [
                 'query' => $query,
                 'maxSearches' => $maxSearches,
                 'keys' => $this->keysFor($extConf),
@@ -74,7 +75,7 @@ class WebSearchRequestService
                 'typo3_version' => GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion(),
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
                 'webResearch' => json_encode($this->webResearchPolicy->researchScope()),
-            ],
+            ]),
         ];
 
         try {
@@ -197,5 +198,14 @@ class WebSearchRequestService
     private function errorResult(string $reason): array
     {
         return ['summary' => $reason, 'sources' => [], 'isError' => true];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function instanceIdentity(): array
+    {
+        // @phpstan-ignore function.alreadyNarrowedType
+        return method_exists($this->systemDomainResolver, 'instanceIdentity') ? $this->systemDomainResolver->instanceIdentity() : [];
     }
 }

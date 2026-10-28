@@ -36,7 +36,6 @@ class ChatCreditsService
     public function refreshCredits(): array
     {
         try {
-            // Writes the row itself; the chat turn does not, because it bypasses SendRequestService.
             $this->sendRequestService->sendDataRequest('getRequestsState');
         } catch (\Throwable $e) {
             $this->logger->warning('ChEddi: could not refresh the credit state from the server', [
@@ -71,14 +70,14 @@ class ChatCreditsService
             return $empty;
         }
 
-        // `abo_requests` holds what is left, so the used figure is derived - as in the toolbar.
+        // `abo_requests` holds what is left, not what is used
         $pack = (int) ($row['paid_requests'] ?? 0);
         $planTotal = (int) ($row['model_type'] ?? 0);
         if ($planTotal <= 0) {
-            return self::withLowFlag(['pack' => max(0, $pack), 'planUsed' => null, 'planTotal' => null]);
+            return $this->withLowFlag(['pack' => max(0, $pack), 'planUsed' => null, 'planTotal' => null]);
         }
 
-        return self::withLowFlag([
+        return $this->withLowFlag([
             'pack' => max(0, $pack),
             'planUsed' => max(0, $planTotal - (int) ($row['abo_requests'] ?? 0)),
             'planTotal' => $planTotal,
@@ -90,7 +89,7 @@ class ChatCreditsService
      *
      * @return array{pack: null|int, planUsed: null|int, planTotal: null|int, low: bool}
      */
-    private static function withLowFlag(array $credits): array
+    private function withLowFlag(array $credits): array
     {
         $planHasRoom = null !== $credits['planTotal']
             && $credits['planTotal'] - ($credits['planUsed'] ?? 0) > 0;

@@ -1,42 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 defined('TYPO3') || exit('Access denied.');
 
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_features']['items']['enable_cheddi_interface'] = [
-    'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.permissions.enableChatInterface',
-    'tx-aisuite-permissions',
-    'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.permissions.enableChatInterfaceDescription',
+$cheddiLll = 'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.permissions.';
+
+$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_cheddi_features'] = [
+    'header' => $cheddiLll.'headerFeatures',
+    'items' => [
+        'enable_cheddi_interface' => [$cheddiLll.'enableChatInterface', 'tx-cheddi', $cheddiLll.'enableChatInterfaceDescription'],
+        'enable_web_research' => [$cheddiLll.'enableWebResearch', 'tx-cheddi', $cheddiLll.'enableWebResearchDescription'],
+        'enable_cheddi_generation' => [$cheddiLll.'enableGeneration', 'tx-cheddi', $cheddiLll.'enableGenerationDescription'],
+        'enable_cheddi_translation' => [$cheddiLll.'enableTranslation', 'tx-cheddi', $cheddiLll.'enableTranslationDescription'],
+        'enable_cheddi_page_translation' => [$cheddiLll.'enablePageTranslation', 'tx-cheddi', $cheddiLll.'enablePageTranslationDescription'],
+        'enable_cheddi_file_metadata_translation' => [$cheddiLll.'enableFileMetadataTranslation', 'tx-cheddi', $cheddiLll.'enableFileMetadataTranslationDescription'],
+        'enable_cheddi_image_generation' => [$cheddiLll.'enableImageGeneration', 'tx-cheddi', $cheddiLll.'enableImageGenerationDescription'],
+        'enable_cheddi_audit' => [$cheddiLll.'enableAudit', 'tx-cheddi', $cheddiLll.'enableAuditDescription'],
+        'enable_cheddi_rendered_page_read' => [$cheddiLll.'enableRenderedPageRead', 'tx-cheddi', $cheddiLll.'enableRenderedPageReadDescription'],
+        'enable_cheddi_media_upload' => [$cheddiLll.'enableMediaUpload', 'tx-cheddi', $cheddiLll.'enableMediaUploadDescription'],
+    ],
 ];
 
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_features']['items']['enable_web_research'] = [
-    'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.permissions.enableWebResearch',
-    'tx-aisuite-permissions',
-    'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.permissions.enableWebResearchDescription',
+$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_cheddi_models'] = [
+    'header' => $cheddiLll.'headerModels',
+    'items' => [
+        'OpenAiLuna' => [$cheddiLll.'modelOpenAiLuna', 'tx-cheddi', $cheddiLll.'modelChatDescription'],
+        'IonosQwen35' => [$cheddiLll.'modelIonosQwen35', 'tx-cheddi', $cheddiLll.'modelChatDescription'],
+        'IonosQwen38' => [$cheddiLll.'modelIonosQwen38', 'tx-cheddi', $cheddiLll.'modelChatDescription'],
+        'ClaudeHaiku55' => [$cheddiLll.'modelClaudeHaiku55', 'tx-cheddi', $cheddiLll.'modelChatDescription'],
+        'ClaudeSonnet55' => [$cheddiLll.'modelClaudeSonnet55', 'tx-cheddi', $cheddiLll.'modelChatDescription'],
+    ],
 ];
 
-$chatModelLll = 'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:';
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['OpenAiLuna'] = [
-    $chatModelLll.'cheddi.permissions.modelOpenAiLuna',
-    'tx-cheddi',
-    $chatModelLll.'cheddi.permissions.modelChatDescription',
-];
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['IonosQwen35'] = [
-    $chatModelLll.'cheddi.permissions.modelIonosQwen35',
-    'tx-cheddi',
-    $chatModelLll.'cheddi.permissions.modelChatDescription',
-];
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['ClaudeHaiku45'] = [
-    $chatModelLll.'cheddi.permissions.modelClaudeHaiku45',
-    'tx-cheddi',
-    $chatModelLll.'cheddi.permissions.modelChatDescription',
-];
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['ClaudeSonnet5'] = [
-    $chatModelLll.'cheddi.permissions.modelClaudeSonnet5',
-    'tx-cheddi',
-    $chatModelLll.'cheddi.permissions.modelChatDescription',
-];
-$GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_aisuite_models']['items']['ClaudeOpus5'] = [
-    $chatModelLll.'cheddi.permissions.modelClaudeOpus5',
-    'tx-cheddi',
-    $chatModelLll.'cheddi.permissions.modelChatDescription',
-];
+unset($cheddiLll);

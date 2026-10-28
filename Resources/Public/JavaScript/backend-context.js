@@ -3,7 +3,9 @@ export function detectOpenRecord() {
     const candidates = [];
     try {
         candidates.push(window.location.href);
-    } catch (e) { console.debug('[ChEddi] could not read window.location.href.', e); }
+    } catch {
+        // Location not readable
+    }
     try {
         for (const frame of document.querySelectorAll('iframe')) {
             try {
@@ -11,17 +13,21 @@ export function detectOpenRecord() {
                 if (href) {
                     candidates.push(href);
                 }
-            } catch (e) {
-                console.debug('[ChEddi] iframe location not readable (cross-origin/loading).', e);
+            } catch {
+                // Cross-origin or still loading
             }
         }
-    } catch (e) { console.debug('[ChEddi] could not scan iframes for the open record.', e); }
+    } catch {
+        // Frames not accessible
+    }
 
     for (const url of candidates) {
         let decoded = url;
         try {
             decoded = decodeURIComponent(url);
-        } catch (e) { console.debug('[ChEddi] malformed URL escapes, using the raw URL.', e); }
+        } catch {
+            // Malformed escapes: the raw URL is used
+        }
         const match = /edit\[([a-z0-9_]+)\]\[(\d+)\]=edit/i.exec(decoded);
         if (match) {
             return { recordTable: match[1], recordUid: Number(match[2]) };
@@ -36,7 +42,9 @@ export function currentPageId() {
         if (Number.isInteger(id) && id > 0) {
             return id;
         }
-    } catch (e) { console.debug('[ChEddi] ContentContainer page id not readable.', e); }
+    } catch {
+        // No content container
+    }
 
     const params = new URLSearchParams(window.location.search);
     const raw = params.get('id') ?? '';
@@ -52,11 +60,13 @@ export function currentPageId() {
                 if (frameId && /^\d+$/.test(frameId)) {
                     return Number(frameId);
                 }
-            } catch (e) {
-                console.debug('[ChEddi] iframe location not readable (cross-origin/loading).', e);
+            } catch {
+                // Cross-origin or still loading
             }
         }
-    } catch (e) { console.debug('[ChEddi] could not scan iframes for the page id.', e); }
+    } catch {
+        // Frames not accessible
+    }
 
     return null;
 }

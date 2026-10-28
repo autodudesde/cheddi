@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AutoDudes\Cheddi\Service\Chat;
+namespace AutoDudes\Cheddi\Utility;
 
 use Psr\Http\Client\NetworkExceptionInterface;
 

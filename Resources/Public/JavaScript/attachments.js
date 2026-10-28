@@ -10,12 +10,6 @@ export class AttachmentTray {
         this.input = this.createFileInput();
     }
 
-    /**
-     * Both limits come from the server with the status refresh, which runs before the composer can
-     * be used. Until then nothing is capped and no `accept` is set: an unset limit means the client
-     * makes no decision, and the upload endpoint refuses what it will not store anyway. A default
-     * here would be the duplication this removed.
-     */
     applyLimits(limits) {
         this.limits = limits ?? null;
         if (typeof this.limits?.accept === 'string' && this.limits.accept !== '') {
@@ -89,10 +83,6 @@ export class AttachmentTray {
         this.render();
     }
 
-    /**
-     * Only uploaded, readable-or-not attachments are sent; a failed upload never
-     * reaches the turn. Unreadable files are still sent so the model can say so.
-     */
     pending() {
         return this.attachments.filter((a) => !a.uploading && a.uid > 0);
     }

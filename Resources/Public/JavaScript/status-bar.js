@@ -1,7 +1,5 @@
 import { ll } from '@autodudes/cheddi/i18n.js';
 
-const CREDITS_WARNING_THRESHOLD = 50;
-
 export function renderModeBadge(elements, orientation) {
     const badge = elements.workspace;
     if (!badge || !orientation) {
@@ -40,7 +38,6 @@ export function renderModeBadge(elements, orientation) {
     badge.hidden = false;
 }
 
-// The word labels are hidden by the stylesheet on a narrow drawer, so digits are never truncated.
 export function renderCreditsBadge(elements, credits) {
     const badge = elements.credits;
     if (!badge) {
@@ -73,20 +70,13 @@ export function renderCreditsBadge(elements, credits) {
 
     elements.creditsValue.replaceChildren(...parts);
     describe(badge, hints.join(' · '));
-    badge.classList.toggle(
-        'cheddi__status-badge--low',
-        pack !== null && pack < CREDITS_WARNING_THRESHOLD && !planHasRoom(planUsed, planTotal),
-    );
+    badge.classList.toggle('cheddi__status-badge--low', credits?.low === true);
     badge.hidden = false;
 }
 
 function describe(badge, text) {
     badge.title = text;
     badge.setAttribute('aria-label', text);
-}
-
-function planHasRoom(planUsed, planTotal) {
-    return planTotal !== null && planTotal - (planUsed ?? 0) > 0;
 }
 
 function creditsPart(label, value) {

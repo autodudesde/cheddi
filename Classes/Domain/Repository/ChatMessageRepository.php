@@ -88,14 +88,50 @@ class ChatMessageRepository extends AbstractRepository
                 continue;
             }
             foreach ($decoded as $entry) {
-                $uid = is_array($entry) ? ($entry['uid'] ?? null) : $entry;
-                if (is_numeric($uid) && (int) $uid > 0) {
-                    $uids[] = (int) $uid;
+                $uid = $this->resolvedAttachmentUid($entry);
+                if (null !== $uid) {
+                    $uids[] = $uid;
                 }
             }
         }
 
         return array_values(array_unique($uids));
+    }
+
+    /**
+     * @throws Exception
+     * @throws \Doctrine\DBAL\Driver\Exception
+     */
+    public function isAttachmentReferenced(int $fileUid): bool
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable($this->table);
+        $queryBuilder->getRestrictions()->removeAll();
+
+        $rows = $queryBuilder
+            ->select('attachments')
+            ->from($this->table)
+            ->where($queryBuilder->expr()->like(
+                'attachments',
+                $queryBuilder->createNamedParameter('%'.$queryBuilder->escapeLikeWildcards('"uid":'.$fileUid.',').'%'),
+            ))
+            ->executeQuery()
+            ->fetchFirstColumn()
+        ;
+
+        foreach ($rows as $row) {
+            /** @var mixed $decoded */
+            $decoded = json_decode((string) $row, true);
+            if (!is_array($decoded)) {
+                continue;
+            }
+            foreach ($decoded as $entry) {
+                if ($fileUid === $this->resolvedAttachmentUid($entry)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -192,6 +228,16 @@ class ChatMessageRepository extends AbstractRepository
             ))
             ->executeStatement()
         ;
+    }
+
+    private function resolvedAttachmentUid(mixed $entry): ?int
+    {
+        if (is_array($entry) && 'notFound' === ($entry['reason'] ?? '')) {
+            return null;
+        }
+        $uid = is_array($entry) ? ($entry['uid'] ?? null) : $entry;
+
+        return is_numeric($uid) && (int) $uid > 0 ? (int) $uid : null;
     }
 
     /**

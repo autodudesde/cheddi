@@ -26,18 +26,18 @@ final class TurnResult
     public const ABORT_REASON_TOOL_CAP_REACHED = 'toolCapReached';
 
     /**
-     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                                       $toolCalls
-     * @param list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, preview?: null|array<string, mixed>}> $pending
-     * @param null|array<string, mixed>                                                                                                     $usage
-     * @param null|array{summaryContent: string, replacedCount?: int}                                                                       $historySummary
-     * @param list<array{key: string, params?: array<string, int|string>}|string>                                                           $notices
-     * @param list<array{title: string, url: string, snippet: string}>                                                                      $sources
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>                     $navigationTargets
-     * @param list<string>                                                                                                                  $touchedTables
-     * @param null|array{key: string, params?: array<string, string>}                                                                       $confirmTarget
-     * @param null|array{ratio: float, level: string}                                                                                       $contextFill
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>                     $foundTargets
-     * @param list<array{callId: string, filename: string, rowCount: int}>                                                                  $downloads
+     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                                                       $toolCalls
+     * @param list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, preview?: null|array<string, mixed>}>                 $pending
+     * @param null|array<string, mixed>                                                                                                                     $usage
+     * @param null|array{summaryContent: string, replacedCount?: int}                                                                                       $historySummary
+     * @param list<array{key: string, params?: array<string, int|string>}|string>                                                                           $notices
+     * @param list<array{title: string, url: string, snippet: string}>                                                                                      $sources
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $navigationTargets
+     * @param list<string>                                                                                                                                  $touchedTables
+     * @param null|array{key: string, params?: array<string, string>}                                                                                       $confirmTarget
+     * @param null|array{ratio: float, level: string}                                                                                                       $contextFill
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $foundTargets
+     * @param list<array{callId: string, filename: string, rowCount: int}>                                                                                  $downloads
      */
     private function __construct(
         public readonly string $status,
@@ -86,13 +86,13 @@ final class TurnResult
     }
 
     /**
-     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                   $toolCalls
-     * @param array<string, mixed>                                                                                      $usage
-     * @param null|array{summaryContent: string, replacedCount?: int}                                                   $historySummary
-     * @param list<array{key: string, params?: array<string, int|string>}|string>                                       $notices
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $navigationTargets
-     * @param list<array{title: string, url: string, snippet: string}>                                                  $sources
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $foundTargets
+     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                                                       $toolCalls
+     * @param array<string, mixed>                                                                                                                          $usage
+     * @param null|array{summaryContent: string, replacedCount?: int}                                                                                       $historySummary
+     * @param list<array{key: string, params?: array<string, int|string>}|string>                                                                           $notices
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $navigationTargets
+     * @param list<array{title: string, url: string, snippet: string}>                                                                                      $sources
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $foundTargets
      */
     public static function final(
         string $sessionUuid,
@@ -124,12 +124,12 @@ final class TurnResult
     }
 
     /**
-     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                   $toolCalls
-     * @param array<string, mixed>                                                                                      $usage
-     * @param list<array{key: string, params?: array<string, int|string>}|string>                                       $notices
-     * @param list<array{title: string, url: string, snippet: string}>                                                  $sources
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $navigationTargets
-     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}> $foundTargets
+     * @param list<array{id: string, name: string, arguments: array<string, mixed>, status?: string}>                                                       $toolCalls
+     * @param array<string, mixed>                                                                                                                          $usage
+     * @param list<array{key: string, params?: array<string, int|string>}|string>                                                                           $notices
+     * @param list<array{title: string, url: string, snippet: string}>                                                                                      $sources
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $navigationTargets
+     * @param list<array{table: string, label: string, targets: list<array{label: string, url: string, download?: bool, language?: string}>, omitted: int}> $foundTargets
      */
     public static function continuing(
         string $sessionUuid,

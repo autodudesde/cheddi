@@ -79,7 +79,6 @@ class ChatWriteCaptureHook
                 break;
 
             default:
-                // version/other commands are handled via the datamap hook or not relevant.
                 return;
         }
 

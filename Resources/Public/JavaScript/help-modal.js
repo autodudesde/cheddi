@@ -1,10 +1,6 @@
 import Modal from '@typo3/backend/modal.js';
 import { ll } from '@autodudes/cheddi/i18n.js';
 
-/**
- * Core icon per callout tone. All four identifiers ship with the backend from v12 on, which the
- * drawer is bound to — see CLAUDE.md on borrowing only what the oldest supported version has.
- */
 const TONE_ICONS = {
     info: 'actions-info',
     warning: 'actions-exclamation-triangle',
@@ -93,11 +89,6 @@ export class HelpModal {
         }
     }
 
-    /**
-     * What holds for this installation right now - write mode, GDPR, web research, retention - is
-     * composed server-side and arrives with the status refresh. It stays above the topics and
-     * outside them: it is the one part an editor has to see without looking for it.
-     */
     buildCurrentSituation() {
         const status = this.currentSituation();
         if (!Array.isArray(status) || status.length === 0) {
@@ -118,12 +109,6 @@ export class HelpModal {
         return wrapper;
     }
 
-    /**
-     * Icon plus text, and no inner wrapper class: the wrappers the core templates put around a
-     * callout's text are the part that moved between v12, v13 and v14, and `BackendDesignContractTest`
-     * rejects them for that reason. `.callout` itself is a flex row in every version, so the icon and
-     * a plain element line up without one.
-     */
     buildCallout(entry) {
         const tone = Object.hasOwn(TONE_ICONS, entry?.tone) ? entry.tone : 'info';
 

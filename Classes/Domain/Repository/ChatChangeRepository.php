@@ -91,12 +91,20 @@ class ChatChangeRepository extends AbstractRepository
     /**
      * @throws Exception
      */
-    public function removeByRecord(string $table, int $recordUid): void
+    public function removeByRecord(string $table, int $recordUid, int $workspace): void
     {
         $this->connectionPool->getConnectionForTable($this->table)->delete(
             $this->table,
-            ['tablename' => $table, 'record_uid' => $recordUid],
+            ['tablename' => $table, 'record_uid' => $recordUid, 'workspace' => $workspace],
         );
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function removeByUid(int $uid): void
+    {
+        $this->connectionPool->getConnectionForTable($this->table)->delete($this->table, ['uid' => $uid]);
     }
 
     /**

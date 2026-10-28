@@ -17,6 +17,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
 use AutoDudes\Cheddi\Domain\Repository\ChatMessageRepository;
 use AutoDudes\Cheddi\Domain\Repository\ChatSessionRepository;
+use AutoDudes\Cheddi\Domain\Repository\ChatUploadRepository;
 use Psr\Log\LoggerInterface;
 
 class ChatSessionAutoDeleter
@@ -29,6 +30,7 @@ class ChatSessionAutoDeleter
         private readonly ChatSessionRepository $sessionRepository,
         private readonly ChatMessageRepository $messageRepository,
         private readonly ChatChangeRepository $changeRepository,
+        private readonly ChatUploadRepository $uploadRepository,
         private readonly AttachmentService $attachmentService,
         private readonly ChatSettingsService $chatSettings,
         private readonly LoggerInterface $logger,
@@ -63,16 +65,37 @@ class ChatSessionAutoDeleter
             ++$hardCount;
 
             foreach ($attachmentUids as $attachmentUid) {
+                if ($this->messageRepository->isAttachmentReferenced($attachmentUid)) {
+                    continue;
+                }
                 if ($this->attachmentService->deleteUploadIfUnused($attachmentUid)) {
+                    $this->uploadRepository->forget($attachmentUid);
                     ++$deletedFiles;
                 }
             }
         }
 
-        if ($hardCount > 0) {
+        $unsentRemoved = 0;
+        foreach ($this->uploadRepository->findFileUidsRegisteredBefore($softCutoff) as $fileUid) {
+            if (!$this->attachmentService->isInChatFolder($fileUid)) {
+                $this->uploadRepository->forget($fileUid);
+
+                continue;
+            }
+            if ($this->messageRepository->isAttachmentReferenced($fileUid)) {
+                continue;
+            }
+            if ($this->attachmentService->deleteUploadIfUnused($fileUid)) {
+                $this->uploadRepository->forget($fileUid);
+                ++$unsentRemoved;
+            }
+        }
+
+        if ($hardCount > 0 || $unsentRemoved > 0) {
             $this->logger->info('ChEddi: hard-deleted expired chat sessions', [
                 'sessions' => $hardCount,
                 'attachmentsRemoved' => $deletedFiles,
+                'unsentUploadsRemoved' => $unsentRemoved,
             ]);
         }
 

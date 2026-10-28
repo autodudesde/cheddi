@@ -24,9 +24,37 @@ class ToolPolicyResolver
      */
     private array $policyCache = [];
 
+    public function __construct(
+        private readonly NamedUrlMatcher $namedUrlMatcher = new NamedUrlMatcher(),
+    ) {}
+
     public function resolve(ToolInterface $tool): Severity
     {
         return $this->policyCache[$tool->getName()] ??= $this->computePolicy($tool);
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     * @param list<string>         $editorTexts
+     */
+    public function resolveCall(ToolInterface $tool, array $arguments, array $editorTexts): Severity
+    {
+        $severity = $this->resolve($tool);
+        if (Severity::ReadOnly !== $severity || !$this->fetchesAUrl($tool)) {
+            return $severity;
+        }
+
+        $url = $arguments['url'] ?? null;
+
+        return is_string($url) && $this->namedUrlMatcher->isNamed($url, $editorTexts)
+            ? Severity::ReadOnly
+            : Severity::Write;
+    }
+
+    private function fetchesAUrl(ToolInterface $tool): bool
+    {
+        return true === ($tool->getAnnotations()['openWorldHint'] ?? false)
+            && isset($tool->getSchema()['properties']['url']);
     }
 
     private function computePolicy(ToolInterface $tool): Severity
@@ -38,7 +66,7 @@ class ToolPolicyResolver
         }
 
         if (true === ($annotations['readOnlyHint'] ?? false)) {
-            // Kostenpflichtige Read-Tools werden wie ein Write bestätigt
+            // A billed read is confirmed like a write
             return ($tool->getCreditCost() ?? 0) > 0 ? Severity::Write : Severity::ReadOnly;
         }
 

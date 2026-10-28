@@ -14,10 +14,10 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
-use Doctrine\DBAL\ParameterType;
+use AutoDudes\AiSuiteMcp\Mcp\Service\MediaUploadSettings;
+use AutoDudes\Cheddi\Domain\Repository\FileReferenceRepository;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
-use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Resource\DefaultUploadFolderResolver;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Resource\File;
@@ -27,6 +27,10 @@ use TYPO3\CMS\Core\Resource\ResourceFactory;
 class AttachmentService
 {
     public const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+
+    public const KIND_DOCUMENT = 'document';
+
+    public const KIND_IMAGE = 'image';
 
     public const UPLOAD_FOLDER_NAME = 'cheddi';
 
@@ -46,8 +50,10 @@ class AttachmentService
     public function __construct(
         private readonly ResourceFactory $resourceFactory,
         private readonly DocumentExtractorService $extractor,
-        private readonly ConnectionPool $connectionPool,
+        private readonly FileReferenceRepository $fileReferenceRepository,
         private readonly DefaultUploadFolderResolver $uploadFolderResolver,
+        private readonly MediaUploadSettings $mediaUploadSettings,
+        private readonly ChatSettingsService $chatSettings,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -74,14 +80,29 @@ class AttachmentService
         return array_slice(array_values(array_unique($uids)), 0, self::MAX_ATTACHMENTS_PER_MESSAGE);
     }
 
-    public function isSupportedExtension(string $extension): bool
+    public function isSupportedExtension(string $extension, bool $imagesAllowed): bool
     {
-        return isset(self::EXTENSION_GROUPS[strtolower($extension)]);
+        $extension = strtolower($extension);
+
+        return isset(self::EXTENSION_GROUPS[$extension]) || ($imagesAllowed && $this->isImage($extension));
     }
 
-    public function maxUploadBytes(): int
+    public function maxUploadBytes(bool $imagesAllowed): int
     {
-        return max(self::MAX_BYTES_BY_GROUP);
+        return $imagesAllowed
+            ? max(self::MAX_BYTES_BY_GROUP + ['image' => $this->maxImageBytes()])
+            : max(self::MAX_BYTES_BY_GROUP);
+    }
+
+    public function maxBytesFor(string $extension): ?int
+    {
+        $extension = strtolower($extension);
+        $group = self::EXTENSION_GROUPS[$extension] ?? null;
+        if (null !== $group) {
+            return self::MAX_BYTES_BY_GROUP[$group];
+        }
+
+        return $this->isImage($extension) ? $this->maxImageBytes() : null;
     }
 
     public function maxAttachmentsPerMessage(): int
@@ -89,18 +110,23 @@ class AttachmentService
         return self::MAX_ATTACHMENTS_PER_MESSAGE;
     }
 
-    public function acceptAttribute(): string
+    public function acceptAttribute(bool $imagesAllowed): string
     {
+        $extensions = array_keys(self::EXTENSION_GROUPS);
+        if ($imagesAllowed) {
+            $extensions = [...$extensions, ...$this->mediaUploadSettings->allowedImageExtensions()];
+        }
+
         return implode(',', array_map(
             static fn (string $extension): string => '.'.$extension,
-            array_keys(self::EXTENSION_GROUPS),
+            $extensions,
         ));
     }
 
     /**
      * @param list<int> $uids
      *
-     * @return list<array{uid: int, name: string, extension: string, readable: bool, reason: string}>
+     * @return list<array{uid: int, name: string, extension: string, kind: string, readable: bool, reason: string}>
      */
     public function normalizeRefs(array $uids): array
     {
@@ -113,7 +139,7 @@ class AttachmentService
     }
 
     /**
-     * @return array{uid: int, name: string, extension: string, readable: bool, reason: string}
+     * @return array{uid: int, name: string, extension: string, kind: string, readable: bool, reason: string}
      */
     public function preview(int $uid): array
     {
@@ -123,6 +149,7 @@ class AttachmentService
                 'uid' => $uid,
                 'name' => '',
                 'extension' => '',
+                'kind' => self::KIND_DOCUMENT,
                 'readable' => false,
                 'reason' => 'notFound',
             ];
@@ -130,20 +157,23 @@ class AttachmentService
 
         $extension = strtolower($file->getExtension());
         $group = self::EXTENSION_GROUPS[$extension] ?? null;
+        $kind = null === $group && $this->isImage($extension) ? self::KIND_IMAGE : self::KIND_DOCUMENT;
+        $maxBytes = $this->maxBytesFor($extension);
 
         $reason = '';
-        if (null === $group) {
+        if (null === $maxBytes) {
             $reason = 'unsupported';
-        } elseif (!$this->extractor->canExtract($extension)) {
+        } elseif (self::KIND_DOCUMENT === $kind && !$this->extractor->canExtract($extension)) {
             $reason = 'libraryMissing';
-        } elseif ($file->getSize() > self::MAX_BYTES_BY_GROUP[$group]) {
+        } elseif ($file->getSize() > $maxBytes) {
             $reason = 'oversize';
         }
 
         return [
             'uid' => $file->getUid(),
-            'name' => $file->getName(),
+            'name' => $this->displayName($file),
             'extension' => $extension,
+            'kind' => $kind,
             'readable' => '' === $reason,
             'reason' => $reason,
         ];
@@ -151,7 +181,7 @@ class AttachmentService
 
     public function resolveUploadFolder(BackendUserAuthentication $backendUser): ?Folder
     {
-        $default = $this->uploadFolderResolver->resolve($backendUser);
+        $default = $this->baseUploadFolder($backendUser);
         if (!$default instanceof Folder || !$default->checkActionPermission('write')) {
             return null;
         }
@@ -170,6 +200,41 @@ class AttachmentService
         }
     }
 
+    public function baseUploadFolder(BackendUserAuthentication $backendUser): ?Folder
+    {
+        $configured = $this->chatSettings->getUploadFolder();
+        if ('' === $configured) {
+            $default = $this->uploadFolderResolver->resolve($backendUser);
+
+            return $default instanceof Folder ? $default : null;
+        }
+
+        return $this->resolveConfiguredFolder($configured);
+    }
+
+    public function resolveConfiguredFolder(string $combinedIdentifier): ?Folder
+    {
+        try {
+            return $this->resourceFactory->getFolderObjectFromCombinedIdentifier($combinedIdentifier);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: the configured chat upload folder does not exist', [
+                'folder' => $combinedIdentifier,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    public function isInChatFolder(int $uid): bool
+    {
+        try {
+            return self::UPLOAD_FOLDER_NAME === $this->resourceFactory->getFileObject($uid)->getParentFolder()->getName();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function deleteUploadIfUnused(int $uid): bool
     {
         try {
@@ -181,7 +246,7 @@ class AttachmentService
         if (self::UPLOAD_FOLDER_NAME !== $file->getParentFolder()->getName()) {
             return false;
         }
-        if ($this->isReferencedElsewhere($uid)) {
+        if ($this->fileReferenceRepository->isFileReferenced($uid)) {
             return false;
         }
 
@@ -205,7 +270,7 @@ class AttachmentService
             // fall through to the reference lookup
         }
 
-        $fileUid = $this->lookupFileUidFromReference($uid);
+        $fileUid = $this->fileReferenceRepository->findFileUidOfReference($uid);
         if (null === $fileUid) {
             return null;
         }
@@ -223,7 +288,7 @@ class AttachmentService
     }
 
     /**
-     * @param list<array{uid: int, name: string, extension: string, readable: bool, reason: string}> $refs
+     * @param list<array{uid: int, name: string, extension: string, kind: string, readable: bool, reason: string}> $refs
      */
     public function mergeMarkersIntoContent(string $userText, array $refs): string
     {
@@ -233,9 +298,11 @@ class AttachmentService
 
         $lines = [];
         foreach ($refs as $ref) {
-            $lines[] = $ref['readable']
-                ? sprintf('- "%s" (sys_file:%d) — call readAttachmentText with uid=%d to read its text.', $ref['name'], $ref['uid'], $ref['uid'])
-                : sprintf('- "%s" (sys_file:%d) — the text of this file cannot be read (%s). Tell the editor rather than guessing its content.', $ref['name'], $ref['uid'], $ref['reason']);
+            $lines[] = match (true) {
+                !$ref['readable'] => sprintf('- "%s" (sys_file:%d) — the text of this file cannot be read (%s). Tell the editor rather than guessing its content.', $ref['name'], $ref['uid'], $ref['reason']),
+                self::KIND_IMAGE === $ref['kind'] => sprintf('- "%s" (image, sys_file:%d)', $ref['name'], $ref['uid']),
+                default => sprintf('- "%s" (sys_file:%d) — call readAttachmentText with uid=%d to read its text.', $ref['name'], $ref['uid'], $ref['uid']),
+            };
         }
 
         return $userText."\n\n[Attachments]\n".implode("\n", $lines);
@@ -253,6 +320,9 @@ class AttachmentService
 
         $extension = strtolower($file->getExtension());
         $group = self::EXTENSION_GROUPS[$extension] ?? null;
+        if (null === $group && $this->isImage($extension)) {
+            return ['content' => sprintf('"%s" (sys_file:%d) is an image and has no text to read.', $file->getName(), $file->getUid()), 'isError' => true];
+        }
         if (null === $group) {
             return ['content' => sprintf('Files of type "%s" cannot be read as text.', $extension), 'isError' => true];
         }
@@ -266,7 +336,7 @@ class AttachmentService
             return ['content' => $e->getMessage(), 'isError' => true];
         }
 
-        $content = sprintf("# %s (sys_file:%d)\n\n%s", $file->getName(), $file->getUid(), $result['text']);
+        $content = sprintf("# %s (sys_file:%d)\n\n%s", $this->displayName($file), $file->getUid(), $result['text']);
         if ($result['truncated']) {
             $content .= sprintf(
                 "\n\n[Truncated at %d characters. Call readAttachmentText again with charOffset=%d to continue.]",
@@ -301,50 +371,20 @@ class AttachmentService
         return $file;
     }
 
-    private function isReferencedElsewhere(int $uid): bool
+    private function displayName(File $file): string
     {
-        $references = $this->connectionPool->getQueryBuilderForTable('sys_file_reference');
-        $references->getRestrictions()->removeAll();
-        $referenceCount = (int) $references
-            ->count('uid')
-            ->from('sys_file_reference')
-            ->where($references->expr()->eq('uid_local', $references->createNamedParameter($uid, ParameterType::INTEGER)))
-            ->executeQuery()
-            ->fetchOne()
-        ;
-        if ($referenceCount > 0) {
-            return true;
-        }
-
-        $refIndex = $this->connectionPool->getQueryBuilderForTable('sys_refindex');
-        $refIndex->getRestrictions()->removeAll();
-
-        return (int) $refIndex
-            ->count('hash')
-            ->from('sys_refindex')
-            ->where(
-                $refIndex->expr()->eq('ref_table', $refIndex->createNamedParameter('sys_file')),
-                $refIndex->expr()->eq('ref_uid', $refIndex->createNamedParameter($uid, ParameterType::INTEGER)),
-            )
-            ->executeQuery()
-            ->fetchOne() > 0
-        ;
+        return (string) preg_replace(UploadedFileWriter::STORED_NAME_PATTERN, '', $file->getName());
     }
 
-    private function lookupFileUidFromReference(int $uid): ?int
+    private function isImage(string $extension): bool
     {
-        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('sys_file_reference');
-        $queryBuilder->getRestrictions()->removeAll();
+        return in_array($extension, $this->mediaUploadSettings->allowedImageExtensions(), true);
+    }
 
-        $uidLocal = $queryBuilder
-            ->select('uid_local')
-            ->from('sys_file_reference')
-            ->where($queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, ParameterType::INTEGER)))
-            ->setMaxResults(1)
-            ->executeQuery()
-            ->fetchOne()
-        ;
+    private function maxImageBytes(): int
+    {
+        $maxBytes = $this->mediaUploadSettings->read()['maxBytes'];
 
-        return is_numeric($uidLocal) && (int) $uidLocal > 0 ? (int) $uidLocal : null;
+        return $maxBytes > 0 ? $maxBytes : max(self::MAX_BYTES_BY_GROUP);
     }
 }

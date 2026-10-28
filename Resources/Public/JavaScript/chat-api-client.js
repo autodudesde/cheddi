@@ -49,7 +49,7 @@ export class ChatApiClient {
         if (!response.ok && payload?.status !== 'error') {
             throw new ChatTransportError(
                 payload?.error?.chatErrorCode ?? '',
-                payload?.error?.message ?? `Chat server returned HTTP ${response.status}.`,
+                payload?.error?.message ?? '',
             );
         }
         return payload;
@@ -195,7 +195,7 @@ export class ChatApiClient {
         }
     }
 
-    async startTurn({ sessionUuid, text, model, attachments = [] }, signal) {
+    async startTurn({ sessionUuid, text, model, workspace = '', attachments = [] }, signal) {
         const response = await this.request(this.ajaxUrl('cheddi_turn'), {
             method: 'POST',
             headers: FORM_HEADERS,
@@ -203,6 +203,7 @@ export class ChatApiClient {
                 sessionUuid: sessionUuid ?? '',
                 text,
                 model,
+                workspace,
                 context: JSON.stringify(readTurnContext()),
                 attachments: JSON.stringify(attachments.map((a) => a.uid)),
             }),

@@ -89,7 +89,7 @@ class ChatSessionRepository extends AbstractRepository
         return array_map(static fn (array $row): ChatSession => ChatSession::fromRow($row), $rows);
     }
 
-    public function create(string $sessionUuid, int $beUser, string $model, string $title = ''): int
+    public function create(string $sessionUuid, int $beUser, string $model, string $title = '', int $workspace = 0): int
     {
         $now = time();
         $connection = $this->connectionPool->getConnectionForTable($this->table);
@@ -97,6 +97,7 @@ class ChatSessionRepository extends AbstractRepository
             'session_uuid' => $sessionUuid,
             'be_user' => $beUser,
             'model' => $model,
+            'workspace' => $workspace,
             'title' => $title,
             'last_activity' => $now,
             'crdate' => $now,

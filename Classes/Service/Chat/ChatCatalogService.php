@@ -15,10 +15,10 @@ declare(strict_types=1);
 namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
+use AutoDudes\AiSuite\Service\LocalizationService;
 use AutoDudes\AiSuite\Service\ModelService;
 use AutoDudes\AiSuite\Service\PromptTemplateService;
 use Psr\Log\LoggerInterface;
-use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
 class ChatCatalogService
 {
@@ -30,6 +30,7 @@ class ChatCatalogService
         private readonly ChatServerCapabilityService $capabilityService,
         private readonly ChatOrientationService $orientationService,
         private readonly PromptTemplateService $promptTemplateService,
+        private readonly LocalizationService $localizationService,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -114,13 +115,13 @@ class ChatCatalogService
     private function modelLabel(string $modelName): string
     {
         try {
-            $label = LocalizationUtility::translate(
+            $label = $this->localizationService->translate(
                 'LLL:EXT:cheddi/Resources/Private/Language/locallang_tca.xlf:cheddi.model.'.$modelName.'.label',
             );
         } catch (\Throwable) {
-            $label = null;
+            $label = '';
         }
 
-        return is_string($label) && '' !== $label ? $label : $modelName;
+        return '' !== $label ? $label : $modelName;
     }
 }

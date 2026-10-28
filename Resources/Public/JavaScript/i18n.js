@@ -1,9 +1,4 @@
 
-/**
- * A literal key never carries a fallback: `LanguageLabelContractTest` asserts it exists in
- * locallang.xlf, which is a cheaper guarantee than a second copy of the sentence in every call.
- * Use llOr() where the key is composed at runtime and may legitimately be absent.
- */
 export function ll(key, args = {}) {
     return interpolate(lookup(key) ?? '', args);
 }

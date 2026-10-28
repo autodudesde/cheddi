@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use AutoDudes\AiSuiteMcp\Mcp\Log\SensitiveDataProcessor;
 use AutoDudes\Cheddi\Hook\ChatWriteCaptureHook;
 use Psr\Log\LogLevel;
@@ -37,7 +39,7 @@ $cheddiAdditionalRedactionPatterns = array_values(array_unique(array_filter(
 
 $cheddiLogVerbose = (string) ($cheddiExtConf['chatLogVerbose'] ?? 'inherit');
 if ('' === $cheddiLogVerbose || 'inherit' === $cheddiLogVerbose) {
-    $cheddiLogVerbose = (string) ($cheddiMcpExtConf['mcpLogVerbose'] ?? '1');
+    $cheddiLogVerbose = (string) ($cheddiMcpExtConf['mcpLogVerbose'] ?? '0');
 }
 
 $GLOBALS['TYPO3_CONF_VARS']['LOG']['AutoDudes']['Cheddi']['writerConfiguration'] = [

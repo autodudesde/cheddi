@@ -163,16 +163,20 @@ body.cheddi-resizing-composer * {
     min-width: 0;
 }
 
-.cheddi__model-select {
-    flex: 1 1 auto;
+.cheddi__model-select,
+.cheddi__workspace-select {
+    flex: 1 1 0;
     width: auto;
+    min-width: 0;
 }
 
-.cheddi__model-select[hidden] {
+.cheddi__model-select[hidden],
+.cheddi__workspace-select[hidden] {
     display: none;
 }
 
-.cheddi__model-select:disabled {
+.cheddi__model-select:disabled,
+.cheddi__workspace-select:disabled {
     cursor: default;
     opacity: 0.7;
 }
@@ -285,6 +289,15 @@ body.cheddi-resizing-composer * {
 @container cheddi-drawer (max-width: 340px) {
     .cheddi__status-badge--mode .cheddi__status-label {
         display: none;
+    }
+
+    .cheddi__header-row--model {
+        flex-wrap: wrap;
+    }
+
+    .cheddi__model-select,
+    .cheddi__workspace-select {
+        flex-basis: 100%;
     }
 }
 
@@ -458,6 +471,10 @@ body.cheddi-resizing-composer * {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.cheddi__nav-language {
+    flex: 0 0 auto;
 }
 
 .cheddi__sources {

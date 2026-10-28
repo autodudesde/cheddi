@@ -34,7 +34,7 @@ class ChangeTracker
         private readonly LoggerInterface $logger,
     ) {}
 
-    public function track(int $sessionUid, string $table, int $uid, string $action): void
+    public function track(int $sessionUid, string $table, int $uid, string $action, int $sessionWorkspace = 0): void
     {
         $backendUser = $this->backendUserService->getBackendUser();
         if (null === $backendUser) {
@@ -42,7 +42,7 @@ class ChangeTracker
         }
 
         try {
-            $workspace = $this->orientationService->resolveWorkspaceId($backendUser);
+            $workspace = $this->orientationService->resolveWorkspaceId($backendUser, $sessionWorkspace);
         } catch (\Throwable $e) {
             $this->logger->warning('ChEddi: could not resolve the workspace for change tracking', [
                 'exception' => $e->getMessage(),

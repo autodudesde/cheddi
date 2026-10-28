@@ -28,12 +28,15 @@ import {
     saveSessionUuid,
     loadSessionModel,
     saveSessionModel,
+    loadSessionWorkspace,
+    saveSessionWorkspace,
 } from '@autodudes/cheddi/state.js';
 
 const CHEDDI_ICON_URL = new URL('../Icons/cheddi.png', import.meta.url).href;
 const AUTO_CONTINUE_SAFETY_LIMIT = 50;
 const CREDITS_REFRESH_DELAY_MS = 1200;
 const PROGRESS_POLL_INTERVAL_MS = 900;
+export const PREFILL_EVENT = 'cheddi:prefill';
 
 const CALLOUT_VARIANTS = {
     info: 'callout-info',
@@ -76,7 +79,8 @@ class ChatDrawer {
         this.attachmentTray = null;
         this.selectedModel = loadSessionModel() ?? '';
         this.modelLocked = false;
-        this.creditsWarningShown = false;
+        this.selectedWorkspace = loadSessionWorkspace() ?? '';
+        this.sessionWorkspace = null;
         this.modelSwitchNoticeShown = false;
         this.apiKeyNoticeShown = false;
         this.lowBalanceShown = false;
@@ -103,6 +107,20 @@ class ChatDrawer {
         });
         this.bindEvents();
         this.applyState();
+        top.document.addEventListener(PREFILL_EVENT, (event) => this.prefill(event.detail?.text));
+    }
+
+    prefill(text) {
+        if (typeof text !== 'string' || text.trim() === '') {
+            return;
+        }
+        this.setOpen(true);
+        if (this.isSending || !this.creditsAvailable || !this.elements.textarea) {
+            return;
+        }
+        this.elements.textarea.value = text;
+        this.elements.textarea.focus();
+        this.elements.textarea.dispatchEvent(new Event('input'));
     }
 
     applyTemplate(prompt) {
@@ -150,6 +168,7 @@ class ChatDrawer {
             credits: this.mountPoint.querySelector('[data-cheddi-credits]'),
             creditsValue: this.mountPoint.querySelector('[data-cheddi-credits-value]'),
             modelSelect: this.mountPoint.querySelector('[data-cheddi-model-select]'),
+            workspaceSelect: this.mountPoint.querySelector('[data-cheddi-workspace-select]'),
             intro: this.mountPoint.querySelector('[data-cheddi-intro]'),
             introList: this.mountPoint.querySelector('[data-cheddi-intro-list]'),
             introModel: this.mountPoint.querySelector('[data-cheddi-intro-model]'),
@@ -290,6 +309,21 @@ class ChatDrawer {
                 this.renderIntroCard();
             });
         }
+        if (this.elements.workspaceSelect) {
+            this.elements.workspaceSelect.addEventListener('change', (event) => {
+                if (this.modelLocked) {
+                    return;
+                }
+                this.selectedWorkspace = event.target.value;
+                saveSessionWorkspace(this.selectedWorkspace);
+                if (this.sessionUuid !== null) {
+                    this.sessionUuid = null;
+                    saveSessionUuid(null);
+                }
+                this.renderStatusBadges();
+                this.renderIntroCard();
+            });
+        }
         this.boundDocumentClick = (event) => {
             if (!this.elements.actionsMenu.contains(event.target)
                 && event.target !== this.elements.actionsToggle) {
@@ -400,13 +434,16 @@ class ChatDrawer {
         saveSessionModel(null);
         this.ensureModelSelection();
         this.renderModelSelect();
+        this.sessionWorkspace = null;
+        this.ensureWorkspaceSelection();
+        this.renderWorkspaceSelect();
+        this.renderStatusBadges();
         this.modelLocked = false;
         this.applyModelLock();
         this.elements.messages.replaceChildren();
         this.lowBalanceShown = false;
         this.creditsAvailable = true;
         this.creditsExhausted = false;
-        this.creditsWarningShown = false;
         this.elements.textarea.disabled = false;
         this.elements.textarea.placeholder = ll('cheddi.ui.textareaPlaceholder');
         this.elements.sendButton.disabled = false;
@@ -458,6 +495,10 @@ class ChatDrawer {
             this.modelLocked = true;
             this.applyModelLock();
             this.renderModelSelect();
+            this.sessionWorkspace = session.workspace ?? null;
+            this.adoptSessionWorkspace();
+            this.renderWorkspaceSelect();
+            this.renderStatusBadges();
 
             this.elements.messages.replaceChildren();
             for (const message of session.messages ?? []) {
@@ -546,6 +587,8 @@ class ChatDrawer {
 
         this.templatesDropdown.setTemplates(this.starterTemplates);
         this.attachmentTray?.applyLimits(payload?.attachments ?? null);
+        this.ensureWorkspaceSelection();
+        this.renderWorkspaceSelect();
         this.renderStatusBadges();
         this.resetAvailabilityState();
 
@@ -577,7 +620,10 @@ class ChatDrawer {
     }
 
     renderStatusBadges() {
-        renderModeBadge(this.elements, this.orientation);
+        renderModeBadge(this.elements, this.effectiveOrientation());
+        if (this.elements.workspace && this.workspaceOptions().length > 0) {
+            this.elements.workspace.hidden = true;
+        }
         renderCreditsBadge(this.elements, this.credits);
     }
 
@@ -667,10 +713,10 @@ class ChatDrawer {
             option.textContent = meta.length > 0
                 ? `${m.label || m.name} (${meta.join(' · ')})`
                 : (m.label || m.name);
-            option.selected = m.name === this.selectedModel;
-            options.push(option.outerHTML);
+            options.push(option);
         }
-        select.innerHTML = options.join('');
+        select.replaceChildren(...options);
+        select.value = this.selectedModel;
         select.hidden = false;
     }
 
@@ -688,13 +734,103 @@ class ChatDrawer {
 
     applyModelLock() {
         const select = this.elements.modelSelect;
+        if (select) {
+            select.disabled = this.modelLocked;
+            select.title = this.modelLocked
+                ? ll('cheddi.notice.modelLocked')
+                : '';
+        }
+        const workspaceSelect = this.elements.workspaceSelect;
+        if (workspaceSelect) {
+            workspaceSelect.disabled = this.modelLocked;
+            workspaceSelect.title = this.modelLocked
+                ? ll('cheddi.notice.workspaceLocked')
+                : '';
+        }
+    }
+
+    workspaceOptions() {
+        return Array.isArray(this.orientation?.workspaceOptions) ? this.orientation.workspaceOptions : [];
+    }
+
+    ensureWorkspaceSelection() {
+        const options = this.workspaceOptions();
+        if (this.modelLocked || options.length === 0) {
+            return;
+        }
+        if (options.some((o) => o.value === this.selectedWorkspace)) {
+            return;
+        }
+
+        const current = Number(this.orientation?.workspaceId) || 0;
+        const preselected = options.find((o) => current > 0 && o.uid === current)
+            ?? options.find((o) => o.personal)
+            ?? options[0];
+        this.selectedWorkspace = preselected.value;
+        saveSessionWorkspace(this.selectedWorkspace);
+    }
+
+    adoptSessionWorkspace() {
+        const id = Number(this.sessionWorkspace?.id) || 0;
+        const match = this.workspaceOptions().find((o) => id > 0 && o.uid === id);
+        if (match) {
+            this.selectedWorkspace = match.value;
+            saveSessionWorkspace(this.selectedWorkspace);
+        }
+    }
+
+    workspaceOptionLabel(option) {
+        if (option.pending) {
+            return ll('cheddi.ui.workspaceNew');
+        }
+
+        return option.title !== '' ? option.title : ll('cheddi.ui.workspaceUnnamed');
+    }
+
+    renderWorkspaceSelect() {
+        const select = this.elements.workspaceSelect;
         if (!select) {
             return;
         }
-        select.disabled = this.modelLocked;
-        select.title = this.modelLocked
-            ? ll('cheddi.notice.modelLocked')
-            : '';
+        const options = this.workspaceOptions();
+        if (options.length === 0) {
+            select.hidden = true;
+            select.replaceChildren();
+            return;
+        }
+        select.replaceChildren(...options.map((o) => {
+            const option = document.createElement('option');
+            option.value = o.value;
+            option.textContent = this.workspaceOptionLabel(o);
+            return option;
+        }));
+        select.value = this.selectedWorkspace;
+        select.hidden = false;
+    }
+
+    effectiveOrientation() {
+        if (this.orientation === null || this.orientation.writeMode === 'live') {
+            return this.orientation;
+        }
+        if (this.modelLocked && this.sessionWorkspace !== null) {
+            return {
+                ...this.orientation,
+                workspaceId: Number(this.sessionWorkspace.id) || 0,
+                workspaceTitle: this.sessionWorkspace.title ?? '',
+                workspacePending: this.sessionWorkspace.pending === true,
+            };
+        }
+        const selected = this.workspaceOptions().find((o) => o.value === this.selectedWorkspace);
+        if (!selected) {
+            return this.orientation;
+        }
+
+        return {
+            ...this.orientation,
+            workspaceId: selected.uid,
+            workspaceTitle: selected.title,
+            workspacePending: selected.pending,
+        };
     }
 
     applyNoModelsAvailableState() {
@@ -754,7 +890,13 @@ class ChatDrawer {
 
         this.activeAbortController = new AbortController();
         const result = await this.api.startTurn(
-            { sessionUuid: this.sessionUuid, text, model: this.selectedModel, attachments },
+            {
+                sessionUuid: this.sessionUuid,
+                text,
+                model: this.selectedModel,
+                workspace: this.workspaceOptions().length > 0 ? this.selectedWorkspace : '',
+                attachments,
+            },
             this.activeAbortController.signal,
         );
         this.modelLocked = true;
@@ -903,7 +1045,7 @@ class ChatDrawer {
                         ? ll('cheddi.notice.creditsExhaustedAborted')
                         : ll('cheddi.notice.creditsExhausted'),
                 });
-                this.updateCredits(result.usage);
+                this.updateCredits(result.usage, false);
                 this.updateContextFill(result);
                 this.updateInputDisabledState();
                 break;
@@ -1050,7 +1192,7 @@ class ChatDrawer {
         }
     }
 
-    updateCredits(usage) {
+    updateCredits(usage, warnLowBalance = true) {
         if (!usage) {
             return;
         }
@@ -1059,28 +1201,32 @@ class ChatDrawer {
                 detail: { persisted: false, source: 'cheddi' },
             }));
         }
-        if (usage.lowBalance === true && !this.lowBalanceShown) {
-            this.lowBalanceShown = true;
-            this.renderMessage({
-                role: 'system',
-                kind: 'warning',
-                text: ll('cheddi.notice.lowBalance'),
-            });
-        } else if (usage.lowBalance === false) {
-            this.lowBalanceShown = false;
-        }
-        if (usage.lowRemaining === true && !this.creditsWarningShown) {
-            this.creditsWarningShown = true;
-            this.renderMessage({
-                role: 'system',
-                kind: 'warning',
-                text: ll('cheddi.notice.lowBalanceRemaining', { count: usage.remainingCredits }),
-            });
-        } else if (usage.lowRemaining === false) {
-            this.creditsWarningShown = false;
+        if (warnLowBalance) {
+            this.showLowBalanceNotice(usage);
         }
 
         this.scheduleCreditsRefresh();
+    }
+
+    showLowBalanceNotice(usage) {
+        if (usage.lowBalance !== true && usage.lowRemaining !== true) {
+            if (usage.lowBalance === false && usage.lowRemaining === false) {
+                this.lowBalanceShown = false;
+            }
+            return;
+        }
+        if (this.lowBalanceShown) {
+            return;
+        }
+        this.lowBalanceShown = true;
+        const remaining = usage.remainingCredits;
+        this.renderMessage({
+            role: 'system',
+            kind: 'warning',
+            text: typeof remaining === 'number' && remaining > 0
+                ? ll('cheddi.notice.lowBalanceRemaining', { count: remaining })
+                : ll('cheddi.notice.lowBalance'),
+        });
     }
 
     updateContextFill(result) {
