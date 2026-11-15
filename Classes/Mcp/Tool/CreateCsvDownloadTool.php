@@ -39,7 +39,8 @@ final class CreateCsvDownloadTool extends AbstractChatTool
     public function getDescription(): string
     {
         return 'Offer tabular data to the editor as a CSV file download. '
-            .'Use only when the editor asks for a CSV, Excel or spreadsheet file.';
+            .'Use only when the editor asks for a CSV, Excel or spreadsheet file. '
+            .'When every row is a record of one table, give `records` instead of `rows`: the file reads the records itself, while copied rows get lost.';
     }
 
     public function getSchema(): array
@@ -52,10 +53,22 @@ final class CreateCsvDownloadTool extends AbstractChatTool
                 'rows' => [
                     'type' => 'array',
                     'items' => ['type' => 'array', 'items' => ['type' => 'string']],
-                    'description' => 'One list of cell values per row, in column order.',
+                    'description' => 'One list of cell values per row, in column order. Only for data that is not records of one table.',
+                ],
+                'records' => [
+                    'type' => 'object',
+                    'description' => 'One object: the records of one table to export, selected like readRecords. Without pid, rootPageId or filters every record you can read is exported.',
+                    'properties' => [
+                        'table' => ['type' => 'string'],
+                        'fields' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'One field per column, in column order.'],
+                        'pid' => ['type' => 'integer'],
+                        'rootPageId' => ['type' => 'integer'],
+                        'filters' => ['type' => 'object', 'description' => 'Field name => value, exact match; "" finds empty fields.'],
+                    ],
+                    'required' => ['table', 'fields'],
                 ],
             ],
-            'required' => ['columns', 'rows'],
+            'required' => ['columns'],
         ];
     }
 

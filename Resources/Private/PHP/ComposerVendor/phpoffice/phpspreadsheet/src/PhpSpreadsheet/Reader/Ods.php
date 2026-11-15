@@ -2,6 +2,7 @@
 
 namespace PhpOffice\PhpSpreadsheet\Reader;
 
+use Composer\Pcre\Preg;
 use DOMAttr;
 use DOMDocument;
 use DOMElement;
@@ -24,6 +25,7 @@ use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use SimpleXMLElement;
 use Throwable;
 use XMLReader;
 use ZipArchive;
@@ -57,15 +59,8 @@ class Ods extends BaseReader
                 $stat = $zip->statName('mimetype');
                 if (!empty($stat) && ($stat['size'] <= 255)) {
                     $mimeType = $zip->getFromName($stat['name']);
-                } elseif ($zip->statName('META-INF/manifest.xml')) {
-                    $xml = simplexml_load_string(
-                        $this->getSecurityScannerOrThrow()
-                            ->scan(
-                                $zip->getFromName(
-                                    'META-INF/manifest.xml'
-                                )
-                            )
-                    );
+                } else {
+                    $xml = $this->loadZipSimple($zip, 'META-INF/manifest.xml');
                     if ($xml !== false) {
                         $namespacesContent = $xml->getNamespaces(true);
                         if (isset($namespacesContent['manifest'])) {
@@ -101,12 +96,10 @@ class Ods extends BaseReader
         $worksheetNames = [];
 
         $xml = new XMLReader();
-        $xml->xml(
-            $this->getSecurityScannerOrThrow()
-                ->scanFile(
-                    'zip://' . realpath($filename) . '#' . self::INITIAL_FILE
-                )
-        );
+        $zip = new ZipArchive();
+        $zip->open($filename);
+        $this->loadZipXml($xml, $zip, self::INITIAL_FILE);
+        $zip->close();
         $xml->setParserProperty(2, true);
 
         // Step into the first level of content of the XML
@@ -149,12 +142,10 @@ class Ods extends BaseReader
         $worksheetInfo = [];
 
         $xml = new XMLReader();
-        $xml->xml(
-            $this->getSecurityScannerOrThrow()
-                ->scanFile(
-                    'zip://' . realpath($filename) . '#' . self::INITIAL_FILE
-                )
-        );
+        $zip = new ZipArchive();
+        $zip->open($filename);
+        $this->loadZipXml($xml, $zip, self::INITIAL_FILE);
+        $zip->close();
         $xml->setParserProperty(2, true);
 
         // Step into the first level of content of the XML
@@ -268,18 +259,22 @@ class Ods extends BaseReader
     public function loadIntoExisting(string $filename, Spreadsheet $spreadsheet): Spreadsheet
     {
         File::assertFile($filename, self::INITIAL_FILE);
-
         $zip = new ZipArchive();
-        $zip->open($filename);
 
-        // Meta
+        try {
+            $zip->open($filename);
 
-        $xml = @simplexml_load_string(
-            $this->getSecurityScannerOrThrow()
-                ->scan($zip->getFromName('meta.xml'))
-        );
+            return $this->load2($filename, $spreadsheet, $zip);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    public function load2(string $filename, Spreadsheet $spreadsheet, ZipArchive $zip): Spreadsheet
+    {
+        $xml = @$this->loadZipSimple($zip, 'meta.xml');
         if ($xml === false) {
-            throw new Exception('Unable to read data from {$pFilename}');
+            throw new Exception('Unable to read data from {$filename}');
         }
 
         $namespacesMeta = $xml->getNamespaces(true);
@@ -288,21 +283,12 @@ class Ods extends BaseReader
 
         // Styles
 
-        $dom = new DOMDocument('1.01', 'UTF-8');
-        $dom->loadXML(
-            $this->getSecurityScannerOrThrow()
-                ->scan($zip->getFromName('styles.xml'))
-        );
-
+        $dom = $this->loadDom('styles.xml', $zip);
         $pageSettings = new PageSettings($dom);
 
         // Main Content
 
-        $dom = new DOMDocument('1.01', 'UTF-8');
-        $dom->loadXML(
-            $this->getSecurityScannerOrThrow()
-                ->scan($zip->getFromName(self::INITIAL_FILE))
-        );
+        $dom = $this->loadDom(self::INITIAL_FILE, $zip);
 
         $officeNs = (string) $dom->lookupNamespaceUri('office');
         $tableNs = (string) $dom->lookupNamespaceUri('table');
@@ -473,16 +459,20 @@ class Ods extends BaseReader
                                 if ($cellData->hasAttributeNS($tableNs, 'number-matrix-columns-spanned')) {
                                     if ($cellData->hasAttributeNS($tableNs, 'number-matrix-rows-spanned')) {
                                         $cellDataType = 'array';
-                                        $arrayRow = (int) $cellData->getAttributeNS($tableNs, 'number-matrix-rows-spanned');
-                                        $arrayCol = (int) $cellData->getAttributeNS($tableNs, 'number-matrix-columns-spanned');
+                                        $arrayRow = self::boundedInteger(
+                                            $cellData->getAttributeNS($tableNs, 'number-matrix-rows-spanned'),
+                                            1,
+                                            AddressRange::MAX_ROW - $rowID + 1,
+                                            'number-matrix-rows-spanned'
+                                        );
+                                        $arrayCol = self::boundedInteger(
+                                            $cellData->getAttributeNS($tableNs, 'number-matrix-columns-spanned'),
+                                            1,
+                                            AddressRange::MAX_COLUMN_INT - Coordinate::columnIndexFromString($columnID) + 1,
+                                            'number-matrix-columns-spanned'
+                                        );
                                         $lastRow = $rowID + $arrayRow - 1;
-                                        $lastCol = $columnID;
-                                        while ($arrayCol > 1) {
-                                            StringHelper::stringIncrement(
-                                                $lastCol
-                                            );
-                                            --$arrayCol;
-                                        }
+                                        $lastCol = Coordinate::stringFromColumnIndex(Coordinate::columnIndexFromString($columnID) + $arrayCol - 1);
                                         $cellDataRef = "$columnID$rowID:$lastCol$lastRow";
                                     }
                                 }
@@ -732,11 +722,7 @@ class Ods extends BaseReader
 
     private function processSettings(ZipArchive $zip, Spreadsheet $spreadsheet): void
     {
-        $dom = new DOMDocument('1.01', 'UTF-8');
-        $dom->loadXML(
-            $this->getSecurityScannerOrThrow()
-                ->scan($zip->getFromName('settings.xml'))
-        );
+        $dom = $this->loadDom('settings.xml', $zip);
         //$xlinkNs = $dom->lookupNamespaceUri('xlink');
         $configNs = (string) $dom->lookupNamespaceUri('config');
         //$oooNs = $dom->lookupNamespaceUri('ooo');
@@ -828,13 +814,13 @@ class Ods extends BaseReader
             }
         }
 
-        return $str;
+        return mb_substr($str, 0, DataType::MAX_STRING_LENGTH);
     }
 
     private static function getMultiplier(?DOMAttr $cAttr): int
     {
         if ($cAttr) {
-            $multiplier = (int) $cAttr->nodeValue;
+            $multiplier = max(1, min((int) $cAttr->nodeValue, DataType::MAX_STRING_LENGTH));
         } else {
             $multiplier = 1;
         }
@@ -907,5 +893,109 @@ class Ods extends BaseReader
         if ($colRepeats < 1 || $colIndex + $colRepeats > AddressRange::MAX_COLUMN_INT) {
             throw new Exception("Invalid number-columns-repeated $colRepeats following column index $colIndex");
         }
+    }
+
+    private function loadDom(string $file, ZipArchive $zip): DOMDocument
+    {
+        $dom = new DOMDocument('1.01', 'UTF-8');
+        $orig = false;
+
+        try {
+            $orig = libxml_use_internal_errors(true);
+            $result = $this->loadZipDom($dom, $zip, $file);
+            if ($result === false) {
+                $fatal = false;
+                foreach (libxml_get_errors() as $err) {
+                    if ($err->level === LIBXML_ERR_FATAL) {
+                        throw new Exception($err->message);
+                    }
+                }
+            }
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($orig);
+        }
+
+        return $dom;
+    }
+
+    private function loadZipSimple(ZipArchive $zip, string $fileName): false|SimpleXMLElement
+    {
+        $retVal = false;
+        $stat = $zip->statName($fileName);
+        if ($stat !== false) {
+            if ($stat['size'] > $this->maxLength) {
+                throw new Exception(
+                    "Zip member $fileName expands to {$stat['size']} bytes, over the limit"
+                );
+            }
+            $retVal = simplexml_load_string(
+                $this->getSecurityScannerOrThrow()
+                    ->scan($zip->getFromName($fileName))
+            );
+        }
+
+        return $retVal;
+    }
+
+    private function loadZipDom(DOMDocument $dom, ZipArchive $zip, string $fileName): bool
+    {
+        $retVal = false;
+        $stat = $zip->statName($fileName);
+        if ($stat !== false) {
+            if ($stat['size'] > $this->maxLength) {
+                throw new Exception(
+                    "Zip member $fileName expands to {$stat['size']} bytes, over the limit"
+                );
+            }
+            $retVal = $dom->loadXML(
+                $this->getSecurityScannerOrThrow()
+                    ->scan($zip->getFromName($fileName))
+            );
+        }
+
+        return $retVal;
+    }
+
+    private function loadZipXml(XMLReader $xml, ZipArchive $zip, string $fileName): bool
+    {
+        $retVal = false;
+        $stat = $zip->statName($fileName);
+        if ($stat !== false) {
+            if ($stat['size'] > $this->maxLength) {
+                throw new Exception(
+                    "Zip member $fileName expands to {$stat['size']} bytes, over the limit"
+                );
+            }
+            $retVal = $xml->xml(
+                $this->getSecurityScannerOrThrow()
+                    ->scan($zip->getFromName($fileName))
+            );
+        }
+
+        return (bool) $retVal;
+    }
+
+    /** Validate the lexical value and its bound before converting to an integer. */
+    private static function boundedInteger(string $value, int $minimum, int $maximum, string $attribute): int
+    {
+        $value = trim($value);
+        if (!Preg::isMatch('/^\+?[0-9]+$/D', $value)) {
+            throw new Exception("Invalid ODS $attribute value.");
+        }
+        $digits = ltrim($value, '+0');
+        $maximumDigits = (string) $maximum;
+        if (
+            strlen($digits) > strlen($maximumDigits)
+            || (strlen($digits) === strlen($maximumDigits) && strcmp($digits, $maximumDigits) > 0)
+        ) {
+            throw new Exception("Invalid ODS $attribute value.");
+        }
+        $integer = (int) $value;
+        if ($integer < $minimum) {
+            throw new Exception("Invalid ODS $attribute value.");
+        }
+
+        return $integer;
     }
 }

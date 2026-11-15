@@ -1,5 +1,13 @@
 
+function isModuleActive() {
+    return document.querySelector('cheddi-module[active]') !== null;
+}
+
 export function detectOpenRecord() {
+    if (isModuleActive()) {
+        return {};
+    }
+
     const candidates = [];
     try {
         candidates.push(window.location.href);
@@ -37,6 +45,10 @@ export function detectOpenRecord() {
 }
 
 export function currentPageId() {
+    if (isModuleActive()) {
+        return null;
+    }
+
     try {
         const id = top?.TYPO3?.Backend?.ContentContainer?.getIdFromUrl?.();
         if (Number.isInteger(id) && id > 0) {

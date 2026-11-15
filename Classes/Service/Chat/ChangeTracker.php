@@ -81,6 +81,35 @@ class ChangeTracker
         }
     }
 
+    public function trackImmediate(int $sessionUid, string $table, int $uid, string $toolName, int $sessionWorkspace = 0): void
+    {
+        $backendUser = $this->backendUserService->getBackendUser();
+        if (null === $backendUser || $uid <= 0) {
+            return;
+        }
+
+        try {
+            $workspace = $this->orientationService->resolveWorkspaceId($backendUser, $sessionWorkspace);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: could not resolve the workspace for change tracking', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if ($workspace <= 0 || $this->changeRepository->hasChange($sessionUid, $table, $uid)) {
+            return;
+        }
+
+        $this->changeRepository->addChange($sessionUid, $table, $uid, 0, $workspace, 0, $toolName, $this->currentTimestamp());
+    }
+
+    public function hasChanges(int $sessionUid): bool
+    {
+        return [] !== $this->changeRepository->findBySession($sessionUid);
+    }
+
     protected function resolveLiveUid(string $table, int $uid): int
     {
         return $this->workspaceRecordService->resolveLiveUid($table, $uid);

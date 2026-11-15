@@ -28,10 +28,12 @@ class ChatServerCapabilityService implements SingletonInterface
     private const LIFETIME_SECONDS = 900;
 
     /**
-     * @var array{rates: array<string, int>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
+     * @var array{rates: array<string, int>, visionRates: array<string, int>, visionGdprModels: list<string>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
      */
     private const NEUTRAL_DEFAULTS = [
         'rates' => [],
+        'visionRates' => [],
+        'visionGdprModels' => [],
         'byok' => false,
         'apiKeyConfigKey' => [],
         'webSearchApiKeyConfigKey' => '',
@@ -42,7 +44,7 @@ class ChatServerCapabilityService implements SingletonInterface
     ];
 
     /**
-     * @var null|array{rates: array<string, int>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
+     * @var null|array{rates: array<string, int>, visionRates: array<string, int>, visionGdprModels: list<string>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
      */
     private ?array $capabilities = null;
 
@@ -55,7 +57,7 @@ class ChatServerCapabilityService implements SingletonInterface
     ) {}
 
     /**
-     * @return array{rates: array<string, int>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
+     * @return array{rates: array<string, int>, visionRates: array<string, int>, visionGdprModels: list<string>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
      */
     public function get(): array
     {
@@ -85,7 +87,7 @@ class ChatServerCapabilityService implements SingletonInterface
     }
 
     /**
-     * @return null|array{rates: array<string, int>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
+     * @return null|array{rates: array<string, int>, visionRates: array<string, int>, visionGdprModels: list<string>, byok: bool, apiKeyConfigKey: array<string, string>, webSearchApiKeyConfigKey: string, nativeWebSearchModels: list<string>, gdprWebSearchProvider: string, gdprWebSearchCountries: list<string>, gdprWebSearchApiKeyConfigKey: string}
      */
     private function ask(): ?array
     {
@@ -98,6 +100,8 @@ class ChatServerCapabilityService implements SingletonInterface
 
             return [
                 'rates' => is_array($data['rates'] ?? null) ? $data['rates'] : [],
+                'visionRates' => is_array($data['visionRates'] ?? null) ? $data['visionRates'] : [],
+                'visionGdprModels' => array_values(array_filter(is_array($data['visionGdprModels'] ?? null) ? $data['visionGdprModels'] : [], 'is_string')),
                 'byok' => true === ($data['byok'] ?? false),
                 'apiKeyConfigKey' => is_array($data['apiKeyConfigKey'] ?? null) ? $data['apiKeyConfigKey'] : [],
                 'webSearchApiKeyConfigKey' => (string) ($data['webSearchApiKeyConfigKey'] ?? ''),

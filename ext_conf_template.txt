@@ -11,8 +11,10 @@
 # customsubcategory=webscope=Scope
 # customsubcategory=chatlogging=Log files
 
-# cat=chat/chatmodels; type=options[Inherit from AI Suite=inherit,Yes=1,No=0]; label=GDPR compliant mode:Only offer GDPR-compliant models in the chat (restricts the model list to ChEddi's GDPR-compliant chat models, currently IONOS Qwen3.5; web search then runs only through the server's EU search provider, where one serves the site's market). "Inherit" (default) follows the AI Suite setting (ai_suite: forceGdpa). This setting can only tighten, never widen: with AI Suite on "Yes" the chat stays restricted even when set to "No" here. A backend group can force it on for its members (ChEddi tab of the group), never off.
+# cat=chat/chatmodels; type=options[Inherit from AI Suite=inherit,Yes=1,No=0]; label=GDPR compliant mode:Only offer GDPR-compliant models in the chat (restricts the model list to ChEddi's GDPR-compliant chat models, currently IONOS Qwen3.8 and Qwen3.5; web search then runs only through the server's EU search provider, where one serves the site's market). "Inherit" (default) follows the AI Suite setting (ai_suite: forceGdpa). This setting can only tighten, never widen: with AI Suite on "Yes" the chat stays restricted even when set to "No" here. A backend group can force it on for its members (ChEddi tab of the group), never off.
 chatForceGdpa = inherit
+
+
 
 # cat=chat/chatsessions; type=int+; label=Session lifetime (days):Days a chat session may stay inactive before the auto-delete scheduler soft-deletes it. Soft-deleted sessions are hard-deleted seven days later, together with their messages, their workspace change log and their attachments. An attachment survives when it left the "cheddi" upload folder or is referenced elsewhere, another conversation included. Uploads that were never sent are removed once they are this many days old.
 chatSessionLifetimeDays = 20
@@ -29,7 +31,7 @@ chatWriteMode = inherit
 # cat=writes/chatwrites; type=options[Inherit from MCP=inherit,Yes=1,No=0]; label=Allow raw HTML write:Whether ChEddi may store raw markup verbatim in code editor fields (e.g. tt_content.bodytext of CType "html"), which TYPO3 renders unfiltered. "Inherit" (default) follows the MCP setting (ai_suite_mcp: mcpAllowRawHtmlWrite). This setting can only tighten, never widen: with MCP set to "No" a write from the chat stays rejected here as well. A rejected write stores nothing, so the existing value survives. A backend group can forbid it for its members, never allow it.
 chatAllowRawHtmlWrite = inherit
 
-# cat=tools and tables/chataccess; type=string; label=Excluded tools:Comma-separated MCP tool names ChEddi must never offer, on top of the built-in list (bulk runs, media upload, workspace diff, server diagnostics - all reachable through a backend module instead). The list is applied identically on every turn; a catalogue that varies per turn destroys the provider's prompt-prefix cache and was measured to cost more than it saves. Lists set on backend groups are added for their members.
+# cat=tools and tables/chataccess; type=string; label=Excluded tools:Comma-separated MCP tool names ChEddi must never offer, on top of the built-in list (bulk runs and their task results, server diagnostics - all reachable through a backend module instead). The list is applied identically on every turn; a catalogue that varies per turn destroys the provider's prompt-prefix cache and was measured to cost more than it saves. Lists set on backend groups are added for their members.
 chatExcludedTools =
 
 # cat=tools and tables/chataccess; type=string; label=Excluded tables:Comma-separated tables ChEddi must never read or write, on top of the MCP list (ai_suite_mcp: mcpExcludedTables). Empty (default) = exactly the MCP list; entries here are added to it and never remove one. TYPO3 backend permissions still apply additionally, and the exclusion also blocks admins. Lists set on backend groups are added for their members.

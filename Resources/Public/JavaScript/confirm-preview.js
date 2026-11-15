@@ -180,7 +180,16 @@ function renderRecord(record) {
         item.append(contextEl);
     }
 
-    if (record.note) {
+    if (record.note && record.action === 'invalid') {
+        const details = document.createElement('details');
+        details.className = 'cheddi__preview-note';
+        const summary = document.createElement('summary');
+        summary.textContent = ll('cheddi.confirm.technicalDetails');
+        const reason = document.createElement('div');
+        reason.textContent = record.note;
+        details.append(summary, reason);
+        item.append(details);
+    } else if (record.note) {
         const note = document.createElement('div');
         note.className = 'cheddi__preview-note';
         note.textContent = record.note;
@@ -323,6 +332,8 @@ function actionLabel(action) {
         copy: ll('cheddi.preview.action.copy'),
         move: ll('cheddi.preview.action.move'),
         localize: ll('cheddi.preview.action.localize'),
+        audit: ll('cheddi.preview.action.audit'),
+        generate: ll('cheddi.preview.action.generate'),
         skipped: ll('cheddi.preview.action.skipped'),
         target: ll('cheddi.preview.action.target'),
         invalid: ll('cheddi.preview.action.invalid'),

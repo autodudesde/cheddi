@@ -20,6 +20,7 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                     alt=""
                     aria-hidden="true"
                     draggable="false">
+                <span class="badge cheddi__open-items-badge" data-cheddi-open-items-badge hidden></span>
             </button>
             <section class="cheddi__drawer"
                 data-cheddi-drawer-shell
@@ -48,44 +49,33 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                                 data-cheddi-open-help
                                 aria-label="${ll('cheddi.ui.helpButton')}"
                                 title="${ll('cheddi.ui.helpButton')}"><typo3-backend-icon identifier="actions-info" size="small" aria-hidden="true"></typo3-backend-icon></button>
-                            <div class="cheddi__header-menu">
-                                <button type="button"
-                                    class="btn btn-default btn-sm cheddi__header-button"
-                                    data-cheddi-actions-toggle
-                                    aria-label="${ll('cheddi.ui.actionsMenu')}"
-                                    title="${ll('cheddi.ui.actionsMenu')}"
-                                    aria-haspopup="menu"
-                                    aria-expanded="false"><typo3-backend-icon identifier="actions-menu-alternative" size="small" aria-hidden="true"></typo3-backend-icon></button>
-                                <ul class="dropdown-menu cheddi__actions-menu"
-                                    data-cheddi-actions-menu
-                                    role="menu"
-                                    hidden>
-                                    <li role="none">
-                                        <button type="button"
-                                            class="dropdown-item"
-                                            role="menuitem"
-                                            data-cheddi-new-conversation>${ll('cheddi.ui.newConversation')}</button>
-                                    </li>
-                                    <li role="none">
-                                        <button type="button"
-                                            class="dropdown-item"
-                                            role="menuitem"
-                                            data-cheddi-open-sessions>${ll('cheddi.ui.conversationsMenu')}</button>
-                                    </li>
-                                    <li role="none">
-                                        <button type="button"
-                                            class="dropdown-item"
-                                            role="menuitem"
-                                            data-cheddi-open-review
-                                            hidden>${ll('cheddi.review.menu')}</button>
-                                    </li>
-                                </ul>
-                            </div>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button cheddi__open-items-button"
+                                data-cheddi-open-open-items
+                                aria-label="${ll('cheddi.openItems.title')}"
+                                title="${ll('cheddi.openItems.title')}"
+                                hidden><typo3-backend-icon identifier="actions-lightbulb" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__open-items-count" data-cheddi-open-items-count hidden></span></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-open-sessions
+                                aria-label="${ll('cheddi.ui.conversationsMenu')}"
+                                title="${ll('cheddi.ui.conversationsMenu')}"><typo3-backend-icon identifier="actions-message" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-open-review
+                                aria-label="${ll('cheddi.review.menu')}"
+                                title="${ll('cheddi.review.menu')}"
+                                hidden><typo3-backend-icon identifier="apps-toolbar-menu-workspace" size="small" aria-hidden="true"></typo3-backend-icon></button>
                             <button type="button"
                                 class="btn btn-default btn-sm cheddi__header-button"
                                 data-cheddi-dock-toggle
                                 aria-label="${ll('cheddi.ui.dock')}"
                                 title="${ll('cheddi.ui.dock')}"><typo3-backend-icon identifier="actions-arrow-right" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-maximize
+                                aria-label="${ll('cheddi.ui.maximize')}"
+                                title="${ll('cheddi.ui.maximize')}"><typo3-backend-icon identifier="actions-fullscreen" size="small" aria-hidden="true"></typo3-backend-icon></button>
                             <button type="button"
                                 class="btn btn-default btn-sm cheddi__header-button"
                                 data-cheddi-minimize
@@ -115,25 +105,96 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                     <ul class="cheddi__intro-list" data-cheddi-intro-list></ul>
                 </div>
                 <div class="cheddi__messages" data-cheddi-messages aria-live="polite"></div>
-                <div class="cheddi__sessions-panel"
+                <div class="cheddi__open-items-panel cheddi__panel"
+                    data-cheddi-open-items-panel
+                    role="dialog"
+                    aria-label="${ll('cheddi.openItems.title')}"
+                    hidden>
+                    <header class="cheddi__panel-header">
+                        <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-open-items-back
+                                aria-label="${ll('cheddi.openItems.back')}"
+                                title="${ll('cheddi.openItems.back')}" hidden><typo3-backend-icon identifier="actions-arrow-left" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                        <h2 class="cheddi__panel-title" data-cheddi-open-items-title>${ll('cheddi.openItems.title')}</h2>
+                        <div class="cheddi__panel-actions">
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__panel-action cheddi__panel-action--collapsible"
+                                data-cheddi-manage-open-items
+                                title="${ll('cheddi.openItems.manage')}"
+                                hidden><typo3-backend-icon identifier="actions-cog" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__panel-action-label">${ll('cheddi.openItems.manage')}</span></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-close-open-items
+                                aria-label="${ll('cheddi.ui.panelClose')}"
+                                title="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                        </div>
+                    </header>
+                    <ul class="list-group cheddi__open-items-list" data-cheddi-open-items-list role="list"></ul>
+                    <div class="cheddi__panel-footer" data-cheddi-open-items-footer hidden></div>
+                </div>
+                <div class="cheddi__open-items-panel cheddi__open-item-rules-panel cheddi__panel"
+                    data-cheddi-open-item-rules-panel
+                    role="dialog"
+                    aria-label="${ll('cheddi.openItemRule.ui.title')}"
+                    hidden>
+                    <header class="cheddi__panel-header">
+                        <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-back-open-item-rules
+                                aria-label="${ll('cheddi.openItems.back')}"
+                                title="${ll('cheddi.openItems.back')}"><typo3-backend-icon identifier="actions-arrow-left" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                        <h2 class="cheddi__panel-title">${ll('cheddi.openItemRule.ui.title')}</h2>
+                        <div class="cheddi__panel-actions">
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__panel-action"
+                                data-cheddi-new-open-item-rule
+                                title="${ll('cheddi.openItemRule.suggest.open')}"><typo3-backend-icon identifier="actions-lightbulb" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__panel-action-label">${ll('cheddi.openItemRule.suggest.open')}</span></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__panel-action cheddi__panel-action--collapsible"
+                                data-cheddi-custom-open-item-rule
+                                title="${ll('cheddi.openItemRule.goal.new')}"><typo3-backend-icon identifier="actions-plus" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__panel-action-label">${ll('cheddi.openItemRule.goal.new')}</span></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-close-open-item-rules
+                                aria-label="${ll('cheddi.ui.panelClose')}"
+                                title="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                        </div>
+                    </header>
+                    <ul class="list-group cheddi__open-items-list" data-cheddi-open-item-rules-list role="list"></ul>
+                </div>
+                <div class="cheddi__sessions-panel cheddi__panel"
                     data-cheddi-sessions-panel
                     role="dialog"
                     aria-label="${ll('cheddi.ui.conversationsTitle')}"
                     hidden>
-                    <header class="cheddi__sessions-panel-header">
-                        <h2 class="cheddi__sessions-panel-title">${ll('cheddi.ui.conversationsTitle')}</h2>
-                        <button type="button"
-                            class="btn btn-default btn-sm cheddi__header-button"
-                            data-cheddi-close-sessions
-                            aria-label="${ll('cheddi.ui.panelClose')}"
-                            title="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                    <header class="cheddi__panel-header cheddi__sessions-panel-header">
+                        <h2 class="cheddi__panel-title">${ll('cheddi.ui.conversationsTitle')}</h2>
+                        <div class="cheddi__panel-actions">
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-sessions-new
+                                aria-label="${ll('cheddi.ui.newConversation')}"
+                                title="${ll('cheddi.ui.newConversation')}"><typo3-backend-icon identifier="actions-plus" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                            <button type="button"
+                                class="btn btn-default btn-sm cheddi__header-button"
+                                data-cheddi-close-sessions
+                                aria-label="${ll('cheddi.ui.panelClose')}"
+                                title="${ll('cheddi.ui.panelClose')}"><typo3-backend-icon identifier="actions-close" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                        </div>
                     </header>
-                    <button type="button"
-                        class="btn btn-default btn-sm cheddi__sessions-primary"
-                        data-cheddi-sessions-primary></button>
-                    <ul class="list-group cheddi__sessions-list"
-                        data-cheddi-sessions-list
-                        role="list"></ul>
+                    <div class="cheddi__sessions-body">
+                        <input type="search"
+                            class="form-control form-control-sm cheddi__sessions-search"
+                            data-cheddi-sessions-search
+                            autocomplete="off"
+                            placeholder="${ll('cheddi.sessions.searchPlaceholder')}"
+                            aria-label="${ll('cheddi.sessions.searchPlaceholder')}"
+                            hidden>
+                        <ul class="list-group cheddi__sessions-list"
+                            data-cheddi-sessions-list
+                            role="list"></ul>
+                    </div>
                 </div>
                 <div class="callout callout-warning cheddi__context-notice" data-cheddi-context-notice role="status" hidden>
                     <span class="cheddi__context-notice-text" data-cheddi-context-notice-text></span>
@@ -164,6 +225,11 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                                     data-cheddi-attachment
                                     aria-label="${ll('cheddi.attachment.add')}"
                                     title="${ll('cheddi.attachment.add')}"><typo3-backend-icon identifier="actions-file-add" size="small" aria-hidden="true"></typo3-backend-icon></button>
+                                <button type="button"
+                                    class="btn btn-default btn-sm cheddi__tool-button"
+                                    data-cheddi-current-page
+                                    aria-label="${ll('cheddi.ui.currentPage')}"
+                                    title="${ll('cheddi.ui.currentPageHint')}"><typo3-backend-icon identifier="actions-page-open" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__tool-button-label">${ll('cheddi.ui.currentPage')}</span></button>
                                 <div class="cheddi__templates" data-cheddi-templates hidden>
                                     <button type="button"
                                         class="btn btn-default btn-sm cheddi__tool-button"
@@ -190,9 +256,8 @@ export function drawerMarkup({ bubbleIconUrl, brandIconUrl }) {
                                 <button type="button"
                                     class="btn btn-default btn-sm cheddi__tool-button"
                                     data-cheddi-guidelines
-                                    disabled
                                     aria-label="${ll('cheddi.ui.guidelines')}"
-                                    title="${ll('cheddi.ui.guidelinesSoon')}"><typo3-backend-icon identifier="actions-book" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__tool-button-label">${ll('cheddi.ui.guidelines')}</span></button>
+                                    title="${ll('cheddi.ui.guidelinesHint')}"><typo3-backend-icon identifier="actions-book" size="small" aria-hidden="true"></typo3-backend-icon><span class="cheddi__tool-button-label">${ll('cheddi.ui.guidelines')}</span></button>
                             </div>
                             <button type="button"
                                 class="btn btn-primary btn-sm cheddi__send-button"

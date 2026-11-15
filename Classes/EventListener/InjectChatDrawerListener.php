@@ -44,8 +44,9 @@ final class InjectChatDrawerListener
     private function mountPointMarkup(): string
     {
         return sprintf(
-            '<div id="cheddi-drawer" data-cheddi-drawer data-cheddi-brand-icon="%s"></div>',
+            '<div id="cheddi-drawer" data-cheddi-drawer data-cheddi-brand-icon="%s" data-cheddi-open-items-enabled="%d"></div>',
             htmlspecialchars($this->iconService->getPublicIconUrl('tx-aisuite-extension'), ENT_QUOTES | ENT_HTML5),
+            (int) ($this->backendUserService->checkPermissions(CheddiPermissionEnumeration::OPEN_ITEMS) || $this->backendUserService->checkPermissions(CheddiPermissionEnumeration::OPEN_ITEM_RULES)),
         );
     }
 }

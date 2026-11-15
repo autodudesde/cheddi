@@ -107,3 +107,94 @@ CREATE TABLE be_groups (
 CREATE TABLE sys_workspace (
     tx_cheddi_owner int(11) DEFAULT '0' NOT NULL
 );
+
+#
+# Table structure for table 'tx_cheddi_open_item'
+#
+CREATE TABLE tx_cheddi_open_item (
+    uid int(11) NOT NULL auto_increment,
+    pid int(11) DEFAULT '0' NOT NULL,
+    tstamp int(11) DEFAULT '0' NOT NULL,
+    crdate int(11) DEFAULT '0' NOT NULL,
+
+    kind varchar(20) DEFAULT '' NOT NULL,
+    page_uid int(11) DEFAULT '0' NOT NULL,
+    item_key varchar(191) DEFAULT '' NOT NULL,
+    severity varchar(20) DEFAULT '' NOT NULL,
+    message text,
+    reference_ts int(11) DEFAULT '0' NOT NULL,
+    record_table varchar(255) DEFAULT '' NOT NULL,
+    record_uid int(11) DEFAULT '0' NOT NULL,
+    area varchar(32) DEFAULT '' NOT NULL,
+    last_seen int(11) DEFAULT '0' NOT NULL,
+
+    PRIMARY KEY (uid),
+    KEY page_item (page_uid, item_key),
+    KEY last_seen (last_seen)
+);
+
+#
+# Table structure for table 'tx_cheddi_open_item_resolution'
+#
+CREATE TABLE tx_cheddi_open_item_resolution (
+    uid int(11) NOT NULL auto_increment,
+    pid int(11) DEFAULT '0' NOT NULL,
+    crdate int(11) DEFAULT '0' NOT NULL,
+
+    item int(11) DEFAULT '0' NOT NULL,
+    fingerprint varchar(40) DEFAULT '' NOT NULL,
+    be_user int(11) DEFAULT '0' NOT NULL,
+    area varchar(32) DEFAULT '' NOT NULL,
+    mode varchar(16) DEFAULT '' NOT NULL,
+
+    PRIMARY KEY (uid),
+    KEY item (item),
+    KEY created (crdate)
+);
+
+#
+# Table structure for table 'tx_cheddi_open_item_rule'
+#
+CREATE TABLE tx_cheddi_open_item_rule (
+    uid int(11) NOT NULL auto_increment,
+    pid int(11) DEFAULT '0' NOT NULL,
+    tstamp int(11) DEFAULT '0' NOT NULL,
+    crdate int(11) DEFAULT '0' NOT NULL,
+    deleted tinyint(4) DEFAULT '0' NOT NULL,
+    hidden tinyint(4) DEFAULT '0' NOT NULL,
+
+    title varchar(255) DEFAULT '' NOT NULL,
+    source_table varchar(255) DEFAULT '' NOT NULL,
+    source varchar(64) DEFAULT '' NOT NULL,
+    area varchar(32) DEFAULT '' NOT NULL,
+    match_mode varchar(8) DEFAULT 'all' NOT NULL,
+    preset varchar(64) DEFAULT '' NOT NULL,
+    root_page int(11) DEFAULT '0' NOT NULL,
+    inapplicable tinyint(4) DEFAULT '0' NOT NULL,
+    customized tinyint(4) DEFAULT '0' NOT NULL,
+    severity varchar(20) DEFAULT 'notice' NOT NULL,
+    origin varchar(16) DEFAULT '' NOT NULL,
+    last_status text,
+
+    PRIMARY KEY (uid),
+    KEY parent (pid)
+);
+
+#
+# Table structure for table 'tx_cheddi_open_item_rule_condition'
+#
+CREATE TABLE tx_cheddi_open_item_rule_condition (
+    uid int(11) NOT NULL auto_increment,
+    pid int(11) DEFAULT '0' NOT NULL,
+    rule int(11) DEFAULT '0' NOT NULL,
+    sorting int(11) DEFAULT '0' NOT NULL,
+
+    field_name varchar(255) DEFAULT '' NOT NULL,
+    comparison varchar(32) DEFAULT '' NOT NULL,
+    compare_value varchar(255) DEFAULT '' NOT NULL,
+    related_table varchar(255) DEFAULT '' NOT NULL,
+    related_field varchar(255) DEFAULT '' NOT NULL,
+
+    PRIMARY KEY (uid),
+    KEY rule (rule, sorting)
+);

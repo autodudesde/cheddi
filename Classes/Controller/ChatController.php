@@ -103,6 +103,7 @@ final class ChatController
             $request,
             $attachmentUids,
             $this->stringParam($params, 'workspace'),
+            '1' === $this->stringParam($params, 'retry'),
         );
 
         return $this->turnResultToResponse($result);
@@ -175,13 +176,34 @@ final class ChatController
             return $this->badRequest('Missing `sessionUuid` or `callId`.');
         }
 
-        $arguments = $this->chatService->findCsvDownloadArguments($sessionUuid, $callId);
-        $payload = null === $arguments ? null : $this->csvDownloadPayload->normalize($arguments);
+        $found = $this->chatService->findCsvDownload($sessionUuid, $callId);
+        $payload = null === $found ? null : $this->csvDownloadPayload->normalize($found['arguments'], $found['workspace']);
         if (!is_array($payload)) {
             return new JsonResponse(['error' => ['message' => 'Download not found.']], 404);
         }
 
         return $this->neverCached($this->csvExportService->download($payload['rows'], $payload['filename']));
+    }
+
+    public function renameSessionAction(ServerRequestInterface $request): ResponseInterface
+    {
+        $denied = $this->guardPermission();
+        if (null !== $denied) {
+            return $denied;
+        }
+
+        $params = $this->parsedBody($request);
+        $sessionUuid = $this->stringParam($params, 'sessionUuid');
+        $title = trim($this->stringParam($params, 'title'));
+        if ('' === $sessionUuid || '' === $title) {
+            return $this->badRequest('Missing `sessionUuid` or `title`.');
+        }
+
+        if (!$this->chatService->renameSession($sessionUuid, $title)) {
+            return new JsonResponse(['error' => ['message' => 'Session not found.', 'chatErrorCode' => 'sessionNotFound']], 404);
+        }
+
+        return new JsonResponse(['renamed' => true]);
     }
 
     public function deleteSessionAction(ServerRequestInterface $request): ResponseInterface

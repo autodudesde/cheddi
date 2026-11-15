@@ -2,6 +2,7 @@ const STORAGE_KEY = 'cheddi.drawerState';
 const SESSION_STORAGE_KEY = 'cheddi.sessionUuid';
 const SESSION_MODEL_STORAGE_KEY = 'cheddi.sessionModel';
 const SESSION_WORKSPACE_STORAGE_KEY = 'cheddi.sessionWorkspace';
+const MAXIMIZED_FROM_STORAGE_KEY = 'cheddi.maximizedFrom';
 
 const SIZE_LIMITS = {
     minWidth: 360,
@@ -47,6 +48,27 @@ export function loadState() {
     } catch (e) {
         console.warn('[ChEddi] could not read the persisted drawer state, using defaults.', e);
         return { ...DEFAULT_STATE };
+    }
+}
+
+export function loadMaximizedFrom() {
+    try {
+        return window.sessionStorage.getItem(MAXIMIZED_FROM_STORAGE_KEY);
+    } catch (e) {
+        console.warn('[ChEddi] could not read the view to return to.', e);
+        return null;
+    }
+}
+
+export function saveMaximizedFrom(url) {
+    try {
+        if (url) {
+            window.sessionStorage.setItem(MAXIMIZED_FROM_STORAGE_KEY, url);
+        } else {
+            window.sessionStorage.removeItem(MAXIMIZED_FROM_STORAGE_KEY);
+        }
+    } catch (e) {
+        console.warn('[ChEddi] could not remember the view to return to.', e);
     }
 }
 

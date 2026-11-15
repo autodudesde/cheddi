@@ -3,10 +3,10 @@ import { ll } from '@autodudes/cheddi/i18n.js';
 const PREVIEW_LENGTH = 90;
 
 export class TemplatesDropdown {
-    constructor(elements, { onPick, appliesToContext }) {
+    constructor(elements, { onPick, blockedReason }) {
         this.elements = elements;
         this.onPick = onPick;
-        this.appliesToContext = appliesToContext;
+        this.blockedReason = blockedReason;
         this.templates = [];
         this.loaded = false;
         this.searchBound = false;
@@ -119,10 +119,11 @@ export class TemplatesDropdown {
 
         item.appendChild(button);
 
-        if (!this.appliesToContext(template.prompt)) {
+        const reason = this.blockedReason(template.prompt);
+        if (reason !== null) {
             button.disabled = true;
             button.classList.add('disabled');
-            button.title = ll('cheddi.templates.needsRecord');
+            button.title = reason;
             return item;
         }
 

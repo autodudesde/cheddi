@@ -3,6 +3,16 @@ import { readTurnContext } from '@autodudes/cheddi/backend-context.js';
 const FORM_HEADERS = { 'Content-Type': 'application/x-www-form-urlencoded' };
 const NO_STORE = { cache: 'no-store', headers: { 'Cache-Control': 'no-store' } };
 
+function formEntries(values, prefix = '') {
+    return Object.entries(values).flatMap(([key, value]) => {
+        const name = prefix === '' ? key : `${prefix}[${key}]`;
+
+        return value !== null && typeof value === 'object'
+            ? formEntries(value, name)
+            : [[name, String(value ?? '')]];
+    });
+}
+
 export class ChatTransportError extends Error {
     constructor(chatErrorCode, message) {
         super(message);
@@ -80,6 +90,162 @@ export class ChatApiClient {
         return Array.isArray(payload?.sessions) ? payload.sessions : [];
     }
 
+    async fetchPageTitle(pageId) {
+        const base = this.optionalUrl('cheddi_page_title');
+        if (!base) {
+            return null;
+        }
+        const url = new URL(base, window.location.origin);
+        url.searchParams.set('pageId', String(pageId));
+        const response = await this.request(url.pathname + url.search, { credentials: 'same-origin', ...NO_STORE });
+        if (!response.ok) {
+            return null;
+        }
+        const payload = await response.json();
+        return typeof payload?.title === 'string' ? payload.title : null;
+    }
+
+    async fetchPageGuidelines(pageId) {
+        const base = this.optionalUrl('cheddi_page_guidelines');
+        if (!base) {
+            return null;
+        }
+        const url = new URL(base, window.location.origin);
+        url.searchParams.set('pageId', String(pageId));
+        const response = await this.request(url.pathname + url.search, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async fetchOpenItems() {
+        const url = this.optionalUrl('cheddi_open_items');
+        if (!url) {
+            return null;
+        }
+        const response = await this.request(url, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async fetchOpenItemRules() {
+        const url = this.optionalUrl('cheddi_open_item_rules');
+        if (!url) {
+            return null;
+        }
+        const response = await this.request(url, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async fetchOpenItemRuleOptions(params) {
+        const base = this.optionalUrl('cheddi_open_item_rule_options');
+        if (!base) {
+            return null;
+        }
+        const url = new URL(base, window.location.origin);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, String(value));
+        }
+        const response = await this.request(url.pathname + url.search, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async fetchOpenItemRuleGoalOptions(params) {
+        const base = this.optionalUrl('cheddi_open_item_rule_goal_options');
+        if (!base) {
+            return null;
+        }
+        const url = new URL(base, window.location.origin);
+        for (const [key, value] of Object.entries(params)) {
+            url.searchParams.set(key, String(value));
+        }
+        const response = await this.request(url.pathname + url.search, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async previewOpenItemRuleGoal(values) {
+        return this.postOpenItemRule('cheddi_open_item_rule_goal_preview', values);
+    }
+
+    async createOpenItemRuleFromGoal(values) {
+        return this.postOpenItemRule('cheddi_open_item_rule_goal_create', values);
+    }
+
+    async previewOpenItemRule(values) {
+        return this.postOpenItemRule('cheddi_open_item_rule_preview', values);
+    }
+
+    async fetchOpenItemRuleSuggestions() {
+        const url = this.optionalUrl('cheddi_open_item_rule_suggestions');
+        if (!url) {
+            return null;
+        }
+        const response = await this.request(url, { credentials: 'same-origin', ...NO_STORE });
+        return response.ok ? response.json() : null;
+    }
+
+    async adoptOpenItemRules(ids) {
+        return this.postOpenItemRule('cheddi_open_item_rule_adopt', { ids });
+    }
+
+    async saveOpenItemRule(values) {
+        return this.postOpenItemRule('cheddi_open_item_rule_save', values);
+    }
+
+    async toggleOpenItemRule(uid, active) {
+        return this.postOpenItemRule('cheddi_open_item_rule_toggle', { uid, active: active ? 1 : 0 });
+    }
+
+    async deleteOpenItemRule(uid) {
+        return this.postOpenItemRule('cheddi_open_item_rule_delete', { uid });
+    }
+
+    async postOpenItemRule(routeKey, values) {
+        const url = this.optionalUrl(routeKey);
+        if (!url) {
+            return { ok: false, payload: null };
+        }
+        const response = await this.request(url, {
+            method: 'POST',
+            headers: FORM_HEADERS,
+            body: new URLSearchParams(formEntries(values)),
+            credentials: 'same-origin',
+        });
+        return { ok: response.ok, payload: await response.json().catch(() => null) };
+    }
+
+    async followWorkspace(sessionUuid, workspaceChoice) {
+        const url = this.optionalUrl('cheddi_ws_follow');
+        if (!url) {
+            return null;
+        }
+        const response = await this.request(url, {
+            method: 'POST',
+            headers: FORM_HEADERS,
+            body: new URLSearchParams({ session: sessionUuid ?? '', workspace: workspaceChoice ?? '' }),
+            credentials: 'same-origin',
+        });
+        return response.ok ? response.json() : null;
+    }
+
+    async resolveOpenItem(uid) {
+        return (await this.postOpenItemRule('cheddi_open_item_resolve', { uid })).ok;
+    }
+
+    async fetchOpenItemFixModels() {
+        const url = this.optionalUrl('cheddi_open_item_fix_models');
+        if (!url) {
+            return null;
+        }
+        const response = await this.request(url, { credentials: 'same-origin' });
+        return response.ok ? response.json() : null;
+    }
+
+    async suggestOpenItemFix(uid, model) {
+        return this.postOpenItemRule('cheddi_open_item_suggest', { uid, model });
+    }
+
+    async acceptOpenItemFix(uid, value, model, base) {
+        return this.postOpenItemRule('cheddi_open_item_accept', { uid, value, model, base });
+    }
+
     csvDownloadUrl(sessionUuid, callId) {
         const base = this.optionalUrl('cheddi_download_csv');
         if (!base || !sessionUuid || !callId) {
@@ -107,6 +273,20 @@ export class ChatApiClient {
         }
         const payload = await response.json();
         return payload?.session ?? null;
+    }
+
+    async renameSession(sessionUuid, title) {
+        const url = this.optionalUrl('cheddi_session_rename');
+        if (!url) {
+            return false;
+        }
+        const response = await this.request(url, {
+            method: 'POST',
+            headers: FORM_HEADERS,
+            body: new URLSearchParams({ sessionUuid, title }),
+            credentials: 'same-origin',
+        });
+        return response.ok;
     }
 
     async deleteSession(sessionUuid) {
@@ -195,7 +375,7 @@ export class ChatApiClient {
         }
     }
 
-    async startTurn({ sessionUuid, text, model, workspace = '', attachments = [] }, signal) {
+    async startTurn({ sessionUuid, text, model, workspace = '', attachments = [], retry = false }, signal) {
         const response = await this.request(this.ajaxUrl('cheddi_turn'), {
             method: 'POST',
             headers: FORM_HEADERS,
@@ -206,6 +386,7 @@ export class ChatApiClient {
                 workspace,
                 context: JSON.stringify(readTurnContext()),
                 attachments: JSON.stringify(attachments.map((a) => a.uid)),
+                retry: retry ? '1' : '0',
             }),
             signal,
             credentials: 'same-origin',

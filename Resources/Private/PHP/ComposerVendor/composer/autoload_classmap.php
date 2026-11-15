@@ -396,6 +396,7 @@ return array(
     'PhpOffice\\PhpSpreadsheet\\Shared\\OLERead' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLERead.php',
     'PhpOffice\\PhpSpreadsheet\\Shared\\OLE\\ChainedBlockStream' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLE/ChainedBlockStream.php',
     'PhpOffice\\PhpSpreadsheet\\Shared\\OLE\\PPS' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLE/PPS.php',
+    'PhpOffice\\PhpSpreadsheet\\Shared\\OLE\\PPSTreeNode' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLE/PPSTreeNode.php',
     'PhpOffice\\PhpSpreadsheet\\Shared\\OLE\\PPS\\File' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLE/PPS/File.php',
     'PhpOffice\\PhpSpreadsheet\\Shared\\OLE\\PPS\\Root' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/OLE/PPS/Root.php',
     'PhpOffice\\PhpSpreadsheet\\Shared\\PasswordHasher' => $vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet/Shared/PasswordHasher.php',

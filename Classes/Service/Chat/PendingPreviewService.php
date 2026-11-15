@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AutoDudes\Cheddi\Service\Chat;
 
+use AutoDudes\AiSuite\Service\LocalizationService;
 use AutoDudes\AiSuiteMcp\Mcp\Exception\InvalidParameterException;
 use AutoDudes\AiSuiteMcp\Mcp\Service\MediaUploadPreflight;
 use AutoDudes\AiSuiteMcp\Mcp\Service\MediaUploadSettings;
@@ -16,6 +17,8 @@ use TYPO3\CMS\Backend\Utility\BackendUtility;
 
 class PendingPreviewService
 {
+    private const ATTACHMENT_NOTE = 'LLL:EXT:cheddi/Resources/Private/Language/locallang.xlf:cheddi.toolPreview.attachment.takenOver';
+
     private const MAX_RECORDS = 10;
 
     private const MAX_FIELDS_PER_RECORD = 12;
@@ -33,6 +36,10 @@ class PendingPreviewService
         private readonly MediaUploadSettings $mediaUploadSettings,
         private readonly RecordAccessService $recordAccess,
         private readonly LoggerInterface $logger,
+        private readonly ToolPreviewBuilder $toolPreviews,
+        private readonly AttachmentNameRestorer $attachmentNames,
+        private readonly FolderLabelService $folderLabels,
+        private readonly LocalizationService $localizationService,
     ) {}
 
     /**
@@ -43,7 +50,7 @@ class PendingPreviewService
     public function build(string $toolName, array $arguments): ?array
     {
         try {
-            return match ($toolName) {
+            $preview = match ($toolName) {
                 'writeRecords' => $this->buildWrite($arguments),
                 'deleteRecords' => $this->buildExisting($this->withBatchTable($arguments, 'records'), 'records', 'delete'),
                 'copyRecords' => $this->buildExisting($arguments, 'copies', 'copy'),
@@ -53,8 +60,10 @@ class PendingPreviewService
                 'patchText' => $this->buildPatch($arguments),
                 'uploadMedia' => $this->buildMedia($arguments),
                 'moveFile' => $this->buildMove($arguments),
-                default => null,
+                default => $this->toolPreviews->build($toolName, $arguments),
             };
+
+            return null === $preview ? null : $this->withAttachmentPlacements($toolName, $arguments, $preview);
         } catch (\Throwable $e) {
             $this->report($toolName, 'no preview card, the raw JSON is shown instead', $e);
 
@@ -98,6 +107,11 @@ class PendingPreviewService
         }
         if ('moveFile' === $toolName) {
             return $this->scanPlanned($toolName, fn (): array => $this->planMove($arguments));
+        }
+        if ('copyMediaReference' === $toolName) {
+            $refusal = $this->toolPreviews->copyReferenceRefusal($arguments);
+
+            return ['notes' => null === $refusal ? [] : [$refusal], 'writable' => 0];
         }
         if ('writeRecords' !== $toolName) {
             return ['notes' => [], 'writable' => 0];
@@ -172,11 +186,12 @@ class PendingPreviewService
             : $this->mediaUploadSettings->read()['defaultFolder'];
         $batchConflictMode = $this->mediaUploadPreflight->resolveConflictMode($arguments['onConflict'] ?? 'rename');
         $batchCreateFolder = (bool) ($arguments['createFolder'] ?? false);
+        $batchAllowSameNameFolder = (bool) ($arguments['allowSameNameFolder'] ?? false);
 
         $planned = [];
         foreach (array_values($media) as $item) {
             try {
-                $plan = $this->mediaUploadPreflight->plan($item, $batchFolder, $batchConflictMode, $batchCreateFolder);
+                $plan = $this->mediaUploadPreflight->plan($item, $batchFolder, $batchConflictMode, $batchCreateFolder, $batchAllowSameNameFolder);
                 $planned[] = ['item' => $item, 'folder' => $plan->folderIdentifier, 'newFolder' => [] !== $plan->missingFolders, 'error' => null];
             } catch (InvalidParameterException|\RuntimeException $e) {
                 $planned[] = ['item' => $item, 'folder' => '', 'newFolder' => false, 'error' => $e->getMessage()];
@@ -207,7 +222,7 @@ class PendingPreviewService
                 'source' => '' !== $url ? 'url' : 'content',
                 'url' => '' !== $url ? mb_substr($url, 0, self::MAX_VALUE_LENGTH) : null,
                 'fileName' => trim((string) ($item['fileName'] ?? '')),
-                'folder' => $entry['folder'],
+                'folder' => $this->folderLabels->readable($entry['folder']),
                 'newFolder' => $entry['newFolder'],
                 'note' => $entry['error'],
             ];
@@ -241,7 +256,7 @@ class PendingPreviewService
         $folderError = null;
 
         try {
-            $folder = $this->mediaUploadPreflight->resolveTargetFolder($requestedFolder, (bool) ($arguments['createFolder'] ?? false));
+            $folder = $this->mediaUploadPreflight->resolveTargetFolder($requestedFolder, (bool) ($arguments['createFolder'] ?? false), (bool) ($arguments['allowSameNameFolder'] ?? false));
         } catch (InvalidParameterException|\RuntimeException $e) {
             $folderError = $e->getMessage();
         }
@@ -250,7 +265,7 @@ class PendingPreviewService
         foreach ($fileUids as $fileUid) {
             try {
                 $file = $this->recordAccess->assertFileReadAccess($fileUid);
-                $fileName = $file->getName();
+                $fileName = $this->attachmentNames->nameAfterMove($file, $requestedFolder) ?? $file->getName();
                 $currentFolder = $file->getParentFolder()->getCombinedIdentifier();
                 $error = $folderError;
             } catch (InvalidParameterException|\RuntimeException $e) {
@@ -289,8 +304,8 @@ class PendingPreviewService
                 'source' => 'file',
                 'url' => null,
                 'fileName' => $entry['fileName'],
-                'currentFolder' => $entry['currentFolder'],
-                'folder' => $entry['folder'],
+                'currentFolder' => $this->folderLabels->readable($entry['currentFolder']),
+                'folder' => $this->folderLabels->readable($entry['folder']),
                 'newFolder' => $entry['newFolder'],
                 'note' => $entry['error'],
             ];
@@ -303,6 +318,70 @@ class PendingPreviewService
             'total' => count($planned),
             'truncated' => count($planned) > count($items),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     * @param array<string, mixed> $preview
+     *
+     * @return array<string, mixed>
+     */
+    private function withAttachmentPlacements(string $toolName, array $arguments, array $preview): array
+    {
+        foreach ($this->attachmentNames->referencedUploads($toolName, $arguments) as $fileUid) {
+            try {
+                $file = $this->recordAccess->assertFileReadAccess($fileUid);
+            } catch (\Throwable) {
+                continue;
+            }
+            $placement = $this->attachmentNames->placementForReference($file);
+            if (null === $placement) {
+                continue;
+            }
+            $storedName = $file->getName();
+            array_walk_recursive($preview, static function (mixed &$value) use ($storedName, $placement): void {
+                if (is_string($value)) {
+                    $value = str_replace($storedName, $placement['name'], $value);
+                }
+            });
+            $note = $this->localizationService->translate(self::ATTACHMENT_NOTE, [
+                $placement['name'],
+                $this->folderLabels->readable($placement['folder']->getCombinedIdentifier()),
+            ]);
+            $preview = $this->withRecordNote($preview, $placement['name'], $note);
+        }
+
+        return $preview;
+    }
+
+    /**
+     * @param array<string, mixed> $preview
+     *
+     * @return array<string, mixed>
+     */
+    private function withRecordNote(array $preview, string $fileName, string $note): array
+    {
+        $records = is_array($preview['records'] ?? null) ? $preview['records'] : [];
+        $target = null;
+        foreach ($records as $index => $record) {
+            if (!is_array($record) || 'invalid' === ($record['action'] ?? '')) {
+                continue;
+            }
+            $target ??= $index;
+            if (str_contains((string) json_encode($record), $fileName)) {
+                $target = $index;
+
+                break;
+            }
+        }
+        if (null === $target) {
+            return $preview;
+        }
+        $existing = trim((string) ($records[$target]['note'] ?? ''));
+        $records[$target]['note'] = '' === $existing ? $note : $existing.' '.$note;
+        $preview['records'] = $records;
+
+        return $preview;
     }
 
     private function report(string $toolName, string $consequence, \Throwable $e): void

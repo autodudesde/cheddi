@@ -1,13 +1,17 @@
 import Modal from '@typo3/backend/modal.js';
 import Notification from '@typo3/backend/notification.js';
 import { SeverityEnum } from '@typo3/backend/enum/severity.js';
+import { ModuleUtility } from '@typo3/backend/module.js';
 import { ll } from '@autodudes/cheddi/i18n.js';
 
 const WORKSPACES_MODULE = 'workspaces_publish';
 
 export class WorkspaceReview {
-    constructor(apiClient) {
+    constructor(apiClient, onLeaveForModule, followWorkspace, onChangeCount = () => {}) {
         this.api = apiClient;
+        this.onLeaveForModule = onLeaveForModule;
+        this.followWorkspace = followWorkspace;
+        this.onChangeCount = onChangeCount;
         this.modal = null;
         this.sessionUuid = null;
     }
@@ -50,6 +54,7 @@ export class WorkspaceReview {
         }
 
         const changes = Array.isArray(payload.changes) ? payload.changes : [];
+        this.onChangeCount(changes.length);
         if (changes.length === 0) {
             this.renderNotice(body, ll('cheddi.review.empty'));
             return;
@@ -72,11 +77,20 @@ export class WorkspaceReview {
 
     renderChanges(body, changes) {
         body.replaceChildren();
-        this.renderFooter(changes);
+        const reviewable = changes.filter((change) => change.status !== 'live');
+        this.renderFooter(reviewable);
 
-        const intro = document.createElement('p');
-        intro.textContent = ll('cheddi.review.intro');
-        body.append(intro);
+        if (reviewable.length > 0) {
+            const intro = document.createElement('p');
+            intro.textContent = ll('cheddi.review.intro');
+            body.append(intro);
+        }
+        if (reviewable.length < changes.length) {
+            const liveNote = document.createElement('p');
+            liveNote.className = 'text-body-secondary';
+            liveNote.textContent = ll('cheddi.review.liveNote');
+            body.append(liveNote);
+        }
 
         const wrapper = document.createElement('div');
         wrapper.className = 'table-fit';
@@ -152,11 +166,12 @@ export class WorkspaceReview {
         }
         label.append(title);
 
-        if (Array.isArray(change.changedFields) && change.changedFields.length > 0) {
+        const fieldNames = Array.isArray(change.changedFieldLabels) ? change.changedFieldLabels : change.changedFields;
+        if (Array.isArray(fieldNames) && fieldNames.length > 0) {
             const fields = document.createElement('small');
             fields.className = 'text-body-secondary';
             fields.textContent = ll('cheddi.review.changedFields', {
-                fields: change.changedFields.join(', '),
+                fields: fieldNames.join(', '),
             });
             label.append(fields);
         }
@@ -168,10 +183,12 @@ export class WorkspaceReview {
 
         const actions = document.createElement('td');
         actions.className = 'text-end';
-        actions.append(
-            this.actionButton(ll('cheddi.review.publish'), 'btn-primary', () => this.apply([change.uid], true)),
-            this.actionButton(ll('cheddi.review.discard'), 'btn-default', () => this.confirmDiscard([change.uid])),
-        );
+        if (change.status !== 'live') {
+            actions.append(
+                this.actionButton(ll('cheddi.review.discard'), 'btn-default', () => this.confirmDiscard([change.uid])),
+                this.actionButton(ll('cheddi.review.publish'), 'btn-primary', () => this.apply([change.uid], true)),
+            );
+        }
         row.append(actions);
 
         return row;
@@ -192,8 +209,23 @@ export class WorkspaceReview {
                 return ll('cheddi.review.statusAdded');
             case 'removed':
                 return ll('cheddi.review.statusDeleted');
+            case 'live':
+                return this.liveLabel(change.action);
             default:
                 return ll('cheddi.review.statusModified');
+        }
+    }
+
+    liveLabel(action) {
+        switch (action) {
+            case 'moveFile':
+                return ll('cheddi.review.liveMoveFile');
+            case 'uploadMedia':
+                return ll('cheddi.review.liveUploadMedia');
+            case 'generateImage':
+                return ll('cheddi.review.liveGenerateImage');
+            default:
+                return ll('cheddi.review.liveOther');
         }
     }
 
@@ -237,12 +269,18 @@ export class WorkspaceReview {
     }
 
     moduleLink() {
+        if (!ModuleUtility.getFromName(WORKSPACES_MODULE).link) {
+            return document.createDocumentFragment();
+        }
+
         const link = document.createElement('button');
         link.type = 'button';
         link.className = 'btn btn-link btn-sm ps-0';
         link.textContent = ll('cheddi.review.openModule');
-        link.addEventListener('click', () => {
+        link.addEventListener('click', async () => {
             try {
+                await this.followWorkspace();
+                this.onLeaveForModule();
                 top.TYPO3.ModuleMenu.App.showModule(WORKSPACES_MODULE);
                 this.modal?.hideModal();
             } catch (err) {

@@ -51,7 +51,7 @@
 
             <trans-unit id="cheddi.help.attachments.title"><source>Attachments</source><target>Anhänge</target></trans-unit>
             <trans-unit id="cheddi.help.attachments.teaser"><source>Working with files you attach</source><target>Mit angehängten Dateien arbeiten</target></trans-unit>
-            <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document. ChEddi extracts its text and works with that.</source><target>Über die Büroklammer hängst du ein Dokument an. ChEddi liest den Text heraus und arbeitet damit.</target></trans-unit>
+            <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document, drop it onto the chat or paste it into the input. ChEddi extracts its text and works with that.</source><target>Über die Büroklammer hängst du ein Dokument an, du kannst es auch in den Chat ziehen oder ins Eingabefeld einfügen. ChEddi liest den Text heraus und arbeitet damit.</target></trans-unit>
             <trans-unit id="cheddi.help.attachments.i1"><source>Text based documents work best, images are not analysed here</source><target>Textbasierte Dokumente funktionieren am besten, Bilder werden hier nicht ausgewertet</target></trans-unit>
             <trans-unit id="cheddi.help.attachments.i2"><source>An attachment is removed together with its conversation, unless it has meanwhile been placed on a page</source><target>Ein Anhang wird zusammen mit seiner Konversation gelöscht, sofern er nicht inzwischen auf einer Seite verwendet wird</target></trans-unit>
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+	<file source-language="en" target-language="de" datatype="plaintext" original="EXT:cheddi/Resources/Private/Language/locallang_mod.xlf" product-name="cheddi">
+		<body>
+			<trans-unit id="mlang_tabs_tab" resname="mlang_tabs_tab">
+				<source>ChEddi</source>
+				<target>ChEddi</target>
+			</trans-unit>
+			<trans-unit id="mlang_labels_tablabel" resname="mlang_labels_tablabel">
+				<source>ChEddi: chat assistant for editors</source>
+				<target>ChEddi: Chat-Assistent für Redakteure</target>
+			</trans-unit>
+			<trans-unit id="mlang_labels_tabdescr" resname="mlang_labels_tabdescr">
+				<source>Work with ChEddi on a full page, with your conversations next to the chat.</source>
+				<target>Arbeite mit ChEddi auf einer ganzen Seite, deine Konversationen direkt neben dem Chat.</target>
+			</trans-unit>
+			<trans-unit id="notice.disabled.title" resname="notice.disabled.title">
+				<source>ChEddi is not enabled for you</source>
+				<target>ChEddi ist für dich nicht freigeschaltet</target>
+			</trans-unit>
+			<trans-unit id="notice.disabled.message" resname="notice.disabled.message">
+				<source>Your backend group does not include ChEddi. Ask your administrator to enable it.</source>
+				<target>Deine Backend-Gruppe enthält ChEddi nicht. Bitte deine Administration, es freizuschalten.</target>
+			</trans-unit>
+			<trans-unit id="notice.reload.title" resname="notice.reload.title">
+				<source>ChEddi is now available</source>
+				<target>ChEddi ist jetzt verfügbar</target>
+			</trans-unit>
+			<trans-unit id="notice.reload.message" resname="notice.reload.message">
+				<source>Reload the backend to start working with ChEddi.</source>
+				<target>Lade das Backend neu, um mit ChEddi zu arbeiten.</target>
+			</trans-unit>
+		</body>
+	</file>
+</xliff>

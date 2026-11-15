@@ -1,4 +1,26 @@
+import ClientRequest from '@typo3/backend/event/client-request.js';
 import { ll } from '@autodudes/cheddi/i18n.js';
+
+export async function navigateInChatWorkspace(url, followWorkspace, onNavigate) {
+    const container = top?.TYPO3?.Backend?.ContentContainer;
+    if (!container?.beforeSetUrl) {
+        if (navigateBackend(url)) {
+            onNavigate();
+        }
+        return;
+    }
+
+    const interaction = new ClientRequest('typo3.setUrl', null);
+    try {
+        await container.beforeSetUrl(interaction);
+    } catch {
+        // The editor kept an unsaved form open, so neither the workspace nor the view may change
+        return;
+    }
+    await followWorkspace();
+    container.setUrl(url, interaction);
+    onNavigate();
+}
 
 export function navigateBackend(url) {
     try {
@@ -59,7 +81,9 @@ export function mergeNavigationGroups(existing, additional) {
     return [...merged.values()];
 }
 
-export function renderNavigationTargets(container, groups, { found = false, onNavigate = null } = {}) {
+const FOUND_INLINE_LIMIT = 6;
+
+export function renderNavigationTargets(container, groups, { found = false, onNavigate = () => {}, followWorkspace = async () => {} } = {}) {
     const usable = (groups ?? [])
         .filter((g) => g && Array.isArray(g.targets))
         .map((g) => ({ ...g, targets: g.targets.filter(isNavigable) }))
@@ -68,19 +92,33 @@ export function renderNavigationTargets(container, groups, { found = false, onNa
         return;
     }
 
+    const languages = new Set(usable.flatMap((g) => g.targets.map((t) => t.language).filter(Boolean)));
+    const showLanguage = languages.size > 1;
+
     const wrapper = document.createElement('div');
     wrapper.className = 'cheddi__message cheddi__message--system cheddi__nav-targets';
+    let groupHost = wrapper;
     if (found) {
         wrapper.classList.add('cheddi__nav-targets--found');
+        const count = usable.reduce((sum, g) => sum + g.targets.length + (g.omitted ?? 0), 0);
+        if (count > FOUND_INLINE_LIMIT) {
+            const details = document.createElement('details');
+            details.className = 'cheddi__nav-found-details';
+            const summary = document.createElement('summary');
+            summary.textContent = ll('cheddi.notice.navFoundSummary', { count: String(count) });
+            details.appendChild(summary);
+            wrapper.appendChild(details);
+            groupHost = details;
+        }
     }
     for (const group of usable) {
-        wrapper.appendChild(buildNavigationGroup(group, found, onNavigate));
+        groupHost.appendChild(buildNavigationGroup(group, found, onNavigate, followWorkspace, showLanguage));
     }
     container.appendChild(wrapper);
     container.scrollTop = container.scrollHeight;
 }
 
-function buildNavigationGroup(group, found, onNavigate) {
+function buildNavigationGroup(group, found, onNavigate, followWorkspace, showLanguage) {
     const row = document.createElement('div');
     row.className = 'cheddi__nav-group';
 
@@ -96,7 +134,7 @@ function buildNavigationGroup(group, found, onNavigate) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn btn-default btn-sm cheddi__nav-link';
-        button.title = target.language ? `${label} (${target.language})` : label;
+        button.title = target.language && showLanguage ? `${label} (${target.language})` : label;
         const icon = document.createElement('span');
         icon.className = 'cheddi__nav-icon';
         icon.setAttribute('aria-hidden', 'true');
@@ -108,7 +146,7 @@ function buildNavigationGroup(group, found, onNavigate) {
             icon.innerHTML = '<typo3-backend-icon identifier="actions-download" size="small" aria-hidden="true"></typo3-backend-icon>';
         }
         button.append(icon, text);
-        if (target.language) {
+        if (target.language && showLanguage) {
             const language = document.createElement('span');
             language.className = 'badge badge-default cheddi__nav-language';
             language.textContent = target.language;
@@ -120,9 +158,7 @@ function buildNavigationGroup(group, found, onNavigate) {
 
                 return;
             }
-            if (navigateBackend(target.url) && 'function' === typeof onNavigate) {
-                onNavigate();
-            }
+            navigateInChatWorkspace(target.url, followWorkspace, onNavigate);
         });
         row.appendChild(button);
     }

@@ -41,6 +41,47 @@ export class AttachmentTray {
         return input;
     }
 
+    bindDropTarget(target, isLocked) {
+        const carriesFiles = (event) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
+        const setActive = (active) => target.classList.toggle('cheddi__drawer--drop-target', active);
+
+        target.addEventListener('dragover', (event) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            event.dataTransfer.dropEffect = isLocked() ? 'none' : 'copy';
+            setActive(!isLocked());
+        });
+        target.addEventListener('dragleave', (event) => {
+            if (!target.contains(event.relatedTarget)) {
+                setActive(false);
+            }
+        });
+        target.addEventListener('drop', (event) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            setActive(false);
+            if (!isLocked()) {
+                void this.addFiles(Array.from(event.dataTransfer.files));
+            }
+        });
+    }
+
+    bindPaste(textarea) {
+        textarea.addEventListener('paste', (event) => {
+            const files = Array.from(event.clipboardData?.files ?? []);
+            // Office copies carry the text and a picture of it; the text is what was meant.
+            if (files.length === 0 || event.clipboardData.getData('text/plain') !== '') {
+                return;
+            }
+            event.preventDefault();
+            void this.addFiles(files);
+        });
+    }
+
     pick() {
         if (this.isFull()) {
             this.notify(ll('cheddi.attachment.tooMany', { count: this.maxAttachments() }));

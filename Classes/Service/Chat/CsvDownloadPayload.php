@@ -23,6 +23,7 @@ class CsvDownloadPayload
 
     public function __construct(
         private readonly CsvExportService $csvExportService,
+        private readonly CsvRecordRows $recordRows,
     ) {}
 
     /**
@@ -30,7 +31,7 @@ class CsvDownloadPayload
      *
      * @return array{filename: string, rows: list<list<string>>}|string
      */
-    public function normalize(array $arguments): array|string
+    public function normalize(array $arguments, ?int $sessionWorkspace = null): array|string
     {
         $columns = $arguments['columns'] ?? null;
         if (!\is_array($columns) || [] === $columns || !array_is_list($columns)) {
@@ -40,9 +41,30 @@ class CsvDownloadPayload
             return sprintf('A CSV download holds at most %d columns; leave out the columns the editor did not ask for.', self::MAX_COLUMNS);
         }
 
+        $records = $arguments['records'] ?? null;
+        if (\is_string($records)) {
+            $records = json_decode($records, true) ?? $records;
+        }
+        if (\is_array($records) && array_is_list($records) && [] !== $records) {
+            if (1 !== \count($records) || !\is_array($records[0])) {
+                return '`records` is one object naming table, fields and scope, not a list; export one table per file.';
+            }
+            $records = $records[0];
+        }
         $rows = $arguments['rows'] ?? null;
+        if (null !== $records && null !== $rows) {
+            return 'Give either `rows` or `records`, not both.';
+        }
+        if (\is_array($records)) {
+            $rows = $this->recordRows->rows($records, \count($columns), self::MAX_ROWS, $sessionWorkspace);
+            if (\is_string($rows)) {
+                return $rows;
+            }
+        } elseif (null !== $records) {
+            return '`records` must be an object naming table, fields and the scope of the export.';
+        }
         if (!\is_array($rows) || !array_is_list($rows)) {
-            return '`rows` must be a list of rows, each row a list of cell values in column order.';
+            return '`rows` must be a list of rows, each row a list of cell values in column order, or give `records` instead.';
         }
         if (\count($rows) > self::MAX_ROWS) {
             return sprintf('A CSV download holds at most %d rows; split the data into several files.', self::MAX_ROWS);

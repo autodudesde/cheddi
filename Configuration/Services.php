@@ -12,23 +12,31 @@ declare(strict_types=1);
  *
  */
 
+use AutoDudes\AiSuite\Events\AuditFindingActionsEvent;
 use AutoDudes\AiSuite\Events\CollectUsageStatisticsEvent;
+use AutoDudes\AiSuiteMcp\Compat\ClassicModeBundle;
 use AutoDudes\Cheddi\Command\AutoDeleteChatSessionsCommand;
+use AutoDudes\Cheddi\Command\CollectOpenItemsCommand;
 use AutoDudes\Cheddi\EventListener\CollectChatStatisticsListener;
 use AutoDudes\Cheddi\EventListener\InjectChatDrawerListener;
+use AutoDudes\Cheddi\EventListener\OfferAuditFindingToChatListener;
 use AutoDudes\Cheddi\EventListener\WorkspacePublishListener;
 use AutoDudes\Cheddi\Mcp\Tool\CreateCsvDownloadTool;
+use AutoDudes\Cheddi\Mcp\Tool\OfferWorkflowManagerTool;
 use AutoDudes\Cheddi\Mcp\Tool\ReadAttachmentTextTool;
 use AutoDudes\Cheddi\Mcp\Tool\ReadWebPageTool;
 use AutoDudes\Cheddi\Mcp\Tool\SearchWebTool;
 use AutoDudes\Cheddi\Service\Chat\ToolBridge;
 use AutoDudes\Cheddi\Service\Chat\UploadedFileWriter;
 use AutoDudes\Cheddi\Upgrades\CheddiPermissionsUpgradeWizard;
+use Smalot\PdfParser\Parser;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use TYPO3\CMS\Backend\Controller\Event\AfterBackendPageRenderEvent;
 use TYPO3\CMS\Workspaces\Event\AfterRecordPublishedEvent;
 
 return static function (ContainerConfigurator $configurator): void {
+    ClassicModeBundle::register(dirname(__DIR__), Parser::class);
+
     $services = $configurator->services();
 
     $services->defaults()
@@ -42,7 +50,7 @@ return static function (ContainerConfigurator $configurator): void {
         __DIR__.'/../Classes/Mcp/Tool',
     ]);
 
-    foreach ([ReadAttachmentTextTool::class, SearchWebTool::class, ReadWebPageTool::class, CreateCsvDownloadTool::class] as $chatTool) {
+    foreach ([ReadAttachmentTextTool::class, SearchWebTool::class, ReadWebPageTool::class, CreateCsvDownloadTool::class, OfferWorkflowManagerTool::class] as $chatTool) {
         $services->set($chatTool)
             ->autowire()
             ->autoconfigure(false)
@@ -66,6 +74,13 @@ return static function (ContainerConfigurator $configurator): void {
         ])
     ;
 
+    $services->set(OfferAuditFindingToChatListener::class)
+        ->tag('event.listener', [
+            'identifier' => 'cheddi/offer-audit-finding',
+            'event' => AuditFindingActionsEvent::class,
+        ])
+    ;
+
     $services->set(CollectChatStatisticsListener::class)
         ->tag('event.listener', [
             'identifier' => 'cheddi/collect-statistics',
@@ -77,6 +92,14 @@ return static function (ContainerConfigurator $configurator): void {
         ->tag('event.listener', [
             'identifier' => 'cheddi/workspace-publish',
             'event' => AfterRecordPublishedEvent::class,
+        ])
+    ;
+
+    $services->set(CollectOpenItemsCommand::class)
+        ->tag('console.command', [
+            'command' => CollectOpenItemsCommand::NAME,
+            'description' => 'Collect the open items of stale pages and stored audits. Calls no model.',
+            'schedulable' => true,
         ])
     ;
 

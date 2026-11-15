@@ -60,6 +60,21 @@ class ChatUploadRepository extends AbstractRepository
         return array_values(array_unique(array_map('intval', $uids)));
     }
 
+    public function isRegistered(int $fileUid): bool
+    {
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable(self::TABLE);
+        $queryBuilder->getRestrictions()->removeAll();
+
+        return false !== $queryBuilder
+            ->select('uid')
+            ->from(self::TABLE)
+            ->where($queryBuilder->expr()->eq('file', $queryBuilder->createNamedParameter($fileUid, ParameterType::INTEGER)))
+            ->setMaxResults(1)
+            ->executeQuery()
+            ->fetchOne()
+        ;
+    }
+
     public function forget(int $fileUid): void
     {
         $this->connectionPool->getConnectionForTable(self::TABLE)->delete(self::TABLE, ['file' => $fileUid]);

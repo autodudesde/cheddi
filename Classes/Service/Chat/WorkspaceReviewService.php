@@ -19,6 +19,7 @@ use AutoDudes\AiSuite\Service\WorkspaceContextService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\DataHandlerErrorFormatter;
 use AutoDudes\AiSuiteMcp\Mcp\Service\RecordLanguageLabelService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\WorkspaceComparisonService;
+use AutoDudes\AiSuiteMcp\Mcp\Tool\WriteContainment;
 use AutoDudes\Cheddi\Domain\Repository\ChatChangeRepository;
 use AutoDudes\Cheddi\Exception\WorkspaceAccessException;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,7 @@ class WorkspaceReviewService
     public const STATUS_ADDED = 'added';
     public const STATUS_CHANGED = 'changed';
     public const STATUS_REMOVED = 'removed';
+    public const STATUS_LIVE = 'live';
 
     public function __construct(
         private readonly ChatChangeRepository $changeRepository,
@@ -40,10 +42,11 @@ class WorkspaceReviewService
         private readonly LoggerInterface $logger,
         private readonly DataHandlerErrorFormatter $dataHandlerErrorFormatter,
         private readonly RecordLanguageLabelService $recordLanguageLabelService,
+        private readonly WorkspaceChangeLabeler $labeler,
     ) {}
 
     /**
-     * @return list<array{uid: int, table: string, recordUid: int, workspaceRecordUid: int, pageId: int, action: string, label: string, language: string, status: string, changedFields: list<string>}>
+     * @return list<array{uid: int, table: string, recordUid: int, workspaceRecordUid: int, pageId: int, action: string, label: string, language: string, status: string, changedFields: list<string>, changedFieldLabels: list<string>}>
      */
     public function describeChanges(int $sessionUid): array
     {
@@ -58,7 +61,10 @@ class WorkspaceReviewService
             $status = (string) $change['action'];
             $changedFields = [];
 
-            if ($workspaceRecordUid > 0) {
+            if ($this->isImmediate($change)) {
+                $status = self::STATUS_LIVE;
+                $label = sprintf('#%d', (int) $change['record_uid']);
+            } elseif ($workspaceRecordUid > 0) {
                 try {
                     $diff = $this->comparisonService->compareSingle($table, $workspaceRecordUid, $workspace);
                     $label = $diff['label'];
@@ -74,6 +80,7 @@ class WorkspaceReviewService
                 }
             }
 
+            $changedFields = array_values(array_map('strval', $changedFields));
             $described[] = [
                 'uid' => (int) $change['uid'],
                 'table' => $table,
@@ -81,10 +88,11 @@ class WorkspaceReviewService
                 'workspaceRecordUid' => $workspaceRecordUid,
                 'pageId' => (int) $change['page_id'],
                 'action' => (string) $change['action'],
-                'label' => $label,
+                'label' => $this->labeler->recordLabel($table, $workspaceRecordUid, (int) $change['record_uid'], $label),
                 'language' => $this->recordLanguageLabelService->titleOf($table, $workspaceRecordUid > 0 ? $workspaceRecordUid : (int) $change['record_uid']),
                 'status' => $this->normaliseStatus($status),
-                'changedFields' => array_values(array_map('strval', $changedFields)),
+                'changedFields' => $changedFields,
+                'changedFieldLabels' => $this->labeler->fieldLabels($table, $changedFields),
             ];
         }
 
@@ -107,7 +115,7 @@ class WorkspaceReviewService
 
         $selected = [];
         foreach ($this->changeRepository->findBySession($sessionUid) as $change) {
-            if (in_array((int) $change['uid'], $changeUids, true)) {
+            if (in_array((int) $change['uid'], $changeUids, true) && !$this->isImmediate($change)) {
                 $selected[] = $change;
             }
         }
@@ -198,9 +206,18 @@ class WorkspaceReviewService
         return $message;
     }
 
+    /**
+     * @param array<string, mixed> $change
+     */
+    private function isImmediate(array $change): bool
+    {
+        return WriteContainment::IMMEDIATE === WriteContainment::of((string) $change['action']);
+    }
+
     private function normaliseStatus(string $status): string
     {
         return match ($status) {
+            self::STATUS_LIVE => self::STATUS_LIVE,
             'added', 'create' => self::STATUS_ADDED,
             'removed', 'delete' => self::STATUS_REMOVED,
             default => self::STATUS_CHANGED,

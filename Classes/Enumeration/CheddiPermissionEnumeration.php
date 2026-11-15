@@ -29,6 +29,8 @@ final class CheddiPermissionEnumeration
     public const AUDIT = self::FEATURES.':enable_cheddi_audit';
     public const RENDERED_PAGE_READ = self::FEATURES.':enable_cheddi_rendered_page_read';
     public const MEDIA_UPLOAD = self::FEATURES.':enable_cheddi_media_upload';
+    public const OPEN_ITEMS = self::FEATURES.':enable_cheddi_open_items';
+    public const OPEN_ITEM_RULES = self::FEATURES.':enable_cheddi_open_item_rules';
 
     public const CHAT_MODELS = ['OpenAiLuna', 'IonosQwen35', 'IonosQwen38', 'ClaudeHaiku55', 'ClaudeSonnet55'];
 

@@ -19,6 +19,8 @@ $GLOBALS['TYPO3_CONF_VARS']['BE']['customPermOptions']['tx_cheddi_features'] = [
         'enable_cheddi_audit' => [$cheddiLll.'enableAudit', 'tx-cheddi', $cheddiLll.'enableAuditDescription'],
         'enable_cheddi_rendered_page_read' => [$cheddiLll.'enableRenderedPageRead', 'tx-cheddi', $cheddiLll.'enableRenderedPageReadDescription'],
         'enable_cheddi_media_upload' => [$cheddiLll.'enableMediaUpload', 'tx-cheddi', $cheddiLll.'enableMediaUploadDescription'],
+        'enable_cheddi_open_items' => [$cheddiLll.'enableOpenItems', 'tx-cheddi', $cheddiLll.'enableOpenItemsDescription'],
+        'enable_cheddi_open_item_rules' => [$cheddiLll.'enableOpenItemRules', 'tx-cheddi', $cheddiLll.'enableOpenItemRulesDescription'],
     ],
 ];
 

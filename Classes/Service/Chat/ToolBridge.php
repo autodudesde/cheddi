@@ -19,6 +19,7 @@ use AutoDudes\AiSuite\Service\WorkspaceContextService;
 use AutoDudes\AiSuiteMcp\Domain\Model\Dto\ToolAccessContext;
 use AutoDudes\AiSuiteMcp\Mcp\McpUserContext;
 use AutoDudes\AiSuiteMcp\Mcp\Service\PermissionService;
+use AutoDudes\AiSuiteMcp\Mcp\Tool\Record\AbstractSafeEditTool;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolGateway;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolInterface;
 use AutoDudes\AiSuiteMcp\Mcp\Tool\ToolRegistry;
@@ -40,7 +41,6 @@ class ToolBridge
      */
     private const EXCLUDED_TOOLS = [
         'readServerInfo',
-        'compareWithLive',
         'batchGenerateMetadata',
         'batchGenerateFileMetadata',
         'batchTranslatePage',
@@ -79,6 +79,7 @@ class ToolBridge
         private readonly ChatOrientationService $orientationService,
         private readonly ChatSettingsService $chatSettings,
         private readonly WebResearchPolicy $webResearchPolicy,
+        private readonly AttachmentNameRestorer $attachmentNames,
         #[AutowireIterator(self::CHAT_TOOL_TAG)]
         iterable $chatTools = [],
     ) {
@@ -123,6 +124,16 @@ class ToolBridge
         $this->userContext->setInlineBackendLinks(false);
         $this->userContext->setReportFoundRecords(true);
 
+        if (in_array($toolName, $this->excludedTools(), true)) {
+            return [
+                'content' => 'Tool "'.$toolName.'" is not available in this chat. '
+                    .'A bulk run over a folder or a page subtree belongs in the Workflow Manager module of the AI Suite; '
+                    .'for anything else, tell the editor that this tool is switched off here.',
+                'isError' => true,
+                'structured' => null,
+            ];
+        }
+
         $chatTools = $this->availableChatTools($context->model);
         if (isset($chatTools[$toolName])) {
             $result = $this->toolGateway->callTool($toolName, $arguments, $this->accessContext(), $chatTools);
@@ -137,16 +148,6 @@ class ToolBridge
         if (null === $this->toolRegistry->getTool($toolName)) {
             return [
                 'content' => 'Tool "'.$toolName.'" is not registered.',
-                'isError' => true,
-                'structured' => null,
-            ];
-        }
-
-        if (in_array($toolName, $this->excludedTools(), true)) {
-            return [
-                'content' => 'Tool "'.$toolName.'" is not available in this chat. '
-                    .'Bulk runs over a folder or a page subtree belong in the Workflow Manager module; '
-                    .'tell the editor to open it from the AI Suite module instead.',
                 'isError' => true,
                 'structured' => null,
             ];
@@ -167,7 +168,11 @@ class ToolBridge
             ];
         }
 
+        $storedNames = 'moveFile' === $toolName ? $this->attachmentNames->restoreBeforeMove($this->fileUidsOf($arguments), (string) ($arguments['targetFolder'] ?? '')) : [];
+        $released = $this->attachmentNames->releaseBeforeReference($this->attachmentNames->referencedUploads($toolName, $arguments));
         $result = $this->toolGateway->callTool($toolName, $arguments, $this->accessContext());
+        $this->attachmentNames->undoWhereNotMoved($storedNames);
+        $this->attachmentNames->undoWhereNotReferenced($released);
         $text = $this->toolGateway->textOf($result);
 
         return [
@@ -188,7 +193,7 @@ class ToolBridge
             return Severity::Write;
         }
 
-        if ($this->isModelDiscoveryCall($tool, $arguments)) {
+        if ($this->isModelDiscoveryCall($tool, $arguments) || $this->isDryRun($tool, $arguments)) {
             return Severity::ReadOnly;
         }
 
@@ -227,11 +232,31 @@ class ToolBridge
     }
 
     /**
+     * @param array<string, mixed> $arguments
+     *
+     * @return list<int>
+     */
+    private function fileUidsOf(array $arguments): array
+    {
+        $uids = is_array($arguments['fileUids'] ?? null) ? $arguments['fileUids'] : [];
+
+        return array_values(array_filter(array_map('intval', $uids), static fn (int $uid): bool => $uid > 0));
+    }
+
+    /**
      * @return list<string>
      */
     private function excludedTools(): array
     {
         return array_values(array_unique([...self::EXCLUDED_TOOLS, ...$this->chatSettings->getExcludedTools()]));
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     */
+    private function isDryRun(ToolInterface $tool, array $arguments): bool
+    {
+        return $tool instanceof AbstractSafeEditTool && true === ($arguments['dryRun'] ?? false);
     }
 
     /**

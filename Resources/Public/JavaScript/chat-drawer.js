@@ -1,7 +1,9 @@
 import '@typo3/backend/element/icon-element.js';
+import { ModuleUtility } from '@typo3/backend/module.js';
+import Notification from '@typo3/backend/notification.js';
 import { ll, llOr } from '@autodudes/cheddi/i18n.js';
 import { renderMarkdown } from '@autodudes/cheddi/markdown.js';
-import { readBackendContext } from '@autodudes/cheddi/backend-context.js';
+import { currentPageId, readBackendContext } from '@autodudes/cheddi/backend-context.js';
 import { mapServerError, friendlyToolLabel } from '@autodudes/cheddi/labels.js';
 import { defaultThinkingPhases } from '@autodudes/cheddi/thinking-labels.js';
 import { ThinkingIndicator } from '@autodudes/cheddi/thinking-indicator.js';
@@ -11,6 +13,10 @@ import { SessionsPanel } from '@autodudes/cheddi/sessions-panel.js';
 import { renderCreditsBadge, renderModeBadge } from '@autodudes/cheddi/status-bar.js';
 import { orientationStatus, renderIntro } from '@autodudes/cheddi/intro-card.js';
 import { TemplatesDropdown } from '@autodudes/cheddi/templates-dropdown.js';
+import { describeCurrentPage, insertCurrentPage } from '@autodudes/cheddi/page-reference.js';
+import { openGuidelines } from '@autodudes/cheddi/guidelines-modal.js';
+import { OpenItemRulesPanel } from '@autodudes/cheddi/open-item-rules-panel.js';
+import { OpenItemsPanel } from '@autodudes/cheddi/open-items-panel.js';
 import { bindComposerResize, bindResize } from '@autodudes/cheddi/drawer-resize.js';
 import { ChatApiClient } from '@autodudes/cheddi/chat-api-client.js';
 import { drawerMarkup } from '@autodudes/cheddi/drawer-template.js';
@@ -24,6 +30,8 @@ import {
     clampSize,
     clampComposerHeight,
     dockWidth,
+    loadMaximizedFrom,
+    saveMaximizedFrom,
     loadSessionUuid,
     saveSessionUuid,
     loadSessionModel,
@@ -32,11 +40,15 @@ import {
     saveSessionWorkspace,
 } from '@autodudes/cheddi/state.js';
 
+const MODULE_NAME = 'web_cheddi';
+const RESTORE_FALLBACK_MODULE = 'web_layout';
 const CHEDDI_ICON_URL = new URL('../Icons/cheddi.png', import.meta.url).href;
 const AUTO_CONTINUE_SAFETY_LIMIT = 50;
 const CREDITS_REFRESH_DELAY_MS = 1200;
 const PROGRESS_POLL_INTERVAL_MS = 900;
 export const PREFILL_EVENT = 'cheddi:prefill';
+
+const RETRYABLE_ERRORS = new Set(['', 'chatServerTimeout', 'chatServerUnavailable', 'rateLimited', 'serverError', 'thirdPartyApi', 'unexpectedError']);
 
 const CALLOUT_VARIANTS = {
     info: 'callout-info',
@@ -46,6 +58,21 @@ const CALLOUT_VARIANTS = {
 
 function modalIsOpen() {
     return document.querySelector('dialog[open], .modal.show') !== null;
+}
+
+function isNavigationClick(event) {
+    return event.composedPath().some((node) => typeof node.localName === 'string' && node.localName.startsWith('typo3-backend-navigation-component'));
+}
+
+function restoredToolStatuses(messages) {
+    const statuses = new Map();
+    for (const message of messages) {
+        if (message?.role === 'tool' && typeof message.toolCallId === 'string' && message.toolCallId !== '') {
+            statuses.set(message.toolCallId, message.toolStatus === 'done' ? 'done' : 'failed');
+        }
+    }
+
+    return statuses;
 }
 
 function refreshPageTreeIfPagesChanged(touchedTables) {
@@ -58,10 +85,18 @@ function refreshPageTreeIfPagesChanged(touchedTables) {
 class ChatDrawer {
     constructor(mountPoint) {
         this.mountPoint = mountPoint;
+        this.moduleHost = null;
+        this.handoverOnLeave = false;
+        this.restoreOnLeave = false;
+        this.temporaryDock = false;
+        this.historyShown = false;
         this.api = new ChatApiClient();
         this.state = loadState();
         this.elements = {};
+        this.retryAction = null;
+        this.retryElement = null;
         this.sessionUuid = loadSessionUuid();
+        this.sessionHasChanges = false;
         this.activeAbortController = null;
         this.progressTimer = null;
         this.isSending = false;
@@ -101,26 +136,49 @@ class ChatDrawer {
             onNew: () => this.startNewConversation(),
             currentSessionUuid: () => this.sessionUuid,
         });
+        this.openItemsPanel = new OpenItemsPanel(this.api, this.elements, {
+            onNavigate: () => this.navigationOptions().onNavigate(),
+            followWorkspace: () => this.followChatWorkspace(),
+            onManage: () => this.openItemRulesPanel.open(),
+            isLive: () => this.orientation?.writeMode === 'live',
+            preferredModel: () => this.selectedModel,
+            onVisibility: (visible) => this.syncLeftColumn(visible),
+            onPrefill: (text) => this.prefill(text),
+            isInModule: () => this.moduleHost !== null,
+        });
+        this.openItemRulesPanel = new OpenItemRulesPanel(this.api, this.elements, {
+            onChanged: () => this.openItemsPanel.refresh(),
+            onCloseAll: () => this.openItemsPanel.close(),
+        });
         this.templatesDropdown = new TemplatesDropdown(this.elements, {
             onPick: (prompt) => this.applyTemplate(prompt),
-            appliesToContext: (prompt) => this.templateAppliesToContext(prompt, readBackendContext()),
+            blockedReason: (prompt) => this.templateBlockedReason(prompt, readBackendContext()),
         });
         this.bindEvents();
         this.applyState();
         top.document.addEventListener(PREFILL_EVENT, (event) => this.prefill(event.detail?.text));
+        this.refreshOpenItems();
+    }
+
+    refreshOpenItems() {
+        if (this.mountPoint.dataset.cheddiOpenItemsEnabled === '1') {
+            this.openItemsPanel.refresh();
+        }
     }
 
     prefill(text) {
         if (typeof text !== 'string' || text.trim() === '') {
-            return;
+            return false;
         }
         this.setOpen(true);
         if (this.isSending || !this.creditsAvailable || !this.elements.textarea) {
-            return;
+            return false;
         }
-        this.elements.textarea.value = text;
+        const draft = this.elements.textarea.value.trim();
+        this.elements.textarea.value = draft === '' ? text : `${draft}\n\n${text}`;
         this.elements.textarea.focus();
         this.elements.textarea.dispatchEvent(new Event('input'));
+        return true;
     }
 
     applyTemplate(prompt) {
@@ -139,9 +197,15 @@ class ChatDrawer {
             .replace(/\{recordUid\}/g, ctx.recordUid ? String(ctx.recordUid) : '');
     }
 
-    templateAppliesToContext(prompt, ctx) {
-        const needsRecord = /\{record(Table|Uid)\}/.test(String(prompt));
-        return needsRecord ? Boolean(ctx.recordUid) : true;
+    templateBlockedReason(prompt, ctx) {
+        const text = String(prompt);
+        if (/\{record(Table|Uid)\}/.test(text) && !ctx.recordUid) {
+            return ll('cheddi.templates.needsRecord');
+        }
+        if (this.moduleHost !== null && text.includes('{pageId}')) {
+            return ll('cheddi.templates.needsPage');
+        }
+        return null;
     }
 
     render() {
@@ -158,6 +222,7 @@ class ChatDrawer {
             composerResizeHandle: this.mountPoint.querySelector('[data-cheddi-composer-resize]'),
             closeButton: this.mountPoint.querySelector('[data-cheddi-close]'),
             dockToggle: this.mountPoint.querySelector('[data-cheddi-dock-toggle]'),
+            maximizeButton: this.mountPoint.querySelector('[data-cheddi-maximize]'),
             minimizeButton: this.mountPoint.querySelector('[data-cheddi-minimize]'),
             messages: this.mountPoint.querySelector('[data-cheddi-messages]'),
             textarea: this.mountPoint.querySelector('[data-cheddi-textarea]'),
@@ -176,16 +241,32 @@ class ChatDrawer {
             contextNotice: this.mountPoint.querySelector('[data-cheddi-context-notice]'),
             contextNoticeText: this.mountPoint.querySelector('[data-cheddi-context-notice-text]'),
             summarizeButton: this.mountPoint.querySelector('[data-cheddi-summarize]'),
-            actionsToggle: this.mountPoint.querySelector('[data-cheddi-actions-toggle]'),
-            actionsMenu: this.mountPoint.querySelector('[data-cheddi-actions-menu]'),
-            newConversationButton: this.mountPoint.querySelector('[data-cheddi-new-conversation]'),
             openSessionsButton: this.mountPoint.querySelector('[data-cheddi-open-sessions]'),
             openReviewButton: this.mountPoint.querySelector('[data-cheddi-open-review]'),
             attachmentButton: this.mountPoint.querySelector('[data-cheddi-attachment]'),
+            currentPageButton: this.mountPoint.querySelector('[data-cheddi-current-page]'),
+            guidelinesButton: this.mountPoint.querySelector('[data-cheddi-guidelines]'),
             attachmentChips: this.mountPoint.querySelector('[data-cheddi-attachment-chips]'),
             sessionsPanel: this.mountPoint.querySelector('[data-cheddi-sessions-panel]'),
+            openItemsBadge: this.mountPoint.querySelector('[data-cheddi-open-items-badge]'),
+            openOpenItemsButton: this.mountPoint.querySelector('[data-cheddi-open-open-items]'),
+            openItemsCount: this.mountPoint.querySelector('[data-cheddi-open-items-count]'),
+            openItemsPanel: this.mountPoint.querySelector('[data-cheddi-open-items-panel]'),
+            openItemsList: this.mountPoint.querySelector('[data-cheddi-open-items-list]'),
+            openItemsBack: this.mountPoint.querySelector('[data-cheddi-open-items-back]'),
+            openItemsTitle: this.mountPoint.querySelector('[data-cheddi-open-items-title]'),
+            openItemsFooter: this.mountPoint.querySelector('[data-cheddi-open-items-footer]'),
+            closeOpenItemsButton: this.mountPoint.querySelector('[data-cheddi-close-open-items]'),
+            manageOpenItemsButton: this.mountPoint.querySelector('[data-cheddi-manage-open-items]'),
+            openItemRulesPanel: this.mountPoint.querySelector('[data-cheddi-open-item-rules-panel]'),
+            openItemRulesList: this.mountPoint.querySelector('[data-cheddi-open-item-rules-list]'),
+            closeOpenItemRulesButton: this.mountPoint.querySelector('[data-cheddi-close-open-item-rules]'),
+            backOpenItemRulesButton: this.mountPoint.querySelector('[data-cheddi-back-open-item-rules]'),
+            newOpenItemRuleButton: this.mountPoint.querySelector('[data-cheddi-new-open-item-rule]'),
+            customOpenItemRuleButton: this.mountPoint.querySelector('[data-cheddi-custom-open-item-rule]'),
             sessionsList: this.mountPoint.querySelector('[data-cheddi-sessions-list]'),
-            sessionsPrimaryButton: this.mountPoint.querySelector('[data-cheddi-sessions-primary]'),
+            sessionsSearch: this.mountPoint.querySelector('[data-cheddi-sessions-search]'),
+            sessionsNewButton: this.mountPoint.querySelector('[data-cheddi-sessions-new]'),
             closeSessionsButton: this.mountPoint.querySelector('[data-cheddi-close-sessions]'),
             templates: this.mountPoint.querySelector('[data-cheddi-templates]'),
             templatesToggle: this.mountPoint.querySelector('[data-cheddi-templates-toggle]'),
@@ -204,7 +285,12 @@ class ChatDrawer {
         this.setOpen(this.state.open, { persist: false });
     }
 
+    isDocked() {
+        return this.state.docked || this.temporaryDock;
+    }
+
     setDocked(docked, { persist = true } = {}) {
+        this.temporaryDock = false;
         this.state.docked = docked;
         this.applyDockMode();
         if (persist) {
@@ -213,7 +299,12 @@ class ChatDrawer {
     }
 
     applyDockMode() {
-        const width = this.state.docked && this.state.open
+        if (this.moduleHost !== null) {
+            this.clearDockMode();
+            return;
+        }
+
+        const width = this.isDocked() && this.state.open
             ? dockWidth(this.state.width, window.innerWidth)
             : null;
         const docked = null !== width;
@@ -227,12 +318,23 @@ class ChatDrawer {
             shell.style.paddingRight = docked ? `${width}px` : '';
         }
 
-        const label = this.state.docked ? ll('cheddi.ui.undock') : ll('cheddi.ui.dock');
+        const label = this.isDocked() ? ll('cheddi.ui.undock') : ll('cheddi.ui.dock');
         this.elements.dockToggle.setAttribute('aria-label', label);
         this.elements.dockToggle.title = label;
-        const icon = this.state.docked ? 'actions-arrow-left' : 'actions-arrow-right';
+        const icon = this.isDocked() ? 'actions-arrow-left' : 'actions-arrow-right';
         this.elements.dockToggle.innerHTML =
             `<typo3-backend-icon identifier="${icon}" size="small" aria-hidden="true"></typo3-backend-icon>`;
+    }
+
+    clearDockMode() {
+        this.elements.drawer.classList.remove('cheddi__drawer--docked');
+        this.elements.drawer.style.width = '';
+        this.elements.drawer.style.height = '';
+
+        const shell = document.querySelector('.t3js-scaffold');
+        if (shell) {
+            shell.style.paddingRight = '';
+        }
     }
 
     applyComposerHeight() {
@@ -245,7 +347,8 @@ class ChatDrawer {
         this.elements.bubble.addEventListener('click', () => this.setOpen(true));
         this.elements.closeButton.addEventListener('click', () => this.setOpen(false));
         this.elements.minimizeButton.addEventListener('click', () => this.setOpen(false));
-        this.elements.dockToggle.addEventListener('click', () => this.setDocked(!this.state.docked));
+        this.elements.dockToggle.addEventListener('click', () => this.setDocked(!this.isDocked()));
+        this.elements.maximizeButton.addEventListener('click', () => this.toggleMaximized());
         this.elements.sendButton.addEventListener('click', () => this.handlePrimaryAction());
         this.elements.summarizeButton.addEventListener('click', () => this.summarizeHistory());
         this.elements.textarea.addEventListener('keydown', (event) => this.onTextareaKeydown(event));
@@ -257,23 +360,37 @@ class ChatDrawer {
         );
         bindComposerResize(this.elements, this.state, () => this.applyComposerHeight());
 
-        this.elements.actionsToggle.addEventListener('click', (event) => {
-            event.stopPropagation();
-            this.toggleActionsMenu();
+        this.elements.openOpenItemsButton.addEventListener('click', () => {
+            if (!this.elements.openItemsPanel.hidden) {
+                this.openItemRulesPanel.close();
+                this.openItemsPanel.close();
+                return;
+            }
+            this.openItemsPanel.open();
         });
-        this.elements.newConversationButton.addEventListener('click', () => {
-            this.closeActionsMenu();
-            this.startNewConversation();
-        });
+        const header = this.elements.drawer.querySelector('.cheddi__header');
+        if (header) {
+            new ResizeObserver(() => {
+                this.elements.drawer.style.setProperty('--cheddi-header-height', `${header.offsetHeight}px`);
+            }).observe(header);
+        }
         this.elements.openSessionsButton.addEventListener('click', () => {
-            this.closeActionsMenu();
+            const covered = !this.elements.openItemsPanel.hidden || !this.elements.openItemRulesPanel.hidden;
+            if (covered) {
+                this.openItemRulesPanel.close();
+                this.openItemsPanel.close();
+            }
+            if (this.moduleHost !== null) {
+                return;
+            }
+            if (!covered && !this.elements.sessionsPanel.hidden) {
+                this.sessionsPanel.close();
+                return;
+            }
             this.sessionsPanel.open();
         });
         if (this.elements.openReviewButton) {
-            this.elements.openReviewButton.addEventListener('click', () => {
-                this.closeActionsMenu();
-                this.openWorkspaceReview();
-            });
+            this.elements.openReviewButton.addEventListener('click', () => this.openWorkspaceReview());
         }
         if (this.elements.openHelpButton) {
             this.elements.openHelpButton.addEventListener('click', () => this.openHelp());
@@ -281,13 +398,16 @@ class ChatDrawer {
         if (this.elements.attachmentButton && this.elements.attachmentChips) {
             this.attachmentTray = new AttachmentTray(this.api, this.elements.attachmentChips);
             this.elements.attachmentButton.addEventListener('click', () => this.attachmentTray.pick());
+            this.attachmentTray.bindDropTarget(this.elements.drawer, () => this.elements.textarea.disabled);
+            this.attachmentTray.bindPaste(this.elements.textarea);
             this.elements.attachmentChips.addEventListener('cheddi:attachment-notice', (event) => {
                 this.renderMessage({ role: 'system', kind: 'warning', text: event.detail.message });
             });
         }
         this.elements.closeSessionsButton.addEventListener('click', () => this.sessionsPanel.close());
+        this.elements.currentPageButton.addEventListener('click', () => insertCurrentPage(this.api, this.elements.textarea));
+        this.elements.guidelinesButton.addEventListener('click', () => openGuidelines(this.api, () => this.navigationOptions().onNavigate()));
         this.elements.templatesToggle.addEventListener('click', () => {
-            this.closeActionsMenu();
             this.templatesDropdown.toggle();
         });
         this.elements.drawer.addEventListener('keydown', (event) => {
@@ -304,6 +424,7 @@ class ChatDrawer {
                 saveSessionModel(this.selectedModel);
                 if (this.sessionUuid !== null) {
                     this.sessionUuid = null;
+                    this.updateReviewVisibility();
                     saveSessionUuid(null);
                 }
                 this.renderIntroCard();
@@ -318,6 +439,7 @@ class ChatDrawer {
                 saveSessionWorkspace(this.selectedWorkspace);
                 if (this.sessionUuid !== null) {
                     this.sessionUuid = null;
+                    this.updateReviewVisibility();
                     saveSessionUuid(null);
                 }
                 this.renderStatusBadges();
@@ -325,10 +447,6 @@ class ChatDrawer {
             });
         }
         this.boundDocumentClick = (event) => {
-            if (!this.elements.actionsMenu.contains(event.target)
-                && event.target !== this.elements.actionsToggle) {
-                this.closeActionsMenu();
-            }
             if (!this.templatesDropdown.contains(event.target)) {
                 this.templatesDropdown.close();
             }
@@ -339,11 +457,12 @@ class ChatDrawer {
 
     bindAutoMinimize() {
         this.boundDocumentPointerDown = (event) => {
-            if (!this.state.open || this.state.docked || modalIsOpen()) {
+            if (!this.state.open || this.isDocked() || modalIsOpen()) {
                 return;
             }
             if (this.elements.drawer.contains(event.target)
-                || this.elements.bubble.contains(event.target)) {
+                || this.elements.bubble.contains(event.target)
+                || isNavigationClick(event)) {
                 return;
             }
             this.setOpen(false);
@@ -356,7 +475,7 @@ class ChatDrawer {
             }
             window.setTimeout(() => {
                 if (this.state.open
-                    && !this.state.docked
+                    && !this.isDocked()
                     && !modalIsOpen()
                     && document.activeElement
                     && document.activeElement.tagName === 'IFRAME') {
@@ -368,6 +487,13 @@ class ChatDrawer {
 
         this.boundWindowResize = () => this.applyDockMode();
         window.addEventListener('resize', this.boundWindowResize);
+
+        this.boundContentLoaded = () => {
+            if (this.state.open) {
+                this.refreshCurrentPageLabel();
+            }
+        };
+        document.querySelector('typo3-backend-module-router')?.addEventListener('typo3-iframe-loaded', this.boundContentLoaded);
     }
 
     closeOpenPanels() {
@@ -377,22 +503,16 @@ class ChatDrawer {
         }
     }
 
-    toggleActionsMenu() {
-        const isOpen = !this.elements.actionsMenu.hidden;
-        if (!isOpen) {
-            this.updateReviewVisibility();
-        }
-        this.elements.actionsMenu.hidden = isOpen;
-        this.elements.actionsToggle.setAttribute('aria-expanded', String(!isOpen));
-    }
-
     updateReviewVisibility() {
         const button = this.elements.openReviewButton;
         if (!button) {
             return;
         }
+        if (this.sessionUuid === null) {
+            this.sessionHasChanges = false;
+        }
         const drafts = this.orientation !== null && this.orientation.writeMode !== 'live';
-        button.hidden = !drafts || this.sessionUuid === null;
+        button.hidden = !drafts || this.sessionUuid === null || !this.sessionHasChanges;
     }
 
     describeSentMessage(text, attachments) {
@@ -409,7 +529,10 @@ class ChatDrawer {
             return;
         }
         if (this.workspaceReview === null) {
-            this.workspaceReview = new WorkspaceReview(this.api);
+            this.workspaceReview = new WorkspaceReview(this.api, () => this.markHandover(), () => this.followChatWorkspace(), (count) => {
+                this.sessionHasChanges = count > 0;
+                this.updateReviewVisibility();
+            });
         }
         this.workspaceReview.open(this.sessionUuid);
     }
@@ -421,14 +544,11 @@ class ChatDrawer {
         this.helpModal.open();
     }
 
-    closeActionsMenu() {
-        this.elements.actionsMenu.hidden = true;
-        this.elements.actionsToggle.setAttribute('aria-expanded', 'false');
-    }
-
     startNewConversation() {
         this.cancelTurn();
+        this.clearRetry();
         this.sessionUuid = null;
+        this.updateReviewVisibility();
         saveSessionUuid(null);
         this.selectedModel = '';
         saveSessionModel(null);
@@ -449,6 +569,7 @@ class ChatDrawer {
         this.elements.sendButton.disabled = false;
         this.elements.sendButton.textContent = ll('cheddi.ui.send');
         this.renderIntroCard();
+        this.sessionsPanel.refresh();
         this.elements.textarea.focus();
     }
 
@@ -468,16 +589,179 @@ class ChatDrawer {
     }
 
     setOpen(open, { persist = true } = {}) {
+        if (this.moduleHost !== null) {
+            return;
+        }
+
+        if (!open) {
+            this.temporaryDock = false;
+        }
         this.state.open = open;
         this.elements.drawer.hidden = !open;
         this.elements.bubble.hidden = open;
         this.applyDockMode();
+        this.syncMaximizeButton();
         if (persist) {
             saveState(this.state);
         }
         if (open) {
             this.refreshStatus();
+            this.refreshOpenItems();
+            this.refreshCurrentPageLabel();
         }
+    }
+
+    syncMaximizeButton() {
+        const inModule = this.moduleHost !== null;
+        const label = inModule ? ll('cheddi.ui.restore') : ll('cheddi.ui.maximize');
+        this.elements.maximizeButton.setAttribute('aria-label', label);
+        this.elements.maximizeButton.title = label;
+        this.elements.maximizeButton.hidden = !inModule && !ModuleUtility.getFromName(MODULE_NAME).link;
+    }
+
+    toggleMaximized() {
+        if (this.moduleHost === null) {
+            saveMaximizedFrom(top.TYPO3.Backend.ContentContainer.getUrl());
+            top.TYPO3.ModuleMenu.App.showModule(MODULE_NAME);
+            return;
+        }
+
+        const url = loadMaximizedFrom();
+        saveMaximizedFrom(null);
+        this.restoreOnLeave = true;
+        if (url) {
+            top.TYPO3.Backend.ContentContainer.setUrl(url);
+        } else {
+            top.TYPO3.ModuleMenu.App.showModule(RESTORE_FALLBACK_MODULE);
+        }
+    }
+
+    syncLeftColumn(openItemsVisible) {
+        const inModule = this.moduleHost !== null;
+        this.elements.drawer.classList.toggle('cheddi__drawer--open-items', inModule && openItemsVisible);
+        if (inModule) {
+            this.elements.sessionsPanel.hidden = openItemsVisible;
+        }
+    }
+
+    enterModule(host) {
+        if (this.moduleHost === host) {
+            return;
+        }
+
+        this.moduleHost = host;
+        this.handoverOnLeave = false;
+        this.restoreOnLeave = false;
+        this.temporaryDock = false;
+        this.state.open = loadState().open;
+        this.moveShell(host);
+        this.elements.drawer.classList.add('cheddi__drawer--module');
+        this.elements.drawer.removeAttribute('role');
+        this.elements.drawer.hidden = false;
+        this.mountPoint.hidden = true;
+        this.sessionsPanel.setPermanent(true);
+        this.syncPageButtons();
+        this.applyDockMode();
+        this.syncMaximizeButton();
+        this.restoreSessionInModule();
+        this.openItemsPanel.modeChanged();
+    }
+
+    async restoreSessionInModule() {
+        await this.refreshStatus();
+
+        const sessionUuid = this.sessionUuid;
+        if (!this.canRestoreSession(sessionUuid)) {
+            return;
+        }
+
+        try {
+            const session = await this.api.loadSession(sessionUuid);
+            if (!this.canRestoreSession(sessionUuid)) {
+                return;
+            }
+            if (session) {
+                this.applySession(session);
+                return;
+            }
+            this.sessionUuid = null;
+            this.updateReviewVisibility();
+            saveSessionUuid(null);
+            this.sessionsPanel.refresh();
+        } catch (e) {
+            console.error('[ChEddi] could not restore the conversation.', e);
+        }
+    }
+
+    canRestoreSession(sessionUuid) {
+        return this.moduleHost !== null
+            && sessionUuid !== null
+            && sessionUuid === this.sessionUuid
+            && !this.historyShown
+            && !this.isSending;
+    }
+
+    leaveModule() {
+        if (this.moduleHost === null) {
+            return;
+        }
+
+        const handover = this.handoverOnLeave;
+        const restore = this.restoreOnLeave;
+        this.handoverOnLeave = false;
+        this.restoreOnLeave = false;
+        this.moduleHost = null;
+        this.moveShell(this.mountPoint);
+        this.elements.drawer.classList.remove('cheddi__drawer--module', 'cheddi__drawer--open-items');
+        this.elements.drawer.setAttribute('role', 'dialog');
+        this.mountPoint.hidden = false;
+        this.sessionsPanel.setPermanent(false);
+        this.syncPageButtons();
+        this.temporaryDock = handover
+            && !this.state.docked
+            && dockWidth(this.state.width, window.innerWidth) !== null;
+        this.setOpen(handover || restore || this.state.open, { persist: false });
+        this.openItemsPanel.modeChanged();
+    }
+
+    syncPageButtons() {
+        const inModule = this.moduleHost !== null;
+        const noPage = ll('cheddi.ui.noCurrentPage');
+        this.elements.currentPageButton.disabled = inModule;
+        this.labelCurrentPageButton(null, inModule ? noPage : ll('cheddi.ui.currentPageHint'));
+        this.elements.guidelinesButton.disabled = inModule;
+        this.elements.guidelinesButton.title = inModule ? noPage : ll('cheddi.ui.guidelinesHint');
+        if (!inModule) {
+            this.refreshCurrentPageLabel();
+        }
+    }
+
+    async refreshCurrentPageLabel() {
+        if (this.moduleHost !== null) {
+            return;
+        }
+        const page = await describeCurrentPage(this.api);
+        if (this.moduleHost !== null || (page !== null && page.pageId !== currentPageId())) {
+            return;
+        }
+        if (page === null) {
+            this.labelCurrentPageButton(null, ll('cheddi.ui.currentPageHint'));
+            return;
+        }
+        this.labelCurrentPageButton(ll('cheddi.ui.currentPageNamed', { title: page.title }), ll('cheddi.ui.currentPageHintNamed', { title: page.title, uid: page.pageId }));
+    }
+
+    labelCurrentPageButton(label, hint) {
+        const button = this.elements.currentPageButton;
+        button.querySelector('.cheddi__tool-button-label').textContent = label ?? ll('cheddi.ui.currentPage');
+        button.title = hint;
+        button.setAttribute('aria-label', label === null ? ll('cheddi.ui.currentPage') : hint);
+    }
+
+    moveShell(target) {
+        const { scrollTop } = this.elements.messages;
+        target.append(this.elements.drawer);
+        this.elements.messages.scrollTop = scrollTop;
     }
 
     async switchToSession(sessionUuid) {
@@ -487,35 +771,44 @@ class ChatDrawer {
                 return;
             }
 
-            this.cancelTurn();
-            this.sessionUuid = session.uuid;
-            saveSessionUuid(session.uuid);
-            this.selectedModel = session.model || '';
-            saveSessionModel(this.selectedModel);
-            this.modelLocked = true;
-            this.applyModelLock();
-            this.renderModelSelect();
-            this.sessionWorkspace = session.workspace ?? null;
-            this.adoptSessionWorkspace();
-            this.renderWorkspaceSelect();
-            this.renderStatusBadges();
-
-            this.elements.messages.replaceChildren();
-            for (const message of session.messages ?? []) {
-                this.renderRestoredMessage(message);
-            }
-
-            this.confirmTarget = session.confirmTarget ?? null;
-            if (Array.isArray(session.pending) && session.pending.length > 0) {
-                this.renderMessage({ role: 'pending', pending: session.pending });
-            }
-
-            this.renderIntroCard();
-
+            this.applySession(session);
             this.sessionsPanel.close();
         } catch (e) {
             console.error('[ChEddi] could not switch to the selected conversation.', e);
         }
+    }
+
+    applySession(session) {
+        this.cancelTurn();
+        this.historyShown = true;
+        this.clearRetry();
+        this.sessionUuid = session.uuid;
+        this.sessionHasChanges = session.hasChanges === true;
+        this.updateReviewVisibility();
+        saveSessionUuid(session.uuid);
+        this.selectedModel = session.model || '';
+        saveSessionModel(this.selectedModel);
+        this.modelLocked = true;
+        this.applyModelLock();
+        this.renderModelSelect();
+        this.sessionWorkspace = session.workspace ?? null;
+        this.adoptSessionWorkspace();
+        this.renderWorkspaceSelect();
+        this.renderStatusBadges();
+
+        this.elements.messages.replaceChildren();
+        const toolStatuses = restoredToolStatuses(session.messages ?? []);
+        for (const message of session.messages ?? []) {
+            this.renderRestoredMessage(message, toolStatuses);
+        }
+
+        this.confirmTarget = session.confirmTarget ?? null;
+        if (Array.isArray(session.pending) && session.pending.length > 0) {
+            this.renderMessage({ role: 'pending', pending: session.pending });
+        }
+
+        this.renderIntroCard();
+        this.sessionsPanel.refresh();
     }
 
     renderRestoredSources(message) {
@@ -524,7 +817,7 @@ class ChatDrawer {
         }
     }
 
-    renderRestoredMessage(message) {
+    renderRestoredMessage(message, toolStatuses = new Map()) {
         switch (message.role) {
             case 'user':
                 this.renderMessage({ role: 'user', text: message.content ?? '', createdAt: message.createdAt });
@@ -534,17 +827,12 @@ class ChatDrawer {
                     this.renderMessage({ role: 'assistant', text: message.content, createdAt: message.createdAt });
                 }
                 for (const call of message.toolCalls ?? []) {
-                    this.renderMessage({ role: 'tool-call', call });
+                    this.renderMessage({ role: 'tool-call', call: { ...call, status: toolStatuses.get(call?.id) ?? call?.status } });
                 }
                 this.renderDownloads(this.downloadsOfRestoredCalls(message.toolCalls));
                 this.renderRestoredSources(message);
                 break;
             case 'tool':
-                this.renderMessage({
-                    role: 'system',
-                    kind: message.toolStatus === 'failed' || message.toolStatus === 'rejected' ? 'warning' : 'info',
-                    text: ll('cheddi.history.toolStatus', { status: message.toolStatus ?? 'done' }),
-                });
                 this.renderRestoredSources(message);
                 break;
             case 'summary':
@@ -582,6 +870,7 @@ class ChatDrawer {
 
         this.availableModels = Array.isArray(payload?.models) ? payload.models : [];
         this.orientation = payload?.orientation ?? null;
+        this.updateReviewVisibility();
         this.credits = payload?.credits ?? null;
         this.starterTemplates = Array.isArray(payload?.templates) ? payload.templates : [];
 
@@ -867,6 +1156,8 @@ class ChatDrawer {
 
         const attachments = this.attachmentTray ? this.attachmentTray.pending() : [];
 
+        this.clearRetry();
+        this.retryAction = () => this.startTurn(text, attachments, true);
         this.elements.textarea.value = '';
         this.renderMessage({ role: 'user', text: this.describeSentMessage(text, attachments) });
         this.attachmentTray?.clear();
@@ -883,8 +1174,8 @@ class ChatDrawer {
         }
     }
 
-    async startTurn(text, attachments = []) {
-        if (!this.modelLocked) {
+    async startTurn(text, attachments = [], retry = false) {
+        if (!this.modelLocked && !retry) {
             this.announceActiveModel();
         }
 
@@ -896,6 +1187,7 @@ class ChatDrawer {
                 model: this.selectedModel,
                 workspace: this.workspaceOptions().length > 0 ? this.selectedWorkspace : '',
                 attachments,
+                retry,
             },
             this.activeAbortController.signal,
         );
@@ -953,7 +1245,12 @@ class ChatDrawer {
             this.chainTouchedRecords = false;
         }
         if (typeof result?.sessionUuid === 'string' && result.sessionUuid !== '') {
+            this.historyShown ||= this.sessionUuid === null;
+            if (this.sessionUuid !== result.sessionUuid) {
+                this.sessionHasChanges = false;
+            }
             this.sessionUuid = result.sessionUuid;
+            this.updateReviewVisibility();
             saveSessionUuid(result.sessionUuid);
         }
 
@@ -980,6 +1277,10 @@ class ChatDrawer {
         }
 
         refreshPageTreeIfPagesChanged(result?.touchedTables);
+        if (Array.isArray(result?.touchedTables) && result.touchedTables.length > 0) {
+            this.sessionHasChanges = true;
+            this.updateReviewVisibility();
+        }
 
         let continueAfterRender = false;
 
@@ -1069,6 +1370,7 @@ class ChatDrawer {
                     kind: 'error',
                     text: mapServerError(result.error?.chatErrorCode, result.error?.message),
                 });
+                this.offerRetry(result.error?.chatErrorCode);
                 break;
 
             default:
@@ -1082,6 +1384,7 @@ class ChatDrawer {
         this.renderDownloads(result?.downloads);
 
         if (continueAfterRender) {
+            this.retryAction = () => this.continueTurn();
             const next = await this.continueTurn();
             await this.processTurnResult(next, autoContinueDepth + 1);
         }
@@ -1090,12 +1393,37 @@ class ChatDrawer {
     navigationOptions(options = {}) {
         return {
             ...options,
+            followWorkspace: () => this.followChatWorkspace(),
             onNavigate: () => {
-                if (!this.state.docked) {
+                this.markHandover();
+                if (!this.isDocked()) {
                     this.setOpen(false);
                 }
             },
         };
+    }
+
+    async followChatWorkspace() {
+        let result = null;
+        try {
+            result = await this.api.followWorkspace(this.sessionUuid, this.selectedWorkspace);
+        } catch (e) {
+            console.error('[ChEddi] could not switch the workspace.', e);
+        }
+        if (result?.reachable !== true) {
+            Notification.warning(ll('cheddi.notice.workspaceFollowFailed'), '');
+            return;
+        }
+        if (result.changed) {
+            top.document.dispatchEvent(new CustomEvent('typo3:workspaces:refresh'));
+            top.document.dispatchEvent(new CustomEvent('typo3:pagetree:refresh'));
+            top.TYPO3.Backend.Topbar?.refresh();
+            top.TYPO3.ModuleMenu?.App?.refreshMenu();
+        }
+    }
+
+    markHandover() {
+        this.handoverOnLeave = this.moduleHost !== null;
     }
 
     renderSources(sources) {
@@ -1143,7 +1471,7 @@ class ChatDrawer {
             case 'toolCapReached':
                 return ll('cheddi.notice.toolCapReachedAbort');
             default:
-                return ll('cheddi.notice.turnAborted', { reason: reason ? ` (${reason})` : '' });
+                return ll('cheddi.notice.turnAborted');
         }
     }
 
@@ -1158,6 +1486,55 @@ class ChatDrawer {
             kind: 'error',
             text: mapServerError(error?.chatErrorCode, error?.message),
         });
+        this.offerRetry(error?.chatErrorCode);
+    }
+
+    offerRetry(chatErrorCode) {
+        this.retryElement?.remove();
+        this.retryElement = null;
+        if (!this.retryAction || !RETRYABLE_ERRORS.has(chatErrorCode ?? '')) {
+            return;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-default btn-sm';
+        button.dataset.cheddiRetry = '';
+        button.textContent = ll('cheddi.ui.retry');
+        button.addEventListener('click', () => this.retryFailedTurn());
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cheddi__message cheddi__message--system cheddi__retry';
+        wrapper.appendChild(button);
+        this.elements.messages.appendChild(wrapper);
+        this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+        this.retryElement = wrapper;
+    }
+
+    clearRetry() {
+        this.retryElement?.remove();
+        this.retryElement = null;
+        this.retryAction = null;
+    }
+
+    async retryFailedTurn() {
+        const action = this.retryAction;
+        if (!action || this.isSending) {
+            return;
+        }
+
+        this.retryElement?.remove();
+        this.retryElement = null;
+        this.setSending(true);
+        this.thinking.showSequence(defaultThinkingPhases());
+
+        try {
+            await this.processTurnResult(await action(), 0);
+        } catch (error) {
+            this.handleTurnError(error);
+        } finally {
+            this.setSending(false);
+        }
     }
 
     cancelTurn() {
@@ -1179,6 +1556,7 @@ class ChatDrawer {
         } else {
             this.stopProgressPolling();
             this.thinking.hide();
+            this.sessionsPanel.refresh();
         }
         this.updateInputDisabledState();
     }
@@ -1295,6 +1673,10 @@ class ChatDrawer {
     }
 
     renderMessage(message) {
+        if (message.role === 'tool-call') {
+            this.appendToolCall(message.call);
+            return;
+        }
         const el = this.createMessageElement(message);
         if (this.elements.intro) {
             this.elements.intro.hidden = true;
@@ -1325,9 +1707,6 @@ class ChatDrawer {
                 wrapper.appendChild(this.makeTimeElement(message.createdAt));
                 break;
             }
-            case 'tool-call':
-                wrapper.appendChild(this.makeToolCallBlock(message.call));
-                break;
             case 'system': {
                 const kind = message.kind ?? 'info';
                 wrapper.classList.add('callout', CALLOUT_VARIANTS[kind] ?? CALLOUT_VARIANTS.info);
@@ -1347,11 +1726,12 @@ class ChatDrawer {
 
     downloadsOfRestoredCalls(calls) {
         return (calls ?? [])
-            .filter((call) => call?.name === 'createCsvDownload' && Array.isArray(call?.arguments?.rows))
+            .filter((call) => call?.name === 'createCsvDownload'
+                && (Array.isArray(call?.arguments?.rows) || (call?.arguments?.records && typeof call.arguments.records === 'object')))
             .map((call) => ({
                 callId: call.id,
                 filename: typeof call.arguments.filename === 'string' ? call.arguments.filename : '',
-                rowCount: call.arguments.rows.length,
+                rowCount: Array.isArray(call.arguments.rows) ? call.arguments.rows.length : null,
             }));
     }
 
@@ -1380,11 +1760,13 @@ class ChatDrawer {
             button.append(icon, label);
             button.addEventListener('click', () => downloadFile(url));
 
-            const meta = document.createElement('span');
-            meta.className = 'cheddi__nav-more';
-            meta.textContent = ll('cheddi.download.rows', { count: String(Number(download.rowCount) || 0) });
-
-            row.append(button, meta);
+            row.appendChild(button);
+            if (download.rowCount !== null && download.rowCount !== undefined) {
+                const meta = document.createElement('span');
+                meta.className = 'cheddi__nav-more';
+                meta.textContent = ll('cheddi.download.rows', { count: String(Number(download.rowCount) || 0) });
+                row.appendChild(meta);
+            }
             wrapper.appendChild(row);
         }
 
@@ -1429,6 +1811,71 @@ class ChatDrawer {
         this.renderMessage({ role: 'summary', text: summaryText, replacedCount });
     }
 
+    appendToolCall(call) {
+        let group = this.lastMessageElement();
+        if (!group?.classList.contains('cheddi__message--tool-call')) {
+            group = this.makeToolCallGroup();
+            if (this.elements.intro) {
+                this.elements.intro.hidden = true;
+            }
+            this.elements.messages.appendChild(group);
+        }
+        group.querySelector('.cheddi__tool-calls-list').appendChild(this.makeToolCallBlock(call));
+        this.updateToolCallGroupSummary(group);
+        this.thinking?.keepAtBottom();
+        this.elements.messages.scrollTop = this.elements.messages.scrollHeight;
+    }
+
+    lastMessageElement() {
+        let node = this.elements.messages.lastElementChild;
+        while (node && node.classList.contains('cheddi__thinking')) {
+            node = node.previousElementSibling;
+        }
+        return node;
+    }
+
+    makeToolCallGroup() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cheddi__message cheddi__message--tool-call';
+
+        const details = document.createElement('details');
+        details.className = 'cheddi__tool-calls';
+
+        const summary = document.createElement('summary');
+        summary.className = 'cheddi__tool-calls-summary';
+        const icon = document.createElement('span');
+        icon.className = 'cheddi__tool-calls-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = '<typo3-backend-icon identifier="actions-search" size="small" aria-hidden="true"></typo3-backend-icon>';
+        const label = document.createElement('span');
+        label.className = 'cheddi__tool-calls-label';
+        summary.append(icon, label);
+        details.appendChild(summary);
+
+        const list = document.createElement('div');
+        list.className = 'cheddi__tool-calls-list';
+        details.appendChild(list);
+
+        wrapper.appendChild(details);
+        return wrapper;
+    }
+
+    updateToolCallGroupSummary(group) {
+        const summary = group.querySelector('.cheddi__tool-calls-summary');
+        const blocks = group.querySelectorAll('.cheddi__tool-call');
+        const count = blocks.length;
+        const failed = group.querySelectorAll('.cheddi__tool-call-summary--failed').length;
+        const done = group.querySelectorAll('.cheddi__tool-call-summary--done').length;
+
+        let text = count === 1 ? ll('cheddi.toolCalls.summaryOne') : ll('cheddi.toolCalls.summary', { count });
+        if (failed > 0) {
+            text = count === 1 ? ll('cheddi.toolCalls.summaryOneFailed') : ll('cheddi.toolCalls.summaryFailed', { count, failed });
+        }
+        summary.querySelector('.cheddi__tool-calls-label').textContent = text;
+        summary.classList.toggle('cheddi__tool-calls-summary--failed', failed > 0);
+        summary.classList.toggle('cheddi__tool-calls-summary--done', failed === 0 && done === count);
+    }
+
     makeToolCallBlock(call) {
         const details = document.createElement('details');
         details.className = 'cheddi__tool-call';
@@ -1460,7 +1907,7 @@ class ChatDrawer {
             : ll('cheddi.confirm.introMany', { count: pending.length });
         container.appendChild(intro);
 
-        if (this.confirmTarget) {
+        if (this.confirmTarget && pending.some((call) => (call.containment ?? 'writeMode') === 'writeMode')) {
             const targetEl = document.createElement('div');
             targetEl.className = 'cheddi__confirm-target';
             targetEl.textContent = ll(this.confirmTarget.key, this.confirmTarget.params ?? {});
@@ -1484,6 +1931,7 @@ class ChatDrawer {
                 (call) => 'destructive' !== call.severity && !previewHasInvalidRecords(call.preview),
             );
 
+            let bulkApproveButton = null;
             if (bulkApprovable.length > 0) {
                 const allApprove = document.createElement('button');
                 allApprove.type = 'button';
@@ -1503,7 +1951,7 @@ class ChatDrawer {
                     });
                     this.maybeSubmitAllDecisions(decisions, pending, container);
                 });
-                bulk.appendChild(allApprove);
+                bulkApproveButton = allApprove;
             }
 
             const allDecline = document.createElement('button');
@@ -1524,10 +1972,17 @@ class ChatDrawer {
                 this.maybeSubmitAllDecisions(decisions, pending, container);
             });
             bulk.appendChild(allDecline);
+            if (bulkApproveButton !== null) {
+                bulk.appendChild(bulkApproveButton);
+            }
             container.appendChild(bulk);
         }
 
         return container;
+    }
+
+    discardableInDraft(call) {
+        return call.containment === 'writeMode' && this.confirmTarget?.key !== 'cheddi.confirm.targetLive';
     }
 
     makeConfirmItem(call, decisions, pending, container, blocked) {
@@ -1542,7 +1997,7 @@ class ChatDrawer {
             const badge = document.createElement('span');
             badge.className = 'badge badge-danger cheddi__confirm-severity-badge';
             badge.innerHTML = '<typo3-backend-icon identifier="actions-exclamation-triangle" size="small" aria-hidden="true"></typo3-backend-icon>';
-            badge.append(ll('cheddi.confirm.destructiveBadge'));
+            badge.append(this.discardableInDraft(call) ? ll('cheddi.confirm.destructiveBadgeDraft') : ll('cheddi.confirm.destructiveBadge'));
             header.appendChild(badge);
         }
         if (Number(call.creditCost) > 0) {
@@ -1556,6 +2011,12 @@ class ChatDrawer {
         const preview = renderPendingPreview(call.preview);
         if (preview) {
             item.appendChild(preview);
+        }
+        if (call.containment === 'immediate' && call.preview?.kind !== 'media') {
+            const immediate = document.createElement('div');
+            immediate.className = 'cheddi__preview-context';
+            immediate.textContent = ll('cheddi.confirm.immediateNote');
+            item.appendChild(immediate);
         }
 
         const argsDetails = document.createElement('details');
@@ -1615,8 +2076,8 @@ class ChatDrawer {
             this.maybeSubmitAllDecisions(decisions, pending, container);
         });
 
-        actions.appendChild(approveBtn);
         actions.appendChild(declineBtn);
+        actions.appendChild(approveBtn);
         item.appendChild(actions);
 
         return item;
@@ -1645,6 +2106,7 @@ class ChatDrawer {
             btn.disabled = true;
         });
         container.classList.add('cheddi__confirm-block--submitted');
+        this.clearRetry();
         this.setSending(true);
 
         try {
@@ -1653,6 +2115,9 @@ class ChatDrawer {
                 { sessionUuid: this.sessionUuid, approvals },
                 this.activeAbortController.signal,
             );
+            if (result?.status === 'error') {
+                this.retryAction = () => this.continueTurn();
+            }
             await this.processTurnResult(result, 0);
         } catch (error) {
             this.handleTurnError(error);
@@ -1663,8 +2128,9 @@ class ChatDrawer {
 }
 
 const mountPoint = document.querySelector('[data-cheddi-drawer]');
-if (mountPoint) {
-    new ChatDrawer(mountPoint).init();
-}
+
+export const drawer = mountPoint ? new ChatDrawer(mountPoint) : null;
+
+drawer?.init();
 
 export default ChatDrawer;

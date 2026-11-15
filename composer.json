@@ -1,12 +1,12 @@
 {
   "name": "autodudes/cheddi",
   "type": "typo3-cms-extension",
-  "description": "ChEddi: AI assistant for the TYPO3 backend. A chat drawer on every backend page where editors work on pages, content, translations, metadata and other data in plain language.",
+  "description": "ChEddi - AI assistant for the TYPO3 backend. A chat drawer on every backend page where editors work on pages, content, translations, metadata and other data in plain language.",
   "homepage": "https://www.autodudes.de/",
   "license": [
     "GPL-2.0-or-later"
   ],
-  "version": "0.5.0",
+  "version": "0.6.0",
   "keywords": [
     "TYPO3 CMS",
     "backend",
@@ -19,8 +19,8 @@
   ],
   "require": {
     "php": "^8.1",
-    "autodudes/ai-suite": "^12.24.0 || ^13.18.0 || ^14.6.0",
-    "autodudes/ai-suite-mcp": "^0.12",
+    "autodudes/ai-suite": "^12.26.0 || ^13.20.0 || ^14.8.0",
+    "autodudes/ai-suite-mcp": "^0.13",
     "typo3/cms-core": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-workspaces": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-reports": "^12.4.11 || ^13.4.1 || ^14.3.0",
@@ -29,6 +29,9 @@
     "phpoffice/phpword": "^1.4",
     "symfony/clock": "^6.4 || ^7.0 || ^8.0",
     "smalot/pdfparser": "^2.12"
+  },
+  "suggest": {
+    "typo3/cms-linkvalidator": "Lists the links it found broken under the open items of ChEddi"
   },
   "autoload": {
     "psr-4": {

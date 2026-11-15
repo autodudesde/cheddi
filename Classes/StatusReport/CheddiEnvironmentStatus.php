@@ -16,12 +16,15 @@ namespace AutoDudes\Cheddi\StatusReport;
 
 use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\Cheddi\Command\AutoDeleteChatSessionsCommand;
+use AutoDudes\Cheddi\Command\CollectOpenItemsCommand;
 use AutoDudes\Cheddi\Domain\Repository\BackendGroupRepository;
+use AutoDudes\Cheddi\Domain\Repository\OpenItemRuleRepository;
 use AutoDudes\Cheddi\Domain\Repository\SchedulerTaskRepository;
 use AutoDudes\Cheddi\Service\Chat\AttachmentService;
 use AutoDudes\Cheddi\Service\Chat\ChatRequestService;
 use AutoDudes\Cheddi\Service\Chat\ChatSettingsService;
 use AutoDudes\Cheddi\Service\Chat\DocumentExtractorService;
+use AutoDudes\Cheddi\Service\Chat\OpenItem\OpenItemRuleValidator;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Type\ContextualFeedbackSeverity;
 use TYPO3\CMS\Reports\Status;
@@ -36,6 +39,8 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
         private readonly BackendUserService $backendUserService,
         private readonly SchedulerTaskRepository $schedulerTaskRepository,
         private readonly BackendGroupRepository $backendGroupRepository,
+        private readonly OpenItemRuleRepository $openItemRules,
+        private readonly OpenItemRuleValidator $openItemRuleValidator,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -49,6 +54,8 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
             $this->executionTimeStatus(),
             $this->uploadFolderStatus(),
             $this->cleanupTaskStatus(),
+            $this->openItemsTaskStatus(),
+            $this->openItemRulesStatus(),
         ];
     }
 
@@ -191,6 +198,67 @@ class CheddiEnvironmentStatus implements StatusProviderInterface
             'ChEddi Session Cleanup',
             'Scheduler task active',
             sprintf('An active scheduler task runs %s. Whether the scheduler cron job itself runs is shown under "Scheduler".', AutoDeleteChatSessionsCommand::NAME),
+            ContextualFeedbackSeverity::OK,
+        );
+    }
+
+    private function openItemRulesStatus(): Status
+    {
+        $problems = $this->openItemRules->findRuleProblems();
+        if ([] === $problems) {
+            return new Status('ChEddi Open Item Checks', 'No problems', 'No check reported a problem in its last run.', ContextualFeedbackSeverity::OK);
+        }
+
+        return new Status(
+            'ChEddi Open Item Checks',
+            sprintf('%d with a problem', count($problems)),
+            implode(' ', array_map(
+                fn (array $problem): string => sprintf('"%s" (uid %d): %s', $problem['title'], $problem['uid'], $this->openItemRuleValidator->problemLabel($problem['problem'])),
+                $problems,
+            )),
+            ContextualFeedbackSeverity::WARNING,
+        );
+    }
+
+    private function openItemsTaskStatus(): Status
+    {
+        $title = 'ChEddi Open Items';
+        if ([] === $this->openItemRules->findActive()) {
+            return new Status($title, 'Switched off', 'No check is switched on.', ContextualFeedbackSeverity::OK);
+        }
+
+        try {
+            $scheduled = $this->schedulerTaskRepository->hasActiveCommandTask(CollectOpenItemsCommand::NAME);
+        } catch (\Throwable $e) {
+            $this->logger->warning('ChEddi: could not look up the scheduler task for the open items', [
+                'exception' => $e->getMessage(),
+            ]);
+
+            return new Status(
+                $title,
+                'Not determinable',
+                sprintf('The scheduler tasks could not be read. Make sure a task runs the command %s regularly.', CollectOpenItemsCommand::NAME),
+                ContextualFeedbackSeverity::NOTICE,
+            );
+        }
+
+        if (!$scheduled) {
+            return new Status(
+                $title,
+                'No active scheduler task',
+                sprintf(
+                    'No active scheduler task runs the command %s, so editors see no open items or outdated ones. '
+                    .'Add an "Execute console commands" task for it in the Scheduler module, daily is enough.',
+                    CollectOpenItemsCommand::NAME,
+                ),
+                ContextualFeedbackSeverity::WARNING,
+            );
+        }
+
+        return new Status(
+            $title,
+            'Scheduler task active',
+            sprintf('An active scheduler task runs %s.', CollectOpenItemsCommand::NAME),
             ContextualFeedbackSeverity::OK,
         );
     }

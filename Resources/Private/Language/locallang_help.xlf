@@ -51,7 +51,7 @@
 
             <trans-unit id="cheddi.help.attachments.title"><source>Attachments</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.teaser"><source>Working with files you attach</source></trans-unit>
-            <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document. ChEddi extracts its text and works with that.</source></trans-unit>
+            <trans-unit id="cheddi.help.attachments.p1"><source>Use the paper clip to attach a document, drop it onto the chat or paste it into the input. ChEddi extracts its text and works with that.</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.i1"><source>Text based documents work best, images are not analysed here</source></trans-unit>
             <trans-unit id="cheddi.help.attachments.i2"><source>An attachment is removed together with its conversation, unless it has meanwhile been placed on a page</source></trans-unit>
 

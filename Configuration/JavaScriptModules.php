@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 return [
     'dependencies' => ['backend'],
+    'tags' => ['backend.module'],
     'imports' => [
         '@autodudes/cheddi/' => 'EXT:cheddi/Resources/Public/JavaScript/',
         // Locally vendored to keep the chat self-contained. Versions verified

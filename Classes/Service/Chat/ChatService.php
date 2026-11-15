@@ -18,6 +18,7 @@ use AutoDudes\AiSuite\Service\BackendUserService;
 use AutoDudes\AiSuite\Service\UuidService;
 use AutoDudes\AiSuiteMcp\Mcp\Service\BackendBaseUrlResolver;
 use AutoDudes\AiSuiteMcp\Mcp\Service\NavigationTargetCollector;
+use AutoDudes\AiSuiteMcp\Mcp\Tool\WriteContainment;
 use AutoDudes\Cheddi\Domain\Enum\Severity;
 use AutoDudes\Cheddi\Domain\Model\ChatMessage;
 use AutoDudes\Cheddi\Domain\Model\ChatSession;
@@ -27,6 +28,7 @@ use AutoDudes\Cheddi\Domain\Model\Dto\TurnResult;
 use AutoDudes\Cheddi\Domain\Repository\ChatMessageRepository;
 use AutoDudes\Cheddi\Domain\Repository\ChatSessionRepository;
 use AutoDudes\Cheddi\Mcp\Tool\CreateCsvDownloadTool;
+use AutoDudes\Cheddi\Mcp\Tool\OfferWorkflowManagerTool;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Locking\Exception\LockAcquireWouldBlockException;
@@ -46,6 +48,8 @@ class ChatService
     public const CONTEXT_LEVEL_WARNING = 'warning';
 
     public const SESSION_TITLE_MAX_LENGTH = 40;
+
+    private const SESSION_TITLE_COLUMN_LENGTH = 255;
     private const CONFIRM_LOCK_MODE = LockingStrategyInterface::LOCK_CAPABILITY_EXCLUSIVE | LockingStrategyInterface::LOCK_CAPABILITY_NOBLOCK;
 
     private const SESSION_UUID_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
@@ -88,6 +92,7 @@ class ChatService
         ServerRequestInterface $request,
         array $attachmentUids = [],
         string $workspaceChoice = '',
+        bool $retry = false,
     ): TurnResult {
         $beUserUid = $this->resolveBeUserUid();
         if (0 === $beUserUid) {
@@ -108,11 +113,14 @@ class ChatService
 
         $refs = [] === $attachmentUids ? [] : $this->attachmentService->normalizeRefs($attachmentUids);
 
-        $this->messageRepository->append($session->uid, [
-            'role' => ChatMessage::ROLE_USER,
-            'content' => $this->attachmentService->mergeMarkersIntoContent($userText, $refs),
-            'attachments' => [] === $refs ? '' : (string) json_encode($refs),
-        ]);
+        $content = $this->attachmentService->mergeMarkersIntoContent($userText, $refs);
+        if (!$retry || !$this->isUnansweredUserMessage($session->uid, $content)) {
+            $this->messageRepository->append($session->uid, [
+                'role' => ChatMessage::ROLE_USER,
+                'content' => $content,
+                'attachments' => [] === $refs ? '' : (string) json_encode($refs),
+            ]);
+        }
         $this->sessionRepository->touchActivity($session->uid);
 
         if ('' === $session->title) {
@@ -261,15 +269,23 @@ class ChatService
                     if (!$approved) {
                         $applied['declined'][] = (string) $call['name'];
                         $invalidNotes = $this->pendingPreviewService->invalidNotes((string) $call['name'], $call['arguments']);
+                        $blockedReason = $this->pendingPreviewService->invalidReason((string) $call['name'], $call['arguments']);
                         $this->messageRepository->append($session->uid, [
                             'role' => ChatMessage::ROLE_TOOL,
-                            'content' => [] === $invalidNotes
-                                ? 'User declined this action.'
-                                : sprintf(
+                            'content' => match (true) {
+                                null !== $blockedReason => sprintf(
+                                    'Not executed: the payload is invalid, so the editor could not approve it: %s. '
+                                    .'The editor did not reject the change itself. Send a corrected %s call now.',
+                                    $blockedReason,
+                                    (string) $call['name'],
+                                ),
+                                [] === $invalidNotes => 'User declined this action.',
+                                default => sprintf(
                                     'User declined this action. The payload was also invalid: %s. '
                                     .'Correct it before offering the write again.',
                                     implode(' | ', $invalidNotes),
                                 ),
+                            },
                             'tool_call_id' => $callId,
                             'tool_status' => ChatMessage::TOOL_STATUS_REJECTED,
                         ]);
@@ -302,6 +318,12 @@ class ChatService
                     $this->progressService->toolStarted($session->sessionUuid, (string) $call['name'], $step, $total);
                     $result = $this->toolBridge->execute((string) $call['name'], $call['arguments'], $context);
                     $applied[$result['isError'] ? 'failed' : 'executed'][] = (string) $call['name'];
+                    if (!$result['isError'] && WriteContainment::IMMEDIATE === WriteContainment::of((string) $call['name'])) {
+                        foreach ($this->succeededFileUids($result['structured'] ?? null) as $fileUid) {
+                            $this->changeTracker->trackImmediate($session->uid, 'sys_file', $fileUid, (string) $call['name'], $session->workspace);
+                            $touchedTables['sys_file'] = true;
+                        }
+                    }
                     $this->rememberNavigationTargets($result['structured'] ?? null);
                     $this->messageRepository->append($session->uid, [
                         'role' => ChatMessage::ROLE_TOOL,
@@ -373,6 +395,7 @@ class ChatService
      *     messages: list<array{role: string, content: string, toolCalls?: list<array<string, mixed>>, toolCallId?: string, toolStatus?: string, sources?: list<array<string, mixed>>, createdAt: int}>,
      *     pending: list<array{id: string, name: string, arguments: array<string, mixed>, severity: string, creditCost: null|int, preview: null|array<string, mixed>}>,
      *     confirmTarget: null|array{key: string, params?: array<string, int|string>},
+     *     hasChanges: bool,
      * }
      */
     public function loadSession(string $sessionUuid): ?array
@@ -401,13 +424,14 @@ class ChatService
             'messages' => $messages,
             'pending' => $pending,
             'confirmTarget' => [] === $pending ? null : $this->confirmTarget($session),
+            'hasChanges' => $this->changeTracker->hasChanges($session->uid),
         ];
     }
 
     /**
-     * @return null|array<mixed>
+     * @return null|array{arguments: array<mixed>, workspace: int}
      */
-    public function findCsvDownloadArguments(string $sessionUuid, string $callId): ?array
+    public function findCsvDownload(string $sessionUuid, string $callId): ?array
     {
         $beUserUid = $this->resolveBeUserUid();
         if (0 === $beUserUid || '' === $callId) {
@@ -425,12 +449,27 @@ class ChatService
             $calls = json_decode($message->toolCalls, true);
             foreach (is_array($calls) ? $calls : [] as $call) {
                 if (is_array($call) && $callId === ($call['id'] ?? null) && CreateCsvDownloadTool::NAME === ($call['name'] ?? null)) {
-                    return is_array($call['arguments'] ?? null) ? $call['arguments'] : null;
+                    return is_array($call['arguments'] ?? null) ? ['arguments' => $call['arguments'], 'workspace' => $session->workspace] : null;
                 }
             }
         }
 
         return null;
+    }
+
+    public function renameSession(string $sessionUuid, string $title): bool
+    {
+        $beUserUid = $this->resolveBeUserUid();
+        if (0 === $beUserUid) {
+            return false;
+        }
+        $session = $this->sessionRepository->findByUuidForUser($sessionUuid, $beUserUid);
+        if (null === $session) {
+            return false;
+        }
+        $this->sessionRepository->updateTitle($session->uid, mb_substr($title, 0, self::SESSION_TITLE_COLUMN_LENGTH));
+
+        return true;
     }
 
     public function deleteSession(string $sessionUuid): bool
@@ -467,11 +506,22 @@ class ChatService
                 'arguments' => $call['arguments'],
                 'severity' => $severity->value,
                 'creditCost' => $this->toolBridge->creditCost($call['name']),
+                'containment' => WriteContainment::of($call['name']),
                 'preview' => $this->pendingPreviewService->build($call['name'], $call['arguments']),
             ];
         }
 
         return $pending;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function succeededFileUids(mixed $structured): array
+    {
+        $uids = is_array($structured) && is_array($structured['batch']['succeededUids'] ?? null) ? $structured['batch']['succeededUids'] : [];
+
+        return array_values(array_filter(array_map('intval', $uids), static fn (int $uid): bool => $uid > 0));
     }
 
     private function deriveTitleFromUserText(string $text): string
@@ -1007,6 +1057,7 @@ class ChatService
                 'arguments' => $call['arguments'],
                 'severity' => $severity->value,
                 'creditCost' => $this->toolBridge->creditCost($call['name']),
+                'containment' => WriteContainment::of($call['name']),
                 'preview' => $this->pendingPreviewService->build($call['name'], $call['arguments']),
             ];
         }
@@ -1066,8 +1117,28 @@ class ChatService
         );
         $this->foundTargets = $this->navigationTargetCollector->merge(
             $this->foundTargets,
-            $this->withSameOriginUrlsOnly($this->navigationTargetCollector->collectFound($structured)),
+            $this->withSameOriginUrlsOnly([...$this->navigationTargetCollector->collectFound($structured), ...$this->offeredTargets($structured)]),
         );
+    }
+
+    /**
+     * @param array<mixed> $structured
+     *
+     * @return list<array{table: string, label: string, targets: list<array{label: string, url: string}>, omitted: int}>
+     */
+    private function offeredTargets(array $structured): array
+    {
+        $target = $structured['offeredTarget'] ?? null;
+        if (!is_array($target) || !is_string($target['group'] ?? null) || !is_string($target['label'] ?? null) || !is_string($target['url'] ?? null)) {
+            return [];
+        }
+
+        return [[
+            'table' => OfferWorkflowManagerTool::NAME,
+            'label' => $target['group'],
+            'targets' => [['label' => $target['label'], 'url' => $target['url']]],
+            'omitted' => 0,
+        ]];
     }
 
     /**
@@ -1107,6 +1178,14 @@ class ChatService
         }
 
         return $kept;
+    }
+
+    private function isUnansweredUserMessage(int $sessionUid, string $content): bool
+    {
+        $history = $this->messageRepository->findBySession($sessionUid);
+        $last = end($history);
+
+        return false !== $last && ChatMessage::ROLE_USER === $last->role && $content === $last->content;
     }
 
     private function findExistingSession(?string $sessionUuid, int $beUserUid, string $model): ?ChatSession
