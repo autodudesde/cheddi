@@ -41,7 +41,7 @@ class AttachmentService
     ];
 
     private const EXTENSION_GROUPS = [
-        'txt' => 'text', 'json' => 'text', 'xml' => 'text',
+        'txt' => 'text', 'csv' => 'text', 'md' => 'text', 'json' => 'text', 'xml' => 'text',
         'pdf' => 'pdf',
         'docx' => 'office', 'doc' => 'office', 'odt' => 'office', 'rtf' => 'office',
         'xlsx' => 'office', 'xls' => 'office', 'ods' => 'office',
@@ -163,8 +163,8 @@ class AttachmentService
         $reason = '';
         if (null === $maxBytes) {
             $reason = 'unsupported';
-        } elseif (self::KIND_DOCUMENT === $kind && !$this->extractor->canExtract($extension)) {
-            $reason = 'libraryMissing';
+        } elseif (self::KIND_DOCUMENT === $kind && null !== ($unreadable = $this->extractor->unreadableReason($extension))) {
+            $reason = $unreadable;
         } elseif ($file->getSize() > $maxBytes) {
             $reason = 'oversize';
         }
@@ -297,15 +297,34 @@ class AttachmentService
         }
 
         $lines = [];
+        $anyUnreadable = false;
         foreach ($refs as $ref) {
+            $anyUnreadable = $anyUnreadable || !$ref['readable'];
             $lines[] = match (true) {
                 !$ref['readable'] => sprintf('- "%s" (sys_file:%d) — the text of this file cannot be read (%s). Tell the editor rather than guessing its content.', $ref['name'], $ref['uid'], $ref['reason']),
                 self::KIND_IMAGE === $ref['kind'] => sprintf('- "%s" (image, sys_file:%d)', $ref['name'], $ref['uid']),
                 default => sprintf('- "%s" (sys_file:%d) — call readAttachmentText with uid=%d to read its text.', $ref['name'], $ref['uid'], $ref['uid']),
             };
         }
+        if ($anyUnreadable) {
+            $lines[] = sprintf(
+                'File types readable here: %s. Offer the editor to attach the content in one of these, or to paste it into the message as text.',
+                implode(', ', $this->readableDocumentExtensions()),
+            );
+        }
 
         return $userText."\n\n[Attachments]\n".implode("\n", $lines);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function readableDocumentExtensions(): array
+    {
+        return array_values(array_filter(
+            array_keys(self::EXTENSION_GROUPS),
+            fn (string $extension): bool => $this->extractor->canExtract($extension),
+        ));
     }
 
     /**

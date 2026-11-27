@@ -185,6 +185,8 @@ export class AttachmentTray {
                 return ll('cheddi.attachment.oversize');
             case 'libraryMissing':
                 return ll('cheddi.attachment.libraryMissing');
+            case 'phpExtensionMissing':
+                return ll('cheddi.attachment.phpExtensionMissing');
             case 'notFound':
                 return ll('cheddi.attachment.notFound');
             default:

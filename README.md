@@ -3,7 +3,7 @@
 > 🧪 **Beta.** The feature set and the HTTP contract (routes, the `TurnResult`
 > response envelope, the tool-severity classification) are stabilising, but smaller changes
 > are still possible between minor versions while the extension matures. Pin a version and
-> review the changelog before upgrading.
+> review the [changelog](CHANGELOG.md) before upgrading.
 
 An AI assistant that lives **inside the TYPO3 backend**. `cheddi` puts a resizable chat
 **drawer** on every backend page, and editors say in plain language what they need
@@ -51,7 +51,7 @@ dependencies and Composer pulls them in for you.
   the message as visible text, so the editor names it.
 - 📎 **Attach documents** with the paper clip, by dropping files onto the drawer, or by pasting a
   file into the input (a clipboard that also holds text pastes the text): PDF, Word, spreadsheets
-  and plain text are uploaded into FAL and
+  and plain text (TXT, CSV, Markdown, JSON, XML) are uploaded into FAL and
   their *text* is pulled in on demand via the `readAttachmentText` tool. The upload answer says
   per file whether it can be read at all, so the editor learns that before sending. Up to 5
   files per message, with size caps per type (text 5 MB, PDF 50 MB, office documents 25 MB);
@@ -67,7 +67,8 @@ dependencies and Composer pulls them in for you.
   editor in ten minutes.
 - 🖼️ **Bring in media** (`enable_cheddi_media_upload`): with the flag, images can be attached
   as well and placed on a page by ChEddi (`writeRecords`, `replaceMediaReference`), and `uploadMedia`
-  imports an image or video by URL or a YouTube/Vimeo link into the file storage. Image types and
+  imports an image or video by URL (only with `mcpMediaAllowUrlFetch = 1` of `ai_suite_mcp`, off by
+  default) or a YouTube/Vimeo link into the file storage. Image types and
   the size cap follow `mcpMediaAllowedExtensions` and `mcpMediaMaxSizeMb` of `ai_suite_mcp`
   (`0` there means the PDF cap of 50 MB applies); SVG is never accepted. **No chat model has
   vision**: an attached image is a file ChEddi can place or move, but no model can describe,
@@ -571,6 +572,90 @@ Without `aiSuiteApiKey` ChEddi does not start a turn at all: the drawer shows th
 AI Suite module shows ("Please enter your AI Suite API key …") as a system message and keeps the
 input locked, and a turn requested anyway comes back as `422` with `chatErrorCode: apiKeyMissing`
 instead of a raw HTTP 401 from the server.
+
+## Product and security information
+
+User information under the EU Cyber Resilience Act (Regulation (EU) 2024/2847, Annex II).
+
+### Manufacturer and product
+
+- **Manufacturer:** AutoDudes GmbH & Co. KG, Ringstr. 24, 95191 Leupoldsgrün, Germany,
+  [service@autodudes.de](mailto:service@autodudes.de), <https://www.autodudes.de>
+- **Product:** ChEddi, Composer package `autodudes/cheddi`, extension key `cheddi`. The installed
+  version is shown in the Extension Manager and in `composer.lock`.
+- **Vulnerabilities:** report them to [security@autodudes.de](mailto:security@autodudes.de), see
+  [SECURITY.md](SECURITY.md).
+- **Support period:** while ChEddi is in beta (0.x), only the latest release receives security
+  fixes. The five-year support period starts with the first stable major, see
+  [SECURITY.md](SECURITY.md#supported-versions).
+- **Software bill of materials:** available on request at security@autodudes.de.
+
+### Intended purpose and security properties
+
+ChEddi lets backend users work on TYPO3 content in plain language. It runs only for backend users
+whose group holds `enable_cheddi_interface`, acts with exactly their permissions and asks for a
+click before every write, two for a destructive one. Every turn goes over HTTPS to the AI Suite
+Server operated by AutoDudes. The checks are listed under
+[Permissions & security model](#permissions--security-model).
+
+### Risks to know before use
+
+- **The model can be steered by what it reads** (prompt injection): page content, an attached
+  document or a web page can ask it to change other records. The confirmation shows every write;
+  read it before you confirm, and keep `chatWriteMode` on `workspace` so a change stays a draft.
+- **`chatWriteMode` replaces the MCP write mode, it does not tighten it.** With `live`, ChEddi
+  publishes directly even where `mcpWriteMode` keeps MCP clients in a workspace; only a backend
+  group can force a draft for its members.
+- **Some writes cannot be undone by a workspace:** `generateImage`, `uploadMedia` and `moveFile`
+  store or move files right away, see [Limitations](#limitations--accepted-trade-offs).
+- **Attachments may be public.** With an empty `chatUploadFolder` they land in the editor's default
+  upload folder, usually a public storage. Point it at a non-public storage. Random file name
+  prefixes (`chatUploadRandomNames`, on by default) only make the URLs hard to guess, and the
+  Reports module warns while attachments land in a public storage.
+- **Web research sends queries out of the installation**; it is off by default
+  (`enable_web_research`).
+- **Conversations are stored.** They stay in the database until the retention removes them, see
+  [Session retention](#session-retention).
+
+### Secure use
+
+- Grant `enable_cheddi_interface`, the other ChEddi flags and the chat models only to the groups that
+  need them.
+- Schedule `cheddi:auto-delete-sessions` daily; without it conversations are never deleted.
+- Keep `chatLogVerbose` off in production; `var/log/cheddi.log` holds conversation content.
+- Check the ChEddi entries in **System → Reports** after every configuration change.
+
+### Updates
+
+Security fixes are released as new versions. Install them with `composer update autodudes/cheddi`
+or through the Extension Manager, then run **Admin Tools → Maintenance → Analyze Database
+Structure** and flush the caches. ChEddi never installs updates by itself, so there is no automatic
+update to switch off.
+
+A known vulnerability in the installed version shows up for admins in **System → Reports**
+(*AI Suite security updates*) and in the system information menu of the toolbar. AI Suite
+provides that report; see its README.
+
+ChEddi depends on the TYPO3 Core and on packages that Composer installs alongside it. Their security
+fixes come from the TYPO3 Security Team and the package maintainers, not from AutoDudes: follow the
+[TYPO3 security advisories](https://typo3.org/help/security-advisories) and keep TYPO3 on the latest
+patch level of your major (`composer update "typo3/*"`). For TYPO3 12, Core security fixes from
+12.4.46 on require TYPO3 Extended Long Term Support (ELTS). The minimum versions in `composer.json`
+are technical requirements, not a statement that older patch levels are safe.
+
+### Decommissioning
+
+1. Remove the backend-group flags so the drawer disappears, and the Scheduler task that runs
+   `cheddi:auto-delete-sessions`.
+2. Uninstall the extension (`composer remove autodudes/cheddi`, or deactivate and delete it in the
+   Extension Manager).
+3. Run **Analyze Database Structure** twice: the first run renames the
+   [ChEddi tables](#database-tables) and the added columns to `zzz_deleted_…`, the second drops them
+   with all conversations, change logs and open items.
+4. Delete the `cheddi` folders below the upload folder, which hold the chat attachments, the log
+   files `var/log/cheddi*.log` and the `cheddi` entry under `EXTENSIONS` in `settings.php`.
+5. ChEddi draft workspaces (`sys_workspace` with an owner set) stay; publish or delete their drafts
+   in the workspace module first.
 
 ## Development
 

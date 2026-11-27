@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
+use AutoDudes\AiSuite\Service\SecurityAdvisoryStore;
 use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use AutoDudes\Cheddi\Utility\NetworkTimeoutDetector;
 use GuzzleHttp\Exception\BadResponseException;
@@ -24,6 +25,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Http\RequestFactory;
 use TYPO3\CMS\Core\Information\Typo3Version;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class WebSearchRequestService
@@ -44,6 +46,7 @@ class WebSearchRequestService
         protected readonly ModelService $modelService,
         protected readonly WebResearchPolicy $webResearchPolicy,
         protected readonly SystemDomainResolver $systemDomainResolver,
+        protected readonly SecurityAdvisoryStore $securityAdvisoryStore,
     ) {}
 
     /**
@@ -73,6 +76,8 @@ class WebSearchRequestService
                 'keys' => $this->keysFor($extConf),
                 'request_system_domain' => $this->systemDomainResolver->resolve(),
                 'typo3_version' => GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion(),
+                'ext_version' => ExtensionManagementUtility::getExtensionVersion('ai_suite'),
+                'ext_versions' => (string) json_encode(SecurityAdvisoryStore::installedVersions()),
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
                 'webResearch' => json_encode($this->webResearchPolicy->researchScope()),
             ]),
@@ -101,6 +106,7 @@ class WebSearchRequestService
         }
 
         $body = is_array($decoded['body'] ?? null) ? $decoded['body'] : [];
+        $this->securityAdvisoryStore->recordAnswer($body, 'Error' === ($decoded['type'] ?? ''));
         if ('Error' === ($decoded['type'] ?? '') || isset($body['errorType'])) {
             $this->logger->warning('Web search returned an error', ['errorType' => $body['errorType'] ?? '']);
 

@@ -29,13 +29,12 @@ use AutoDudes\Cheddi\Mcp\Tool\SearchWebTool;
 use AutoDudes\Cheddi\Service\Chat\ToolBridge;
 use AutoDudes\Cheddi\Service\Chat\UploadedFileWriter;
 use AutoDudes\Cheddi\Upgrades\CheddiPermissionsUpgradeWizard;
-use Smalot\PdfParser\Parser;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use TYPO3\CMS\Backend\Controller\Event\AfterBackendPageRenderEvent;
 use TYPO3\CMS\Workspaces\Event\AfterRecordPublishedEvent;
 
 return static function (ContainerConfigurator $configurator): void {
-    ClassicModeBundle::register(dirname(__DIR__), Parser::class);
+    ClassicModeBundle::register(dirname(__DIR__));
 
     $services = $configurator->services();
 

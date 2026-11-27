@@ -565,7 +565,8 @@
             <trans-unit id="cheddi.attachment.uploadFailed"><source>Could not upload "{name}".</source></trans-unit>
             <trans-unit id="cheddi.attachment.tooMany"><source>You can attach at most {count} files.</source></trans-unit>
             <trans-unit id="cheddi.attachment.oversize"><source>Too large to read</source></trans-unit>
-            <trans-unit id="cheddi.attachment.libraryMissing"><source>This format cannot be read on this installation</source></trans-unit>
+            <trans-unit id="cheddi.attachment.libraryMissing"><source>This format cannot be read: a library is missing on this installation</source></trans-unit>
+            <trans-unit id="cheddi.attachment.phpExtensionMissing"><source>This format cannot be read: a PHP extension is missing on the server</source></trans-unit>
             <trans-unit id="cheddi.attachment.notFound"><source>File not found</source></trans-unit>
             <trans-unit id="cheddi.attachment.metadataOnly"><source>Text cannot be read from this file</source></trans-unit>
 

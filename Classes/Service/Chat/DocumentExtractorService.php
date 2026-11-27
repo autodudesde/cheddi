@@ -30,6 +30,10 @@ class DocumentExtractorService
 {
     public const MAX_OUTPUT_CHARS = 50000;
 
+    public const REASON_LIBRARY_MISSING = 'libraryMissing';
+
+    public const REASON_PHP_EXTENSION_MISSING = 'phpExtensionMissing';
+
     public const MAX_SHEET_ROWS = 2000;
 
     public const MAX_SHEET_COLUMNS = 50;
@@ -89,11 +93,20 @@ class DocumentExtractorService
 
     public function canExtract(string $extension): bool
     {
-        return match ($format = $this->formatOf($extension)) {
-            self::FORMAT_TEXT => true,
-            null => false,
-            default => null === $this->unavailabilityReason($format),
-        };
+        return null !== $this->formatOf($extension) && null === $this->unreadableReason($extension);
+    }
+
+    public function unreadableReason(string $extension): ?string
+    {
+        $format = $this->formatOf($extension);
+        if (null === $format || self::FORMAT_TEXT === $format) {
+            return null;
+        }
+        if (!$this->isClassAvailable(self::FORMAT_REQUIREMENTS[$format]['class'])) {
+            return self::REASON_LIBRARY_MISSING;
+        }
+
+        return [] === $this->missingPhpExtensions($format) ? null : self::REASON_PHP_EXTENSION_MISSING;
     }
 
     /**
@@ -115,6 +128,11 @@ class DocumentExtractorService
     protected function isPhpExtensionLoaded(string $extension): bool
     {
         return extension_loaded($extension);
+    }
+
+    protected function isClassAvailable(string $class): bool
+    {
+        return class_exists($class);
     }
 
     protected function assertNotAZipBomb(string $path, string $label): void
@@ -163,17 +181,24 @@ class DocumentExtractorService
 
     private function unavailabilityReason(string $format): ?string
     {
-        $requirements = self::FORMAT_REQUIREMENTS[$format];
-        if (!class_exists($requirements['class'])) {
+        if (!$this->isClassAvailable(self::FORMAT_REQUIREMENTS[$format]['class'])) {
             return 'the library is not installed';
         }
 
-        $missing = array_values(array_filter(
-            $requirements['extensions'],
-            fn (string $extension): bool => !$this->isPhpExtensionLoaded($extension),
-        ));
+        $missing = $this->missingPhpExtensions($format);
 
         return [] === $missing ? null : sprintf('the PHP extension(s) %s are missing', implode(', ', $missing));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function missingPhpExtensions(string $format): array
+    {
+        return array_values(array_filter(
+            self::FORMAT_REQUIREMENTS[$format]['extensions'],
+            fn (string $extension): bool => !$this->isPhpExtensionLoaded($extension),
+        ));
     }
 
     private function assertFormatAvailable(string $format, string $label): void
@@ -210,7 +235,9 @@ class DocumentExtractorService
 
     private function readPlainText(File $file): string
     {
-        return $file->getContents();
+        $content = $file->getContents();
+
+        return mb_check_encoding($content, 'UTF-8') ? $content : (string) mb_convert_encoding($content, 'UTF-8', 'Windows-1252');
     }
 
     private function readPdf(File $file): string

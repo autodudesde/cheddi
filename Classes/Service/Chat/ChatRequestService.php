@@ -16,6 +16,7 @@ namespace AutoDudes\Cheddi\Service\Chat;
 
 use AutoDudes\AiSuite\Factory\SettingsFactory;
 use AutoDudes\AiSuite\Service\ModelService;
+use AutoDudes\AiSuite\Service\SecurityAdvisoryStore;
 use AutoDudes\AiSuite\Service\SystemDomainResolver;
 use AutoDudes\Cheddi\Domain\Model\Dto\ChatTurnAnswer;
 use AutoDudes\Cheddi\Utility\NetworkTimeoutDetector;
@@ -25,6 +26,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Http\RequestFactory;
 use TYPO3\CMS\Core\Information\Typo3Version;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ChatRequestService
@@ -43,6 +45,7 @@ class ChatRequestService
         protected readonly GdprModelPolicy $gdprModelPolicy,
         protected readonly ModelService $modelService,
         protected readonly SystemDomainResolver $systemDomainResolver,
+        protected readonly SecurityAdvisoryStore $securityAdvisoryStore,
     ) {}
 
     /**
@@ -82,6 +85,8 @@ class ChatRequestService
                 'keys' => $this->modelService->fetchKeysByModel($extConf, [$model]),
                 'request_system_domain' => $this->systemDomainResolver->resolve(),
                 'typo3_version' => GeneralUtility::makeInstance(Typo3Version::class)->getMajorVersion(),
+                'ext_version' => ExtensionManagementUtility::getExtensionVersion('ai_suite'),
+                'ext_versions' => (string) json_encode(SecurityAdvisoryStore::installedVersions()),
                 'gdprOnly' => $this->gdprModelPolicy->isForced($extConf) ? '1' : '0',
                 'intent' => $intent,
                 'webResearch' => json_encode($webResearch),
@@ -127,6 +132,8 @@ class ChatRequestService
 
             return $this->buildErrorAnswer('chat-server-invalid-response', 'chatServerUnavailable');
         }
+
+        $this->securityAdvisoryStore->recordAnswer(is_array($decoded['body'] ?? null) ? $decoded['body'] : [], ChatTurnAnswer::TYPE_ERROR === ($decoded['type'] ?? null));
 
         return ChatTurnAnswer::fromResponseData($decoded);
     }

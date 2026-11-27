@@ -6,7 +6,22 @@
   "license": [
     "GPL-2.0-or-later"
   ],
-  "version": "0.6.0",
+  "authors": [
+    {
+      "name": "AutoDudes",
+      "role": "Developer",
+      "homepage": "https://www.autodudes.de",
+      "email": "service@autodudes.de"
+    }
+  ],
+  "support": {
+    "email": "service@autodudes.de",
+    "issues": "https://github.com/autodudesde/cheddi/issues",
+    "source": "https://github.com/autodudesde/cheddi",
+    "docs": "https://www.autodudes.de/en/documentation/cheddi",
+    "security": "https://github.com/autodudesde/cheddi/security/policy"
+  },
+  "version": "0.6.1",
   "keywords": [
     "TYPO3 CMS",
     "backend",
@@ -20,7 +35,7 @@
   "require": {
     "php": "^8.1",
     "autodudes/ai-suite": "^12.26.0 || ^13.20.0 || ^14.8.0",
-    "autodudes/ai-suite-mcp": "^0.13",
+    "autodudes/ai-suite-mcp": "^0.13.1",
     "typo3/cms-core": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-workspaces": "^12.4.11 || ^13.4.1 || ^14.3.0",
     "typo3/cms-reports": "^12.4.11 || ^13.4.1 || ^14.3.0",

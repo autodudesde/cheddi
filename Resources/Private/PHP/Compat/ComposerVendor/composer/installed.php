@@ -3,7 +3,7 @@
         'name' => 'autodudes/cheddi-classic-compat',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'c8c1cfd8bfadb86676570319a1943f6fe2f12162',
+        'reference' => '4571a482125195289f152c4c2b9a995c68e52863',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'autodudes/cheddi-classic-compat' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'c8c1cfd8bfadb86676570319a1943f6fe2f12162',
+            'reference' => '4571a482125195289f152c4c2b9a995c68e52863',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

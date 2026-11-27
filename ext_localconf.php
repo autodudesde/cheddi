@@ -6,7 +6,6 @@ use AutoDudes\AiSuiteMcp\Compat\ClassicModeBundle;
 use AutoDudes\AiSuiteMcp\Mcp\Log\SensitiveDataProcessor;
 use AutoDudes\Cheddi\Hook\ChatWriteCaptureHook;
 use Psr\Log\LogLevel;
-use Smalot\PdfParser\Parser;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Writer\FileWriter;
@@ -15,7 +14,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 defined('TYPO3') || exit('Access denied.');
 
-ClassicModeBundle::register(ExtensionManagementUtility::extPath('cheddi'), Parser::class);
+ClassicModeBundle::register(ExtensionManagementUtility::extPath('cheddi'));
 
 $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tcemain.php']['processDatamapClass']['cheddi']
     = ChatWriteCaptureHook::class;
